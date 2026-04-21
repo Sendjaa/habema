@@ -34,6 +34,7 @@ export interface Order {
 interface TransactionData {
   items: any[];
   duration: number;
+  days: number;
   payment: {
     method: string;
     bank?: string;

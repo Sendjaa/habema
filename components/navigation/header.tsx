@@ -105,7 +105,10 @@ export function Header() {
   }, [searchValue]);
 
   const closeMenu = () => setIsMenuOpen(false);
-  const totalItems = (cartItems || []).reduce((total: number, item: any) => total + item.quantity, 0)
+  const totalItems = (cartItems || []).reduce(
+    (total: number, item: any) => total + item.quantity,
+    0,
+  );
 
   return (
     <header
@@ -136,10 +139,7 @@ export function Header() {
             <Link href="/track" className="hover:text-white transition-colors">
               Lacak Pesanan
             </Link>
-            <div className="w-[1px] h-3 bg-emerald-800" />
-            <Link href="/orders" className="hover:text-white transition-colors">
-              Pesanan Saya
-            </Link>
+            
           </div>
         </div>
       </div>

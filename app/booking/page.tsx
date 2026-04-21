@@ -1,18 +1,13 @@
 "use client";
 
 import { useState, Suspense, useEffect } from "react";
+import type { User } from "@supabase/supabase-js";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/booking/date-range-picker";
 import { calculateDaysBetween } from "@/lib/booking-utils";
-import {
-  ArrowRight,
-  CheckCircle,
-  ShieldCheck,
-  MessageCircle,
-  Info,
-} from "lucide-react";
+import { CheckCircle, ShieldCheck, Info } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { IDVerificationForm } from "@/components/checkout/id-verification-form";
 import {
@@ -27,6 +22,9 @@ function BookingContent() {
   const productId = searchParams.get("id");
   const quantity = parseInt(searchParams.get("quantity") || "1");
 
+  // hybrid checkout
+  const [user, setUser] = useState<User | null>(null);
+  const transaction = useCartStore((state) => state.currentTransaction);
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date | null>(null);
@@ -39,6 +37,14 @@ function BookingContent() {
   const [paymentMethod, setPaymentMethod] = useState("Transfer Bank");
   const [isSuccess, setIsSuccess] = useState(false);
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getSession();
+      setUser(data.session?.user || null);
+    };
+    checkUser();
+  }, []);
 
   useEffect(() => {
     if (paymentMethod !== "Transfer Bank") {
@@ -76,16 +82,70 @@ function BookingContent() {
   };
 
   const handleFinalAction = async () => {
-  setTransactionData({
-    item: product,
-    days: days,
-    duration: days,
-    totalPrice: totalPrice,
-    paymentMethod: paymentMethod,
-    payment: { method: paymentMethod, bank: selectedBank || undefined }
-  });
-  
-  router.push('/checkout');
+  try {
+    // --- LANGKAH 1: Simpan ke Tabel Bookings ---
+    const orderData = {
+      user_id: user?.id || null,
+      start_date: startDate,
+      end_date: endDate,
+      rental_days: days,
+      subtotal: subtotal,
+      total_cost: totalPrice,
+      deposit_amount: deposit,
+      product_id: productId, // Master product ID
+      status: 'pending'
+    };
+
+    const { data: newBooking, error: bookingError } = await supabase
+      .from("bookings")
+      .insert([orderData])
+      .select()
+      .single();
+
+    if (bookingError) throw bookingError;
+
+    // --- LANGKAH 2: Simpan ke Tabel Booking_Items ---
+    // Gunakan ID dari newBooking yang baru saja dibuat
+    const itemData = {
+      booking_id: newBooking.id,
+      equipment_id: productId,
+      quantity: quantity,
+      unit_price: pricePerNight,
+      subtotal: subtotal
+    };
+
+    const { error: itemError } = await supabase
+      .from("booking_items")
+      .insert([itemData]);
+
+    if (itemError) throw itemError;
+
+    setTransactionData({
+      items: product,
+      days: days,
+      duration: days,
+      totalPrice: totalPrice,
+      payment: { method: paymentMethod, bank: selectedBank || undefined }
+    });
+
+    if (paymentMethod === "WhatsApp Konfirmasi") {
+      const waMessage = `Halo Admin Habema!
+Saya ingin menyewa: *${product.name}*
+ID Booking: #${newBooking.id.slice(0, 8)}
+Durasi: ${days} Hari
+Total: Rp${totalPrice.toLocaleString('id-ID')}
+
+Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
+
+      window.open(`https://wa.me/628123456789?text=${encodeURIComponent(waMessage)}`, '_blank');
+    }
+
+    router.push('/checkout');
+
+  } catch (error: any) {
+    console.error("Error lengkap:", error);
+    alert(`Gagal: ${error.message}`);
+  }
 };
 
   if (loading)
@@ -208,91 +268,107 @@ function BookingContent() {
               disabled={!idData}
             >
               <div className="space-y-3">
+                {/* Logika Hybrid: Filter metode berdasarkan status login */}
                 {[
                   {
                     id: "tf",
                     name: "Transfer Bank",
                     desc: "Verifikasi manual 10-30 menit",
                     icon: "🏦",
+                    requiresAuth: true, // Hanya untuk user login
                   },
                   {
                     id: "qris",
                     name: "QRIS",
                     desc: "Otomatis & Instan (Gopay, OVO, Dana)",
                     icon: "📸",
+                    requiresAuth: true, // Hanya untuk user login
                   },
                   {
                     id: "wa",
                     name: "WhatsApp Konfirmasi",
                     desc: "Tanya admin via WhatsApp",
                     icon: "💬",
+                    requiresAuth: false, // Guest & User bisa pakai ini
                   },
-                ].map((m) => (
-                  <div key={m.id} className="space-y-2">
-                    {/* Main Option */}
-                    <div
-                      onClick={() => setPaymentMethod(m.name)}
-                      className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex justify-between items-center ${
-                        paymentMethod === m.name
-                          ? "border-emerald-600 bg-emerald-50/50"
-                          : "border-slate-100 bg-white hover:border-slate-200"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`text-xl p-2 rounded-lg ${paymentMethod === m.name ? "bg-emerald-100" : "bg-slate-50"}`}
-                        >
-                          {m.icon}
-                        </div>
-                        <div className="flex flex-col">
-                          <span
-                            className={`font-bold text-sm ${paymentMethod === m.name ? "text-emerald-900" : "text-slate-700"}`}
-                          >
-                            {m.name}
-                          </span>
-                          <span className="text-[10px] text-slate-500 font-medium">
-                            {m.desc}
-                          </span>
-                        </div>
-                      </div>
+                ]
+                  // FILTER DISINI: Jika user TIDAK login, tampilkan yang NOT requiresAuth saja
+                  .filter((m) => (user ? true : !m.requiresAuth))
+                  .map((m) => (
+                    <div key={m.id} className="space-y-2">
                       <div
-                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        onClick={() => setPaymentMethod(m.name)}
+                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex justify-between items-center ${
                           paymentMethod === m.name
-                            ? "border-emerald-600 bg-emerald-600"
-                            : "border-slate-200"
+                            ? "border-emerald-600 bg-emerald-50/50"
+                            : "border-slate-100 bg-white hover:border-slate-200"
                         }`}
                       >
-                        {paymentMethod === m.name && (
-                          <div className="w-2 h-2 bg-white rounded-full" />
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Sub-Options for Transfer Bank */}
-                    {m.name === "Transfer Bank" &&
-                      paymentMethod === "Transfer Bank" && (
-                        <div className="grid grid-cols-2 gap-2 ml-4 animate-in slide-in-from-top-2 duration-300">
-                          {["BCA", "Mandiri", "BNI", "BRI"].map((bank) => (
-                            <button
-                              key={bank}
-                              onClick={() => setSelectedBank(bank)} // Pastikan kamu punya state [selectedBank, setSelectedBank]
-                              className={`py-3 px-4 rounded-xl border-2 text-xs font-bold transition-all ${
-                                selectedBank === bank
-                                  ? "border-emerald-500 bg-white text-emerald-700 shadow-sm"
-                                  : "border-slate-100 bg-slate-50/50 text-slate-500"
-                              }`}
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`text-xl p-2 rounded-lg ${
+                              paymentMethod === m.name
+                                ? "bg-emerald-100"
+                                : "bg-slate-50"
+                            }`}
+                          >
+                            {m.icon}
+                          </div>
+                          <div className="flex flex-col">
+                            <span
+                              className={`font-bold text-sm ${paymentMethod === m.name ? "text-emerald-900" : "text-slate-700"}`}
                             >
-                              {bank}
-                            </button>
-                          ))}
+                              {m.name}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-medium">
+                              {m.desc}
+                            </span>
+                          </div>
                         </div>
-                      )}
+                        <div
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === m.name ? "border-emerald-600 bg-emerald-600" : "border-slate-200"}`}
+                        >
+                          {paymentMethod === m.name && (
+                            <div className="w-2 h-2 bg-white rounded-full" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Sub-pilihan Bank (Hanya muncul jika Login & Pilih TF) */}
+                      {m.name === "Transfer Bank" &&
+                        paymentMethod === "Transfer Bank" && (
+                          <div className="grid grid-cols-2 gap-2 ml-4 animate-in slide-in-from-top-2">
+                            {["BCA", "Mandiri", "BNI", "BRI"].map((bank) => (
+                              <button
+                                key={bank}
+                                onClick={() => setSelectedBank(bank)}
+                                className={`py-3 px-4 rounded-xl border-2 text-xs font-bold transition-all ${
+                                  selectedBank === bank
+                                    ? "border-emerald-500 bg-white text-emerald-700 shadow-sm"
+                                    : "border-slate-100 bg-slate-50/50 text-slate-500"
+                                }`}
+                              >
+                                {bank}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                    </div>
+                  ))}
+
+                {/* Info Tambahan untuk Guest */}
+                {!user && (
+                  <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl">
+                    <p className="text-[10px] text-amber-700 font-medium">
+                      Note: Karena Anda belum masuk, pembayaran via Bank/QRIS
+                      tidak tersedia. Silakan <strong>Login</strong> untuk akses
+                      penuh.
+                    </p>
                   </div>
-                ))}
+                )}
 
                 <Button
                   onClick={handleFinalAction}
-                  // Validasi tambahan: Jika pilih TF, bank juga harus sudah dipilih
                   disabled={
                     !paymentMethod ||
                     (paymentMethod === "Transfer Bank" && !selectedBank)
@@ -304,8 +380,8 @@ function BookingContent() {
                       : "bg-slate-200 text-slate-400"
                   }`}
                 >
-                  {paymentMethod === "Transfer Bank" && !selectedBank
-                    ? "Pilih Bank Terlebih Dahulu"
+                  {paymentMethod === "WhatsApp Konfirmasi"
+                    ? "Pesan via WhatsApp"
                     : "Konfirmasi Pesanan"}
                 </Button>
               </div>
@@ -410,7 +486,4 @@ export default function BookingPage() {
       <BookingContent />
     </Suspense>
   );
-}
-function setIsProcessing(arg0: boolean) {
-  throw new Error("Function not implemented.");
 }
