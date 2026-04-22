@@ -82,71 +82,84 @@ function BookingContent() {
   };
 
   const handleFinalAction = async () => {
-  try {
-    // --- LANGKAH 1: Simpan ke Tabel Bookings ---
-    const orderData = {
-      user_id: user?.id || null,
-      start_date: startDate,
-      end_date: endDate,
-      rental_days: days,
-      subtotal: subtotal,
-      total_cost: totalPrice,
-      deposit_amount: deposit,
-      product_id: productId, // Master product ID
-      status: 'pending'
-    };
+    try {
+      // 1. Ambil data user yang sedang login dari Supabase Auth
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
 
-    const { data: newBooking, error: bookingError } = await supabase
-      .from("bookings")
-      .insert([orderData])
-      .select()
-      .single();
+      if (!productId) throw new Error("ID Produk tidak ditemukan.");
+      const orderData = {
+        user_id: user?.id || null,
+        start_date: startDate?.toISOString(),
+        end_date: endDate?.toISOString(),
+        rental_days: Number(days),
+        subtotal: Number(subtotal),
+        total_cost: Number(totalPrice),
+        deposit_amount: Number(deposit),
+        product_id: productId,
+        status: "pending",
+      };
 
-    if (bookingError) throw bookingError;
+      // Eksekusi Simpan Booking
+      const { data: newBooking, error: bookingError } = await supabase
+        .from("bookings")
+        .insert([orderData])
+        .select()
+        .single();
 
-    // --- LANGKAH 2: Simpan ke Tabel Booking_Items ---
-    // Gunakan ID dari newBooking yang baru saja dibuat
-    const itemData = {
-      booking_id: newBooking.id,
-      equipment_id: productId,
-      quantity: quantity,
-      unit_price: pricePerNight,
-      subtotal: subtotal
-    };
+      if (bookingError) throw bookingError;
 
-    const { error: itemError } = await supabase
-      .from("booking_items")
-      .insert([itemData]);
+      // 4. Persiapkan data untuk Tabel Booking_Items
+      const itemData = {
+        booking_id: newBooking.id,
+        equipment_id: productId,
+        quantity: Number(quantity),
+        unit_price: Number(pricePerNight),
+        subtotal: Number(subtotal),
+      };
 
-    if (itemError) throw itemError;
+      const { error: itemError } = await supabase
+        .from("booking_items")
+        .insert([itemData]);
 
-    setTransactionData({
-      items: product,
-      days: days,
-      duration: days,
-      totalPrice: totalPrice,
-      payment: { method: paymentMethod, bank: selectedBank || undefined }
-    });
+      if (itemError) throw itemError;
 
-    if (paymentMethod === "WhatsApp Konfirmasi") {
-      const waMessage = `Halo Admin Habema!
+      // 5. Update Global State (Zustand)
+      setTransactionData({
+        items: product,
+        days: Number(days),
+        duration: Number(days),
+        totalPrice: Number(totalPrice),
+        payment: { method: paymentMethod, bank: selectedBank || undefined },
+      });
+
+      // 6. Alur Keluar (WhatsApp)
+      if (paymentMethod === "WhatsApp Konfirmasi") {
+        const waMessage = `Halo Admin Habema!
 Saya ingin menyewa: *${product.name}*
 ID Booking: #${newBooking.id.slice(0, 8)}
+User: ${user ? user.email : "Guest"}
 Durasi: ${days} Hari
-Total: Rp${totalPrice.toLocaleString('id-ID')}
+Total: Rp${Number(totalPrice).toLocaleString("id-ID")}
 
 Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
 
-      window.open(`https://wa.me/628123456789?text=${encodeURIComponent(waMessage)}`, '_blank');
+        window.open(
+          `https://wa.me/628123456789?text=${encodeURIComponent(waMessage)}`,
+          "_blank",
+        );
+      }
+
+      router.push("/checkout");
+    } catch (error: any) {
+      console.error("Error lengkap:", error);
+      alert(
+        `Gagal menyimpan pesanan: ${error.message || "Terjadi kesalahan sistem"}`,
+      );
     }
-
-    router.push('/checkout');
-
-  } catch (error: any) {
-    console.error("Error lengkap:", error);
-    alert(`Gagal: ${error.message}`);
-  }
-};
+  };
 
   if (loading)
     return (
@@ -356,13 +369,19 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                     </div>
                   ))}
 
-                {/* Info Tambahan untuk Guest */}
+                {/* Cari bagian ini di kode kamu */}
                 {!user && (
                   <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl">
                     <p className="text-[10px] text-amber-700 font-medium">
                       Note: Karena Anda belum masuk, pembayaran via Bank/QRIS
-                      tidak tersedia. Silakan <strong>Login</strong> untuk akses
-                      penuh.
+                      tidak tersedia. Silakan{" "}
+                      <button
+                        onClick={() => router.push("/login")}
+                        className="underline font-bold text-amber-800"
+                      >
+                        Login di sini
+                      </button>{" "}
+                      untuk akses penuh.
                     </p>
                   </div>
                 )}

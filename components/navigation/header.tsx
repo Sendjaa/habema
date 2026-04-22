@@ -19,6 +19,7 @@ import {
   Clock,
   Zap,
   Star,
+  LogIn
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/lib/store";
 import React from "react";
+import { NavbarUserControl } from "./navUserControl";
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -478,16 +480,10 @@ export function Header() {
                 )}
               </Link>
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hidden sm:flex text-emerald-900/70"
-              asChild
-            >
-              <Link href="/account">
-                <User className="w-[22px] h-[22px]" />
-              </Link>
-            </Button>
+
+            {/* login */}
+            <NavbarUserControl/>
+
             <Button
               variant="ghost"
               size="icon"
