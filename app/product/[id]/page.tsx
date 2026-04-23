@@ -57,6 +57,9 @@ export default function ProductDetailPage({
   const [helpfulCount, setHelpfulCount] = useState([12, 8, 5, 2, 1]);
   const [isLiked, setIsLiked] = useState([false, false, false, false, false]);
   const addToCart = useCartStore((state) => state.addToCart);
+  const unsplashLoader = ({src, width, quality, }: any ) => {
+    return `${src}?auto=format&fit=crop&w=${width}&q=${quality || 75}`;
+  }
 
   const handleHelpfulClick = (index: number) => {
     const newLikedStatus = [...isLiked];
@@ -212,10 +215,13 @@ export default function ProductDetailPage({
               <div className="flex gap-4 items-center bg-white p-3 rounded-xl border border-slate-100 shadow-sm mb-3">
                 <div className="relative w-16 h-16 rounded-lg overflow-hidden border shrink-0">
                   <Image
+                    loader={unsplashLoader}
                     src={product.image_url}
                     alt={product.name}
                     fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     className="object-cover"
+                    priority={true}
                   />
                 </div>
                 <div className="flex-1 overflow-hidden">
