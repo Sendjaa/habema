@@ -28,6 +28,7 @@ import {
 import { toast } from "sonner";
 
 interface Booking {
+  user_profile: any;
   id: string;
   user_id: string | null;
   status: string;
@@ -61,6 +62,7 @@ export default function BookingManagement() {
   const [userTypeFilter, setUserTypeFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -117,6 +119,7 @@ export default function BookingManagement() {
         if (error.code === '42501') {
           toast.warning('RLS permissions issue. Please check RLS policies.');
           setBookings([]);
+          setTotalCount(0);
           setTotalPages(0);
           return;
         }
@@ -125,11 +128,13 @@ export default function BookingManagement() {
       }
 
       setBookings(data || []);
+      setTotalCount(count || 0);
       setTotalPages(Math.ceil((count || 0) / itemsPerPage));
     } catch (error) {
       console.error("Error fetching bookings:", error);
       toast.error("Failed to load bookings");
       setBookings([]);
+      setTotalCount(0);
       setTotalPages(0);
     } finally {
       setLoading(false);
@@ -421,11 +426,17 @@ export default function BookingManagement() {
                     </div>
                     
                     <div className="flex gap-2 pt-2 border-t border-gray-100">
-                      <Button size="sm" variant="outline" onClick={() => viewBooking(booking.id)}>
+                      <Button size="sm" variant="outline" onClick={() => {
+                        setSelectedBooking(booking);
+                        setShowDetailModal(true);
+                      }}>
                         <Eye className="w-4 h-4 mr-1" />
                         View
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => editBooking(booking.id)}>
+                      <Button size="sm" variant="outline" onClick={() => {
+                        setSelectedBooking(booking);
+                        setShowEditModal(true);
+                      }}>
                         <Edit className="w-4 h-4 mr-1" />
                         Edit
                       </Button>
