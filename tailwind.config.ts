@@ -1,13 +1,19 @@
 import type { Config } from 'tailwindcss'
 
 const config: Config = {
-  darkMode: ['class'],
+  // darkMode: ['class'],
   content: [
-    './components/**/*.{js,ts,jsx,tsx,mdx}',
-    './app/**/*.{js,ts,jsx,tsx,mdx}',
+       './pages/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
+    './app/**/*.{ts,tsx}',
   ],
   theme: {
     extend: {
+      fontFamily: {
+        display: ['var(--font-display)', 'Georgia', 'serif'],
+        body:    ['var(--font-body)', 'system-ui', 'sans-serif'],
+        sans:    ['var(--font-body)', 'system-ui', 'sans-serif'],
+      },
       colors: {
         background: 'var(--background)',
         foreground: 'var(--foreground)',
@@ -44,10 +50,10 @@ const config: Config = {
         'earth': '#8B7355',
         'stone': '#A9A49E',
       },
-      fontFamily: {
-        sans: 'var(--font-sans)',
-        mono: 'var(--font-mono)',
-      },
+      // fontFamily: {
+      //   sans: 'var(--font-sans)',
+      //   mono: 'var(--font-mono)',
+      // },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',

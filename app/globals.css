@@ -130,3 +130,75 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
+
+
+/* app/globals.css */
+@layer base {
+  :root {
+    /* ── Font variables ── */
+    --font-display: 'Fraunces', serif;
+    --font-body: 'DM Sans', sans-serif;
+
+    /* ── Color tokens (light mode) ── */
+    --background: 250 249 247;        /* #FAFAF7 warm off-white */
+    --foreground: 28 25 23;           /* stone-900 */
+    --muted: 231 229 228;             /* stone-200 */
+    --muted-foreground: 120 113 108;  /* stone-500 */
+    --border: 214 211 209;            /* stone-300 */
+    --ring: 22 163 74;                /* emerald-600 */
+    --primary: 21 128 61;             /* emerald-700 */
+    --primary-foreground: 255 255 255;
+  }
+
+  .dark {
+    --background: 12 10 9;
+    --foreground: 250 250 249;
+    --muted: 41 37 36;
+    --muted-foreground: 168 162 158;
+    --border: 41 37 36;
+    --primary: 74 222 128;
+    --primary-foreground: 12 10 9;
+  }
+
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+
+  /* Heading pakai Fraunces otomatis */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--muted));
+    border-radius: 100px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgb(var(--muted-foreground)); }
+
+  /* Selection color */
+  ::selection {
+    background: rgb(22 163 74 / 0.15);
+    color: rgb(var(--foreground));
+  }
+}
+
+@layer utilities {
+  .font-display { font-family: var(--font-display); }
+  .font-body    { font-family: var(--font-body); }
+}
