@@ -11,6 +11,10 @@ export interface UserIdentity {
   phone: string;
   address: string;
   identityCardUrl?: string; 
+  idType?: string;
+  idNumber?: string;
+  photoUrl?: string;
+  verified?: boolean;
 }
 
 export interface Order {

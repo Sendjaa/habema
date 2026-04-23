@@ -1,14 +1,18 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Upload, X, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { useCartStore } from "@/lib/store";
+import { supabase } from "@/lib/supabaseClient";
 
 export function IDVerificationForm({ onVerificationComplete }: any) {
+  const router = useRouter();
+  
   // Ambil data dan fungsi dari Zustand
   const savedIdentity = useCartStore((state) => state.identity);
   const setIdentity = useCartStore((state) => state.setIdentity);
@@ -23,6 +27,35 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  // Function to insert identity data to Supabase
+  const insertIdentityToSupabase = async (identityData: any) => {
+    try {
+      console.log('Inserting identity data:', identityData);
+      
+      const { data, error } = await supabase
+        .from('user_identity')
+        .insert({
+          user_id: identityData.user_id,
+          id_type: identityData.idType,
+          id_number: identityData.idNumber,
+          id_photo_url: identityData.photoUrl,
+          verification_status: 'pending'
+        });
+      
+      console.log('Supabase response:', { data, error });
+      
+      if (error) {
+        console.error('Supabase error details:', JSON.stringify(error, null, 2));
+        throw error;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error inserting identity details:', JSON.stringify(error, null, 2));
+      throw error;
+    }
+  };
 
   // Sync state dengan Zustand (PENTING untuk menangani re-render dan hydration)
   useEffect(() => {
@@ -50,26 +83,104 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
     return true;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validateForm()) return;
 
     setIsProcessing(true);
+    
+    // Prepare data first (needed for both authenticated and anonymous flows)
     const data = {
+      fullName,
+      nik: idNumber, // Using idNumber as nik
+      phone: "", // Empty string for now, can be added later
+      address: "", // Empty string for now, can be added later
       idType,
       idNumber,
-      fullName,
       photoUrl: photoPreview || undefined,
       verified: true,
     };
+    
+    try {
+      // Check if user is authenticated first
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        console.log('User not authenticated - proceeding with anonymous checkout');
+        // For anonymous users, save to local storage only and continue
+        setIdentity(data);
+        
+        if (onVerificationComplete) {
+          onVerificationComplete({
+            ...data,
+            isAnonymous: true
+          });
+        }
+        
+        setIsProcessing(false);
+        toast.success("Identitas tersimpan (mode anonim)");
+        return;
+      }
+    } catch (error) {
+      console.log('Auth check failed - proceeding as anonymous');
+      // For anonymous users, save to local storage only and continue
+      setIdentity(data);
+      
+      if (onVerificationComplete) {
+        onVerificationComplete({
+          ...data,
+          isAnonymous: true
+        });
+      }
+      
+      setIsProcessing(false);
+      toast.success("Identitas tersimpan (mode anonim)");
+      return;
+    }
+    // Now we know user is authenticated, proceed with database submission
 
     // Simulasi delay proses
-    setTimeout(() => {
-      setIdentity(data); // Simpan ke Zustand (LocalStorage)
+    setTimeout(async () => {
+      try {
+        // Get current user again (we already checked above, but need fresh data)
+        console.log('Getting current user for submission...');
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        console.log('Auth response:', { user, authError });
+        
+        if (authError || !user) {
+          console.error('Auth error during submission:', authError);
+          toast.error('Terjadi kesalahan autentikasi');
+          setIsProcessing(false);
+          return;
+        }
 
-      if (onVerificationComplete) onVerificationComplete(data);
+        // Insert to Supabase
+        try {
+          await insertIdentityToSupabase({
+            ...data,
+            user_id: user.id
+          });
+          toast.success("Identitas berhasil disimpan ke database");
+        } catch (supabaseError) {
+          console.error('Supabase failed, saving to local only:', supabaseError);
+          toast.warning("Database gagal, data disimpan lokal saja");
+        }
 
-      setIsProcessing(false);
-      toast.success("Identitas berhasil diperbarui");
+        // Simpan ke Zustand (LocalStorage) - selalu dijalankan
+        setIdentity(data);
+
+        if (onVerificationComplete) onVerificationComplete(data);
+
+        setIsProcessing(false);
+      } catch (error) {
+        console.error('Error saving identity:', error);
+        toast.error("Terjadi kesalahan, data disimpan lokal saja");
+        
+        // Fallback: simpan ke Zustand saja
+        setIdentity(data);
+        if (onVerificationComplete) onVerificationComplete(data);
+        setIsProcessing(false);
+      }
     }, 800);
   };
 

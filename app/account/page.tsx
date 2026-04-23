@@ -50,6 +50,9 @@ interface DBOrder {
   status: string;
   pickup_date: string;
   created_at: string;
+  start_date?: string;
+  end_date?: string;
+  rental_days?: number;
 }
 
 interface DBAddress {
@@ -110,22 +113,81 @@ export default function AccountPage() {
       }
       setUser(authUser as unknown as UserProfile);
 
-      // 2. Get Orders dari Tabel 'orders'
-      const { data: ordersData } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("user_id", authUser.id)
-        .order("created_at", { ascending: false });
+      // 2. Get Bookings dari Tabel 'bookings' (simplified query)
+      try {
+        const { data: bookingsData, error: bookingsError } = await supabase
+          .from("bookings")
+          .select("*")
+          .eq("user_id", authUser.id)
+          .order("created_at", { ascending: false });
 
-      if (ordersData) setDbOrders(ordersData);
+        if (bookingsError) {
+          console.error('Bookings error:', bookingsError);
+        } else if (bookingsData) {
+          // Get booking items separately for each booking
+          const bookingsWithItems = await Promise.all(
+            bookingsData.map(async (booking: any) => {
+              try {
+                const { data: itemsData } = await supabase
+                  .from("booking_items")
+                  .select(`
+                    *,
+                    equipment (
+                      name,
+                      image_url
+                    )
+                  `)
+                  .eq("booking_id", booking.id);
 
-      // 3. Get Addresses dari Tabel 'addresses' (atau 'profiles')
-      const { data: addrData } = await supabase
-        .from("addresses")
-        .select("*")
-        .eq("user_id", authUser.id);
+                return {
+                  ...booking,
+                  booking_items: itemsData || []
+                };
+              } catch (error) {
+                console.error('Error fetching booking items:', error);
+                return {
+                  ...booking,
+                  booking_items: []
+                };
+              }
+            })
+          );
 
-      if (addrData) setAddresses(addrData);
+          // Transform bookings data to match DBOrder interface
+          const transformedOrders = bookingsWithItems.map((booking: any) => ({
+            id: booking.id,
+            items: booking.booking_items?.map((item: any) => item.equipment?.name || 'Equipment') || [],
+            total: booking.total_cost || 0,
+            status: booking.status,
+            pickup_date: booking.pickup_date,
+            created_at: booking.created_at,
+            start_date: booking.start_date,
+            end_date: booking.end_date,
+            rental_days: booking.rental_days
+          }));
+          setDbOrders(transformedOrders);
+        }
+      } catch (error) {
+        console.error('Error fetching bookings:', error);
+      }
+
+      // 3. Get Addresses - dengan error handling jika tabel tidak ada
+      try {
+        const { data: addrData, error: addrError } = await supabase
+          .from("addresses")
+          .select("*")
+          .eq("user_id", authUser.id);
+
+        if (addrError) {
+          console.log('Addresses table not found or error:', addrError);
+          setAddresses([]); // Set empty array if table doesn't exist
+        } else if (addrData) {
+          setAddresses(addrData);
+        }
+      } catch (error) {
+        console.log('Error fetching addresses:', error);
+        setAddresses([]); // Set empty array on error
+      }
     } catch (err) {
       console.error("Error syncing data:", err);
     } finally {
@@ -141,6 +203,11 @@ export default function AccountPage() {
     setLogoutLoading(true);
     await supabase.auth.signOut();
     router.replace("/login");
+  }, [router]);
+
+  const handleBookingDetail = useCallback((bookingId: string) => {
+    // Navigate to booking detail page
+    router.push(`/bookings/${bookingId}`);
   }, [router]);
 
   const toggleNotif = (key: keyof typeof DEFAULT_NOTIF) =>
@@ -549,12 +616,18 @@ export default function AccountPage() {
                             <div className="flex items-center gap-4">
                               <div className="flex items-center gap-1.5 text-[11px] text-stone-500">
                                 <Clock className="w-3 h-3" />
-                                <span>Ambil: {o.pickup_date}</span>
+                                <span>{o.start_date} - {o.end_date}</span>
                               </div>
+                              {o.rental_days && (
+                                <div className="flex items-center gap-1.5 text-[11px] text-stone-400">
+                                  <span>{o.rental_days} hari</span>
+                                </div>
+                              )}
                             </div>
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => handleBookingDetail(o.id)}
                               className="h-7 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 rounded-lg"
                             >
                               Detail <ChevronRight className="w-3 h-3 ml-1" />

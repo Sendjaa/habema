@@ -91,18 +91,152 @@ function BookingContent() {
 
       if (!productId) throw new Error("ID Produk tidak ditemukan.");
       const orderData = {
-        user_id: user?.id || null,
+        user_id: user?.id || null, // null for anonymous users
         start_date: startDate?.toISOString(),
         end_date: endDate?.toISOString(),
         rental_days: Number(days),
         subtotal: Number(subtotal),
         total_cost: Number(totalPrice),
         deposit_amount: Number(deposit),
-        product_id: productId,
         status: "pending",
       };
 
-      // Eksekusi Simpan Booking
+      // For anonymous users, save to database with null user_id
+      if (!user) {
+        console.log('Creating anonymous booking (database with null user_id)');
+        
+        // Create order data for anonymous user
+        const anonymousOrderData = {
+          user_id: null, // Explicit null for anonymous users
+          start_date: startDate?.toISOString(),
+          end_date: endDate?.toISOString(),
+          rental_days: Number(days),
+          subtotal: Number(subtotal),
+          total_cost: Number(totalPrice),
+          deposit_amount: Number(deposit),
+          status: "pending",
+        };
+
+        // Save anonymous booking to database
+        const { data: newBooking, error: bookingError } = await supabase
+          .from("bookings")
+          .insert([anonymousOrderData])
+          .select()
+          .single();
+
+        if (bookingError) {
+          console.error('Error saving anonymous booking:', bookingError);
+          throw bookingError;
+        }
+
+        console.log('Anonymous booking saved to database:', newBooking);
+
+        // Save booking items
+        const itemData = {
+          booking_id: newBooking.id,
+          equipment_id: productId,
+          quantity: Number(quantity),
+          unit_price: Number(pricePerNight),
+          subtotal: Number(subtotal),
+        };
+
+        const { error: itemError } = await supabase
+          .from("booking_items")
+          .insert([itemData]);
+
+        if (itemError) {
+          console.error('Error saving booking items:', itemError);
+          throw itemError;
+        }
+
+        // Create notification for admin about anonymous booking
+        try {
+          await supabase
+            .from("notifications")
+            .insert({
+              user_id: null, // System notification (no specific user)
+              booking_id: newBooking.id,
+              title: "Booking Baru dari User Anonymous",
+              message: `User anonymous melakukan booking untuk ${product?.name}. ID: ${newBooking.id.slice(0, 8)}. Total: Rp${Number(totalPrice).toLocaleString("id-ID")}. Mohon segera diproses.`,
+              notification_type: "anonymous_booking",
+              is_read: false
+            });
+          console.log('Notification created for anonymous booking');
+        } catch (notifError) {
+          console.error('Error creating notification:', notifError);
+          // Continue even if notification fails
+        }
+
+        // Log booking details for debugging
+        console.log('=== ANONYMOUS BOOKING CREATED ===');
+        console.log('Booking ID:', newBooking.id);
+        console.log('Product:', product?.name);
+        console.log('User Data:', idData);
+        console.log('Total Price:', totalPrice);
+        console.log('Duration:', days, 'days');
+        console.log('Payment Method:', paymentMethod);
+        console.log('=================================');
+        
+        // Save anonymous booking to localStorage for tracking
+        const anonymousBooking = {
+          id: newBooking.id, // Use database booking ID
+          localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Local reference
+          productId: productId,
+          productName: product?.name,
+          quantity: quantity,
+          startDate: startDate?.toISOString(),
+          endDate: endDate?.toISOString(),
+          days: days,
+          totalPrice: totalPrice,
+          paymentMethod: paymentMethod,
+          identityData: idData,
+          createdAt: new Date().toISOString(),
+          status: 'pending'
+        };
+        
+        // Get existing anonymous bookings
+        const existingBookings = JSON.parse(localStorage.getItem('anonymousBookings') || '[]');
+        existingBookings.push(anonymousBooking);
+        localStorage.setItem('anonymousBookings', JSON.stringify(existingBookings));
+        
+        console.log('Anonymous booking saved to localStorage:', anonymousBooking);
+        
+        // Update transaction data with booking info
+        setTransactionData({
+          items: product,
+          days: Number(days),
+          duration: Number(days),
+          totalPrice: Number(totalPrice),
+          payment: { method: paymentMethod, bank: selectedBank || undefined },
+        });
+
+        // For anonymous users, only WhatsApp is available
+        if (paymentMethod === "WhatsApp Konfirmasi") {
+          const waMessage = `Halo Admin Habema!
+Saya ingin menyewa: *${product.name}*
+ID Booking: #${newBooking.id.slice(0, 8)}
+User: Guest
+Durasi: ${days} Hari
+Total: Rp${Number(totalPrice).toLocaleString("id-ID")}
+
+Data Identitas:
+Nama: ${idData?.fullName || 'Guest'}
+ID: ${idData?.idNumber || '-'}
+Tipe: ${idData?.idType || '-'}
+
+Mohon konfirmasi pesanan saya ya!`;
+
+          window.open(
+            `https://wa.me/628123456789?text=${encodeURIComponent(waMessage)}`,
+            "_blank",
+          );
+        }
+
+        router.push("/checkout");
+        return;
+      }
+
+      // For authenticated users, save to database
       const { data: newBooking, error: bookingError } = await supabase
         .from("bookings")
         .insert([orderData])
