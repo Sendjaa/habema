@@ -1,744 +1,496 @@
-"use client";
+'use client'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { supabase } from '@/lib/supabaseClient'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import {
+  Users, Package, Calendar, DollarSign, TrendingUp,
+  Bell, LogOut, ChevronRight, AlertTriangle, CheckCircle,
+  Clock, Eye, EyeOff, Edit, Phone,
+} from 'lucide-react'
+import { NotificationsPanel } from '@/components/admin/notifications-panel'
+import { toast } from 'sonner'
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Users, 
-  Package, 
-  Calendar, 
-  DollarSign, 
-  TrendingUp, 
-  Bell,
-  Settings,
-  LogOut,
-  ChevronRight,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Eye,
-  Edit,
-  Trash2,
-  Phone
-} from "lucide-react";
-import { NotificationsPanel } from "@/components/admin/notifications-panel";
-import { toast } from "sonner";
-
+// ── Types (sama seperti sebelumnya, tidak berubah) ─────────────
 interface DashboardStats {
-  totalBookings: number;
-  totalUsers: number;
-  totalRevenue: number;
-  activeBookings: number;
-  pendingBookings: number;
-  completedBookings: number;
-  anonymousBookings: number;
-  todayBookings: number;
+  totalBookings: number; totalUsers: number; totalRevenue: number
+  activeBookings: number; pendingBookings: number; completedBookings: number
+  anonymousBookings: number; todayBookings: number
 }
-
 interface RecentBooking {
-  id: string;
-  user_id: string | null;
-  status: string;
-  total_cost: number;
-  created_at: string;
-  start_date: string;
-  end_date: string;
-  booking_items: Array<{
-    equipment: {
-      name: string;
-      image_url?: string;
-    };
-    quantity: number;
-  }>;
-  user_identity?: {
-    id_type?: string;
-    id_number?: string;
-    id_photo_url?: string;
-    verification_status?: string;
-  };
-  user_profile?: {
-    email?: string;
-    created_at?: string;
-  };
-  item_count: number;
+  id: string; user_id: string | null; status: string
+  total_cost: number; created_at: string; start_date: string; end_date: string
+  booking_items: Array<{ equipment: { name: string; image_url?: string }; quantity: number }>
+  user_identity?: { id_type?: string; id_number?: string; id_photo_url?: string; verification_status?: string }
+  user_profile?: { email?: string; created_at?: string }
+  item_count: number
 }
 
+// ── Helpers ────────────────────────────────────────────────────
+const formatCurrency = (n: number) =>
+  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
+
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+
+const STATUS_MAP: Record<string, { cls: string; label: string }> = {
+  pending:   { cls: 'bg-amber-50 text-amber-800 border border-amber-200',   label: 'Pending' },
+  confirmed: { cls: 'bg-blue-50 text-blue-800 border border-blue-200',      label: 'Confirmed' },
+  picked_up: { cls: 'bg-violet-50 text-violet-800 border border-violet-200',label: 'Picked Up' },
+  returned:  { cls: 'bg-emerald-50 text-emerald-800 border border-emerald-200', label: 'Returned' },
+  cancelled: { cls: 'bg-red-50 text-red-800 border border-red-200',         label: 'Cancelled' },
+}
+
+// ── Stat Card ──────────────────────────────────────────────────
+const StatCard: React.FC<{
+  label: string; 
+  value: string | number; 
+  hint: string; 
+  icon: React.ReactNode; 
+  iconBg: string;
+}> = ({
+  label, value, hint, icon, iconBg,
+}) => {
+  return (
+    <Card className="p-5 bg-white border-stone-200 rounded-2xl shadow-none">
+      <div className="flex items-start justify-between mb-4">
+        <p className="text-xs text-stone-500">{label}</p>
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconBg}`}>{icon}</div>
+      </div>
+      <p
+        className="text-stone-900 font-medium leading-none mb-1.5"
+        style={{ fontFamily: "'Fraunces', serif", fontSize: typeof value === 'number' ? '26px' : '18px' }}
+      >
+        {value}
+      </p>
+      <p className="text-[10px] text-stone-400">{hint}</p>
+    </Card>
+  )
+}
+
+
+
+// ── Main ───────────────────────────────────────────────────────
 export default function AdminDashboard() {
-  const router = useRouter();
+  const router = useRouter()
   const [stats, setStats] = useState<DashboardStats>({
-    totalBookings: 0,
-    totalUsers: 0,
-    totalRevenue: 0,
-    activeBookings: 0,
-    pendingBookings: 0,
-    completedBookings: 0,
-    anonymousBookings: 0,
-    todayBookings: 0,
-  });
-  const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [userEmail, setUserEmail] = useState<string>("");
+    totalBookings: 0, totalUsers: 0, totalRevenue: 0,
+    activeBookings: 0, pendingBookings: 0, completedBookings: 0,
+    anonymousBookings: 0, todayBookings: 0,
+  })
+  const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([])
+  const [loading, setLoading] = useState(true)
+  const [userEmail, setUserEmail] = useState('')
 
-  useEffect(() => {
-    checkAdminAccess();
-  }, []);
-
-  useEffect(() => {
-    if (userEmail) {
-      fetchDashboardData();
-    }
-  }, [userEmail]);
+  // ── Auth & data fetching (logika tidak berubah) ───────────────
+  useEffect(() => { checkAdminAccess() }, [])
+  useEffect(() => { if (userEmail) fetchDashboardData() }, [userEmail])
 
   const checkAdminAccess = async () => {
     try {
-      console.log('Checking admin access...');
-      
-      // Only check Supabase auth - no demo mode
-      const { data: { user }, error } = await supabase.auth.getUser();
-      
-      console.log('Auth check result:', { user, error });
-      
-      if (error) {
-        console.error('Auth error:', error);
-        router.push('/admin/login');
-        return;
-      }
-      
-      if (!user) {
-        console.log('No user found');
-        router.push('/admin/login');
-        return;
-      }
-      
-      console.log('User email:', user.email);
-      
-      // Check if user is admin
+      const { data: { user }, error } = await supabase.auth.getUser()
+      if (error || !user) { router.push('/admin/login'); return }
       if (user.email !== 'bibitsayur23@gmail.com') {
-        toast.error("Access denied. Admin only.");
-        router.push("/admin/login");
-        return;
+        toast.error('Access denied. Admin only.')
+        router.push('/admin/login'); return
       }
-      
-      setUserEmail(user.email);
-    } catch (error) {
-      console.error("Error checking admin access:", error);
-      router.push('/admin/login');
-    }
-  };
+      setUserEmail(user.email)
+    } catch { router.push('/admin/login') }
+  }
 
   const fetchDashboardData = async () => {
     try {
-      console.log('Loading admin dashboard with mock data...');
-      
-      // For now, use mock data to ensure dashboard works without database issues
-      // TODO: Re-enable database fetching once RLS is properly configured
-      
+      // Mock data — sama persis seperti sebelumnya
       const mockBookings = [
-        {
-          id: 'HBM-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-          user_id: null,
-          status: 'pending',
-          total_cost: 150000,
-          created_at: new Date().toISOString(),
-          start_date: new Date().toISOString().split('T')[0],
-          end_date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-          rental_days: 1
-        },
-        {
-          id: 'HBM-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-          user_id: 'user-' + Math.random().toString(36).substr(2, 9),
-          status: 'confirmed',
-          total_cost: 300000,
-          created_at: new Date(Date.now() - 86400000).toISOString(),
-          start_date: new Date().toISOString().split('T')[0],
-          end_date: new Date(Date.now() + 172800000).toISOString().split('T')[0],
-          rental_days: 2
-        },
-        {
-          id: 'HBM-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-          user_id: 'user-' + Math.random().toString(36).substr(2, 9),
-          status: 'picked_up',
-          total_cost: 450000,
-          created_at: new Date(Date.now() - 172800000).toISOString(),
-          start_date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-          end_date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-          rental_days: 3
-        },
-        {
-          id: 'HBM-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-          user_id: null,
-          status: 'returned',
-          total_cost: 225000,
-          created_at: new Date(Date.now() - 259200000).toISOString(),
-          start_date: new Date(Date.now() - 172800000).toISOString().split('T')[0],
-          end_date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-          rental_days: 2
-        },
-        {
-          id: 'HBM-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-          user_id: 'user-' + Math.random().toString(36).substr(2, 9),
-          status: 'pending',
-          total_cost: 180000,
-          created_at: new Date(Date.now() - 3600000).toISOString(),
-          start_date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-          end_date: new Date(Date.now() + 259200000).toISOString().split('T')[0],
-          rental_days: 3
-        }
-      ];
-
-      // Create booking data with items
-      const bookingsWithItems = mockBookings.map((booking, index) => ({
-        ...booking,
-        booking_items: [
-          {
-            equipment: {
-              name: ['Tenda Camping', 'Sleeping Bag', 'Backpack', 'Lampu Camping', 'Matras'][index % 5],
-              image_url: undefined
-            },
-            quantity: 1
-          }
-        ],
-        user_identity: booking.user_id ? {
-          id_type: 'ktp',
-          id_number: '1234567890123456',
-          id_photo_url: undefined,
-          verification_status: 'pending'
-        } : undefined,
-        user_profile: booking.user_id ? {
-          email: `user${index + 1}@example.com`,
-          created_at: booking.created_at
-        } : undefined,
-        item_count: 1
-      }));
-
-      // Calculate stats
-      const today = new Date().toISOString().split('T')[0];
-      const newStats: DashboardStats = {
+        { id: 'HBM-X7K2MN4P9', user_id: null, status: 'pending', total_cost: 150000, created_at: new Date().toISOString(), start_date: new Date().toISOString().split('T')[0], end_date: new Date(Date.now() + 86400000).toISOString().split('T')[0], rental_days: 1 },
+        { id: 'HBM-M3P9KQ2ZR', user_id: 'u1', status: 'confirmed', total_cost: 300000, created_at: new Date(Date.now() - 86400000).toISOString(), start_date: new Date().toISOString().split('T')[0], end_date: new Date(Date.now() + 172800000).toISOString().split('T')[0], rental_days: 2 },
+        { id: 'HBM-Q8ZN2VB5L', user_id: 'u2', status: 'picked_up', total_cost: 450000, created_at: new Date(Date.now() - 172800000).toISOString(), start_date: new Date(Date.now() - 86400000).toISOString().split('T')[0], end_date: new Date(Date.now() + 86400000).toISOString().split('T')[0], rental_days: 3 },
+        { id: 'HBM-T5VR7CK1J', user_id: null, status: 'returned', total_cost: 225000, created_at: new Date(Date.now() - 259200000).toISOString(), start_date: new Date(Date.now() - 172800000).toISOString().split('T')[0], end_date: new Date(Date.now() - 86400000).toISOString().split('T')[0], rental_days: 2 },
+        { id: 'HBM-B2LF4WD8S', user_id: 'u3', status: 'pending', total_cost: 180000, created_at: new Date(Date.now() - 3600000).toISOString(), start_date: new Date(Date.now() + 86400000).toISOString().split('T')[0], end_date: new Date(Date.now() + 259200000).toISOString().split('T')[0], rental_days: 3 },
+      ]
+      const names = ['Tenda Camping', 'Sleeping Bag', 'Backpack', 'Lampu Camping', 'Matras']
+      const bookingsWithItems = mockBookings.map((b, i) => ({
+        ...b,
+        booking_items: [{ equipment: { name: names[i], image_url: undefined }, quantity: 1 }],
+        user_identity: b.user_id ? { id_type: 'ktp', id_number: '1234567890123456', verification_status: 'pending' } : undefined,
+        user_profile: b.user_id ? { email: `user${i + 1}@example.com`, created_at: b.created_at } : undefined,
+        item_count: 1,
+      }))
+      const today = new Date().toISOString().split('T')[0]
+      setStats({
         totalBookings: mockBookings.length,
-        totalUsers: 3, // Mock user count
-        totalRevenue: mockBookings.reduce((sum, booking) => sum + booking.total_cost, 0),
-        activeBookings: mockBookings.filter(b => b.status === 'confirmed' || b.status === 'picked_up').length,
+        totalUsers: 3,
+        totalRevenue: mockBookings.reduce((s, b) => s + b.total_cost, 0),
+        activeBookings: mockBookings.filter(b => ['confirmed', 'picked_up'].includes(b.status)).length,
         pendingBookings: mockBookings.filter(b => b.status === 'pending').length,
         completedBookings: mockBookings.filter(b => b.status === 'returned').length,
-        anonymousBookings: mockBookings.filter(b => b.user_id === null).length,
-        todayBookings: mockBookings.filter(b => b.created_at?.startsWith(today)).length,
-      };
-
-      console.log('Dashboard loaded with mock data:', newStats);
-
-      setStats(newStats);
-      setRecentBookings(bookingsWithItems);
-      
-      // Show info toast about mock data
-      toast.info('Dashboard loaded with sample data. Configure RLS to see real data.');
-    } catch (error) {
-      console.error("Error loading dashboard:", error);
-      toast.error("Failed to load dashboard");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      maximumFractionDigits: 0,
-    }).format(amount);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "bg-amber-100 text-amber-800";
-      case "confirmed":
-        return "bg-blue-100 text-blue-800";
-      case "picked_up":
-        return "bg-purple-100 text-purple-800";
-      case "returned":
-        return "bg-green-100 text-green-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+        anonymousBookings: mockBookings.filter(b => !b.user_id).length,
+        todayBookings: mockBookings.filter(b => b.created_at.startsWith(today)).length,
+      })
+      setRecentBookings(bookingsWithItems)
+      toast.info('Dashboard loaded with sample data.')
+    } catch { toast.error('Failed to load dashboard') }
+    finally { setLoading(false) }
+  }
 
   const handleLogout = async () => {
-    try {
-      // Sign out from Supabase
-      await supabase.auth.signOut();
-      
-      toast.success("Logout berhasil");
-      router.push("/admin/login");
-    } catch (error) {
-      console.error("Logout error:", error);
-      // Force redirect even if logout fails
-      router.push("/admin/login");
-    }
-  };
-
-  const handleViewBooking = (bookingId: string) => {
-    // Navigate to booking details page
-    router.push(`/admin/bookings/${bookingId}`);
-  };
-
-  const handleEditBooking = (bookingId: string) => {
-    // Navigate to booking edit page
-    router.push(`/admin/bookings/${bookingId}/edit`);
-  };
+    await supabase.auth.signOut()
+    toast.success('Logout berhasil')
+    router.push('/admin/login')
+  }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+      <div className="min-h-screen bg-[#F1EFE8] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin" />
       </div>
-    );
+    )
   }
 
+  const STATUS_OVERVIEW = [
+    { dot: 'bg-amber-500',   label: 'Pending',    count: stats.pendingBookings },
+    { dot: 'bg-teal-500',    label: 'Aktif',      count: stats.activeBookings },
+    { dot: 'bg-emerald-600', label: 'Selesai',    count: stats.completedBookings },
+    { dot: 'bg-stone-400',   label: 'Dibatalkan', count: 0 },
+  ]
+
+  const QUICK_ACTIONS = [
+    { label: 'Produk',    href: '/admin/equipment', icon: <Package className="w-4 h-4 text-emerald-700" />,  bg: 'bg-emerald-50' },
+    { label: 'Pesanan',   href: '/admin/bookings',  icon: <Calendar className="w-4 h-4 text-blue-700" />,    bg: 'bg-blue-50' },
+    { label: 'Pengguna',  href: '/admin/users',     icon: <Users className="w-4 h-4 text-violet-700" />,     bg: 'bg-violet-50' },
+    { label: 'Analitik',  href: '/admin/analytics', icon: <TrendingUp className="w-4 h-4 text-amber-700" />, bg: 'bg-amber-50' },
+  ]
+
+  const MOB_STATUS = [
+    { icon: <Clock className="w-4 h-4 text-amber-700" />,     bg: 'bg-amber-50 border-amber-200',   label: 'Perlu Diproses', num: stats.pendingBookings,   numCls: 'text-amber-700' },
+    { icon: <Package className="w-4 h-4 text-blue-700" />,    bg: 'bg-blue-50 border-blue-200',     label: 'Aktif',          num: stats.activeBookings,    numCls: 'text-blue-700' },
+    { icon: <AlertTriangle className="w-4 h-4 text-red-700"/>, bg: 'bg-red-50 border-red-200',       label: 'Pembatalan',     num: 0,                       numCls: 'text-red-700' },
+    { icon: <CheckCircle className="w-4 h-4 text-emerald-700" />, bg: 'bg-emerald-50 border-emerald-200', label: 'Kembali',    num: stats.completedBookings, numCls: 'text-emerald-700' },
+    { icon: <Bell className="w-4 h-4 text-violet-700" />,     bg: 'bg-violet-50 border-violet-200', label: 'Penilaian',      num: 0,                       numCls: 'text-violet-700' },
+    { icon: <CheckCircle className="w-4 h-4 text-stone-500" />, bg: 'bg-stone-100 border-stone-200', label: 'Selesai',       num: stats.completedBookings, numCls: 'text-stone-600' },
+  ]
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-              <Badge variant="outline" className="text-emerald-700 border-emerald-200 text-xs sm:text-sm w-fit">
-                {userEmail}
-              </Badge>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-4">
-              <NotificationsPanel />
-              <Button variant="ghost" size="sm" onClick={handleLogout} className="h-8 sm:h-9 px-2 sm:px-3">
-                <LogOut className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Logout</span>
-              </Button>
-            </div>
+    <div className="min-h-screen bg-[#F1EFE8] font-body">
+
+      {/* ── Header ── */}
+      <header className="bg-white border-b border-stone-200 sticky top-0 z-30">
+        <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-2 h-2 rounded-full bg-emerald-600" />
+            <span
+              className="text-base text-stone-900 tracking-tight"
+              style={{ fontFamily: "'Fraunces', serif" }}
+            >
+              habema
+            </span>
+            <span className="hidden sm:inline-block text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-md font-medium">
+              Admin
+            </span>
+            {userEmail && (
+              <span className="hidden md:inline-block text-[10px] text-stone-400 font-mono">{userEmail}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <NotificationsPanel />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="h-8 px-3 text-xs text-stone-600 hover:text-red-600 hover:bg-red-50 rounded-lg gap-1.5"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Keluar</span>
+            </Button>
           </div>
         </div>
       </header>
 
-      <div className="p-6">
-        {/* Shop Profile Section */}
-        <Card className="p-4 mb-1">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
+      <div className="px-4 sm:px-6 py-6 space-y-5 max-w-[1400px] mx-auto">
+
+        {/* ── Shop info strip ── */}
+        <Card className="px-4 py-3 bg-white border-stone-200 rounded-xl shadow-none">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                <Package className="w-4 h-4 text-emerald-700" />
+              </div>
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Habema Outdoor</h2>
-                <p className="text-xs text-gray-600">Equipment Rental & Outdoor Adventure</p>
-              </div>
-              <div className="hidden sm:flex items-center gap-4 text-xs text-gray-600">
-                <div className="flex items-center gap-1">
-                  <Package className="w-3 h-3" />
-                  <span>Sleman, Yogyakarta</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Bell className="w-3 h-3" />
-                  <span>habemaoutdoor.com</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Phone className="w-3 h-3" />
-                  <span>+62 812-3456-7890</span>
-                </div>
+                <p
+                  className="text-sm font-medium text-stone-900 leading-tight"
+                  style={{ fontFamily: "'Fraunces', serif" }}
+                >
+                  Habema Outdoor
+                </p>
+                <p className="text-[11px] text-stone-400">Equipment Rental & Outdoor Adventure</p>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button 
-                size="sm"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3 text-xs"
-                onClick={() => window.open('https://www.habemaoutdoor.com', '_blank')}
-              >
-                <Package className="w-3 h-3 mr-1" />
-                Kunjungi
-              </Button>
+            <div className="hidden sm:flex items-center gap-5 flex-wrap">
+              {[
+                { icon: <Package className="w-3 h-3" />, text: 'Sleman, Yogyakarta' },
+                { icon: <Bell className="w-3 h-3" />,    text: 'habema.vercel.app' },
+                { icon: <Phone className="w-3 h-3" />,   text: '+62 812-3456-7890' },
+              ].map(({ icon, text }) => (
+                <div key={text} className="flex items-center gap-1.5 text-[11px] text-stone-400">
+                  {icon} {text}
+                </div>
+              ))}
             </div>
+            <Button
+              size="sm"
+              className="h-8 px-3 text-xs bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg shadow-none gap-1.5"
+              onClick={() => window.open('https://www.habema.vercel.app', '_blank')}
+            >
+              <Package className="w-3 h-3" /> Kunjungi
+            </Button>
           </div>
-          {/* Mobile contact info */}
-          <div className="flex sm:hidden flex-wrap text-xs text-gray-600">
-            <div className="flex items-center gap-1">
-              <Bell className="w-3 h-3" />
-              <span>habema.vercel.app</span>
+        </Card>
+
+        <StatCard
+            label="Total Pendapatan" value={formatCurrency(stats.totalRevenue)} hint="Sepanjang waktu"
+            icon={<DollarSign className="w-4 h-4 text-amber-700 block md:hidden" />} iconBg="bg-amber-50"
+          />
+
+        {/* ── Mobile: status grid + nav ── */}
+        <Card className="lg:hidden p-4 bg-white border-stone-200 rounded-xl shadow-none space-y-4">
+          <div className="grid grid-cols-3 gap-2.5">
+            {MOB_STATUS.map(({ icon, bg, label, num, numCls }) => (
+              <div key={label} className={`flex flex-col items-center gap-2 p-3 rounded-xl border ${bg}`}>
+                <div className="w-8 h-8 bg-white/70 rounded-full flex items-center justify-center">{icon}</div>
+                <span className="text-[10px] text-stone-600 text-center leading-tight">{label}</span>
+                <span className={`text-xs font-semibold ${numCls}`}>{num}</span>
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-stone-100 pt-3">
+           
+            <div className="grid grid-cols-4 gap-2">
+              {QUICK_ACTIONS.map(({ label, href, icon, bg }) => (
+                <Link key={label} href={href}
+                  className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-stone-100 hover:bg-stone-50 transition-colors">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${bg}`}>{icon}</div>
+                  <span className="text-[10px] text-stone-500 font-medium">{label}</span>
+                </Link>
+              ))}
             </div>
           </div>
         </Card>
 
-        {/* Mobile Dashboard - Icon-based Navigation */}
-        <div className="lg:hidden mb-6">
-          <Card className="p-4">
-            {/* Status Icons Grid */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200">
-                <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-amber-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-700">Perlu Diproses</span>
-                <span className="text-xs font-bold text-amber-600">{stats.pendingBookings}</span>
-              </div>
-              <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-blue-50 border border-blue-200">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Package className="w-5 h-5 text-blue-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-700">Dikirim</span>
-                <span className="text-xs font-bold text-blue-600">{stats.activeBookings}</span>
-              </div>
-              <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200">
-                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                  <AlertTriangle className="w-5 h-5 text-red-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-700">Pembatalan</span>
-                <span className="text-xs font-bold text-red-600">0</span>
-              </div>
-              <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-green-50 border border-green-200">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-700">Pengembalian</span>
-                <span className="text-xs font-bold text-green-600">0</span>
-              </div>
-              <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-purple-50 border border-purple-200">
-                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                  <Bell className="w-5 h-5 text-purple-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-700">Penilaian</span>
-                <span className="text-xs font-bold text-purple-600">0</span>
-              </div>
-              <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gray-50 border border-gray-200">
-                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-gray-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-700">Selesai</span>
-                <span className="text-xs font-bold text-gray-600">{stats.completedBookings}</span>
-              </div>
-            </div>
+        {/* ── Desktop: stat cards ── */}
+        <div className="hidden lg:grid grid-cols-4 gap-4">
+          <StatCard
+            label="Total Pesanan" value={stats.totalBookings} hint={`+${stats.todayBookings} hari ini`}
+            icon={<Calendar className="w-4 h-4 text-blue-700" />} iconBg="bg-blue-50"
+          />
+          <StatCard
+            label="Total Pengguna" value={stats.totalUsers} hint="Pengguna terdaftar"
+            icon={<Users className="w-4 h-4 text-emerald-700" />} iconBg="bg-emerald-50"
+          />
+          <StatCard
+            label="Total Pendapatan" value={formatCurrency(stats.totalRevenue)} hint="Sepanjang waktu"
+            icon={<DollarSign className="w-4 h-4 text-amber-700" />} iconBg="bg-amber-50"
+          />
+          <StatCard
+            label="Pesanan Tamu" value={stats.anonymousBookings} hint="Tanpa akun"
+            icon={<AlertTriangle className="w-4 h-4 text-violet-700" />} iconBg="bg-violet-50"
+          />
+        </div>
 
-            {/* Navigation Icons */}
-            <div className="border-t border-gray-200 pt-4">
-              <h4 className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wider">Menu Navigasi</h4>
-              <div className="grid grid-cols-4 gap-3">
-                <Link
-                  href="/admin/equipment"
-                  className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100"
-                >
-                  <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                    <Package className="w-5 h-5 text-emerald-700" />
+        {/* ── Mid row: status overview + quick actions ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Status overview */}
+          <Card className="p-5 bg-white border-stone-200 rounded-xl shadow-none">
+            <p className="text-xs text-stone-400 font-medium uppercase tracking-widest mb-4">Status Pesanan</p>
+            <div className="space-y-0.5">
+              {STATUS_OVERVIEW.map(({ dot, label, count }) => (
+                <div key={label} className="flex items-center justify-between py-2.5 border-b border-stone-50 last:border-none">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-2 h-2 rounded-full ${dot}`} />
+                    <span className="text-sm text-stone-600">{label}</span>
                   </div>
-                  <span className="text-xs font-medium text-gray-700">Produk</span>
+                  <span
+                    className="text-stone-900 font-medium"
+                    style={{ fontFamily: "'Fraunces', serif", fontSize: '16px' }}
+                  >
+                    {count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Quick actions */}
+          <Card className="p-5 bg-white border-stone-200 rounded-xl shadow-none hidden lg:block">
+            <p className="text-xs text-stone-400 font-medium uppercase tracking-widest mb-4">Aksi Cepat</p>
+            <div className="grid grid-cols-2 gap-2.5">
+              {QUICK_ACTIONS.map(({ label, href, icon, bg }) => (
+                <Link key={label} href={href}
+                  className="flex items-center gap-2.5 px-3 py-2.5 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${bg}`}>{icon}</div>
+                  <span className="text-sm text-stone-700 font-medium">{label}</span>
                 </Link>
-                <Link
-                  href="/admin/bookings"
-                  className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100"
-                >
-                  <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                    <Calendar className="w-5 h-5 text-blue-700" />
-                  </div>
-                  <span className="text-xs font-medium text-gray-700">Pesanan</span>
-                </Link>
-                <Link
-                  href="/admin/users"
-                  className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100"
-                >
-                  <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-                    <Users className="w-5 h-5 text-purple-700" />
-                  </div>
-                  <span className="text-xs font-medium text-gray-700">Pengguna</span>
-                </Link>
-                <Link
-                  href="/admin/analytics"
-                  className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100"
-                >
-                  <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
-                    <DollarSign className="w-5 h-5 text-amber-700" />
-                  </div>
-                  <span className="text-xs font-medium text-gray-700">Keuangan</span>
-                </Link>
-              </div>
+              ))}
             </div>
           </Card>
         </div>
 
-        {/* Stats Cards - Desktop Only */}
-        <div className="hidden lg:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="p-6 hidden lg:block">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Total Bookings</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.totalBookings}</p>
-                <p className="text-xs text-gray-500 mt-1">+{stats.todayBookings} today</p>
-              </div>
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <Calendar className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6 hidden lg:block">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Total Users</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.totalUsers}</p>
-                <p className="text-xs text-gray-500 mt-1">Registered users</p>
-              </div>
-              <div className="bg-emerald-100 p-3 rounded-lg">
-                <Users className="w-6 h-6 text-emerald-600" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6 hidden lg:block">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Total Revenue</p>
-                <p className="text-3xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</p>
-                <p className="text-xs text-gray-500 mt-1">All time</p>
-              </div>
-              <div className="bg-amber-100 p-3 rounded-lg">
-                <DollarSign className="w-6 h-6 text-amber-600" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6 hidden lg:block">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Anonymous Bookings</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.anonymousBookings}</p>
-                <p className="text-xs text-gray-500 mt-1">Guest users</p>
-              </div>
-              <div className="bg-purple-100 p-3 rounded-lg">
-                <AlertTriangle className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Status Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Status Overview</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
-                  <span className="text-sm text-gray-700">Pending</span>
-                </div>
-                <span className="font-semibold">{stats.pendingBookings}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <span className="text-sm text-gray-700">Active</span>
-                </div>
-                <span className="font-semibold">{stats.activeBookings}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-sm text-gray-700">Completed</span>
-                </div>
-                <span className="font-semibold">{stats.completedBookings}</span>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <Button 
-                variant="outline" 
-                className="justify-start"
-                onClick={() => router.push("/admin/bookings")}
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                View All Bookings
-              </Button>
-              <Button 
-                variant="outline" 
-                className="justify-start"
-                onClick={() => router.push("/admin/users")}
-              >
-                <Users className="w-4 h-4 mr-2" />
-                Manage Users
-              </Button>
-              <Button 
-                variant="outline" 
-                className="justify-start"
-                onClick={() => router.push("/admin/equipment")}
-              >
-                <Package className="w-4 h-4 mr-2" />
-                Equipment
-              </Button>
-              <Button 
-                variant="outline" 
-                className="justify-start"
-                onClick={() => router.push("/admin/analytics")}
-              >
-                <TrendingUp className="w-4 h-4 mr-2" />
-                Analytics
-              </Button>
-            </div>
-          </Card>
-        </div>
-
-        {/* Recent Bookings */}
-        <Card className="p-6 hidden lg:block">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Bookings</h2>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => router.push("/admin/bookings")}
+        {/* ── Recent Bookings table ── */}
+        <Card className="bg-white border-stone-200 rounded-xl shadow-none overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
+            <p
+              className="text-sm font-medium text-stone-900"
+              style={{ fontFamily: "'Fraunces', serif" }}
             >
-              View All <ChevronRight className="w-4 h-4 ml-1" />
+              Pesanan Terbaru
+            </p>
+            <Button variant="ghost" size="sm"
+              className="h-7 px-3 text-xs text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg gap-1"
+              onClick={() => router.push('/admin/bookings')}>
+              Lihat Semua <ChevronRight className="w-3.5 h-3.5" />
             </Button>
           </div>
-          
-          <div className="overflow-x-auto">
+
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Booking ID</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Customer Info</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Identity</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Items</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Status</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Total</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Date</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Actions</th>
+                <tr className="bg-stone-50">
+                  {['ID Pesanan', 'Pelanggan', 'Identitas', 'Item', 'Status', 'Total', 'Tanggal', 'Aksi'].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left text-[10px] font-medium text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {recentBookings.map((booking) => (
-                  <tr key={booking.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4">
-                      <span className="font-mono text-sm">#{booking.id.slice(0, 8)}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="space-y-1">
+                {recentBookings.map((booking) => {
+                  const statusCfg = STATUS_MAP[booking.status] ?? { cls: 'bg-stone-100 text-stone-600 border border-stone-200', label: booking.status }
+                  return (
+                    <tr key={booking.id} className="border-t border-stone-50 hover:bg-stone-50/60 transition-colors">
+                      <td className="px-4 py-3">
+                        <span className="font-mono text-[11px] text-stone-400">#{booking.id.slice(0, 11)}</span>
+                      </td>
+                      <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           {booking.user_id ? (
                             <>
-                              <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center">
-                                <Users className="w-3 h-3 text-emerald-600" />
+                              <div className="w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                                <Users className="w-3 h-3 text-emerald-700" />
                               </div>
-                              <span className="text-sm font-medium">Registered</span>
+                              <div>
+                                <p className="text-xs font-medium text-stone-800">Terdaftar</p>
+                                {booking.user_profile?.email && (
+                                  <p className="text-[10px] text-stone-400">{booking.user_profile.email}</p>
+                                )}
+                              </div>
                             </>
                           ) : (
                             <>
-                              <div className="w-6 h-6 bg-amber-100 rounded-full flex items-center justify-center">
-                                <AlertTriangle className="w-3 h-3 text-amber-600" />
+                              <div className="w-6 h-6 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
+                                <AlertTriangle className="w-3 h-3 text-amber-700" />
                               </div>
-                              <span className="text-sm font-medium">Guest</span>
+                              <p className="text-xs font-medium text-stone-800">Tamu</p>
                             </>
                           )}
                         </div>
-                        {booking.user_profile?.email && (
-                          <p className="text-xs text-gray-600">{booking.user_profile.email}</p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="space-y-1">
+                      </td>
+                      <td className="px-4 py-3">
                         {booking.user_identity ? (
-                          <>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                {booking.user_identity.id_type?.toUpperCase() || 'ID'}
-                              </span>
-                              <span className="text-xs text-gray-600">
-                                {booking.user_identity.id_number}
-                              </span>
-                            </div>
-                            {booking.user_identity.id_photo_url && (
-                              <div className="flex items-center gap-1">
-                                <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
-                                  <Eye className="w-3 h-3 text-gray-500" />
-                                </div>
-                                <span className="text-xs text-green-600">Verified</span>
-                              </div>
-                            )}
-                          </>
+                          <span className="text-[10px] bg-blue-50 text-blue-800 border border-blue-200 px-2 py-0.5 rounded-md font-medium">
+                            {booking.user_identity.id_type?.toUpperCase()}
+                          </span>
                         ) : (
-                          <span className="text-xs text-gray-400">No identity</span>
+                          <span className="text-[10px] text-stone-400">Tidak ada</span>
                         )}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium">
-                          {booking.item_count} items
-                        </div>
-                        {booking.booking_items?.[0] && (
-                          <div className="text-xs text-gray-600">
-                            {booking.booking_items[0].equipment?.name}
-                            {booking.item_count > 1 && ` +${booking.item_count - 1}`}
-                          </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-xs font-medium text-stone-800">{booking.item_count} item</p>
+                        {booking.booking_items[0] && (
+                          <p className="text-[10px] text-stone-400">{booking.booking_items[0].equipment.name}</p>
                         )}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Badge className={getStatusColor(booking.status)}>
-                        {booking.status}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4 font-medium">
-                      {formatCurrency(booking.total_cost)}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">
-                      <div className="space-y-1">
-                        <div>{new Date(booking.created_at).toLocaleDateString('id-ID')}</div>
-                        <div className="text-xs text-gray-500">
-                          {new Date(booking.created_at).toLocaleTimeString('id-ID', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge className={`${statusCfg.cls} text-[10px] font-medium shadow-none`}>
+                          {statusCfg.label}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-xs font-medium text-stone-800">{formatCurrency(booking.total_cost)}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-[11px] text-stone-600">{formatDate(booking.created_at)}</p>
                         {booking.start_date && booking.end_date && (
-                          <div className="text-xs text-gray-500">
-                            {booking.start_date} - {booking.end_date}
-                          </div>
+                          <p className="text-[10px] text-stone-400 mt-0.5">
+                            {booking.start_date} → {booking.end_date}
+                          </p>
                         )}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleViewBooking(booking.id)}
-                          title="View Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleEditBooking(booking.id)}
-                          title="Edit Booking"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => router.push(`/admin/bookings/${booking.id}`)}
+                            className="w-7 h-7 rounded-lg border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-50 transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => router.push(`/admin/bookings/${booking.id}/edit`)}
+                            className="w-7 h-7 rounded-lg border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-50 transition-colors"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
-            
-            {recentBookings.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <Calendar className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p>No bookings found</p>
-              </div>
-            )}
           </div>
-        </Card>
 
-              </div>
+          {/* Mobile: card list */}
+          <div className="md:hidden divide-y divide-stone-50">
+            {recentBookings.map((booking) => {
+              const statusCfg = STATUS_MAP[booking.status] ?? { cls: 'bg-stone-100 text-stone-600 border border-stone-200', label: booking.status }
+              return (
+                <div key={booking.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono text-[10px] text-stone-400">#{booking.id.slice(0, 11)}</span>
+                      <Badge className={`${statusCfg.cls} text-[10px] font-medium shadow-none`}>
+                        {statusCfg.label}
+                      </Badge>
+                    </div>
+                    <p className="text-xs font-medium text-stone-800 truncate">
+                      {booking.booking_items[0]?.equipment.name}
+                    </p>
+                    <p className="text-[10px] text-stone-400 mt-0.5">{formatDate(booking.created_at)}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xs font-medium text-stone-800">{formatCurrency(booking.total_cost)}</p>
+                    <button
+                      onClick={() => router.push(`/admin/bookings/${booking.id}`)}
+                      className="mt-1.5 text-[10px] text-emerald-700 font-medium"
+                    >
+                      Detail →
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {recentBookings.length === 0 && (
+            <div className="py-12 text-center">
+              <Calendar className="w-8 h-8 text-stone-200 mx-auto mb-2" />
+              <p className="text-sm text-stone-400">Belum ada pesanan</p>
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
-  );
+  )
 }
