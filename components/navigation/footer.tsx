@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Facebook, Instagram, Twitter } from 'lucide-react'
+import { Facebook, Instagram, } from 'lucide-react'
+import Image from 'next/image'
 
 export function Footer() {
   const currentYear = new Date().getFullYear()
@@ -11,12 +12,9 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Brand Section */}
-          <div>
+          <div> 
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 bg-gold rounded-lg flex items-center justify-center">
-                <span className="text-lg font-bold text-forest">H</span>
-              </div>
-              <h3 className="text-xl font-bold">Habema</h3>
+              <Image src="/images/logo-dark.png" alt="Habema Logo" width={80} height={80} />
             </div>
             <p className="text-cream/80 text-sm">
               Platform penyewaan peralatan outdoor terpercaya untuk petualangan Anda.
@@ -28,9 +26,9 @@ export function Footer() {
               <a href="#" className="hover:text-gold transition-colors">
                 <Instagram className="w-5 h-5" />
               </a>
-              <a href="#" className="hover:text-gold transition-colors">
-                <Twitter className="w-5 h-5" />
-              </a>
+              {/* <a href="#" className="hover:text-gold transition-colors">
+                <Image src="/tiktok.png" alt="Tiktok" className="rounded-full" width={30} height={30} />  
+              </a> */}
             </div>
           </div>
 

@@ -33,6 +33,7 @@ import { useCartStore } from "@/lib/store";
 import React from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { NavbarUserControl } from "./navUserControl";
+import Image from "next/image";
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -172,9 +173,7 @@ export function Header() {
         <div className="flex justify-between items-center h-16 md:h-20 gap-4">
           {/* 1. Logo */}
           <Link href="/" className="flex items-center gap-3 shrink-0 group">
-            <div className="w-10 h-10 bg-[#1B4332] rounded-lg flex items-center justify-center shadow-md transition-transform duration-300 group-hover:scale-105">
-              <Leaf className="w-5 h-5 text-white" fill="currentColor" />
-            </div>
+              <Image src="/images/logo-dark.png" alt="Habema Logo" width={80} height={40} />
             <div className="flex flex-col">
               <h1 className="text-xl font-bold text-[#1B4332] tracking-tight leading-none">HABEMA</h1>
               <span className="text-[10px] font-semibold text-emerald-800/60 uppercase tracking-widest mt-0.5">Outdoor Rental</span>

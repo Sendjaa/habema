@@ -54,7 +54,7 @@ export default function AuthPage() {
           password,
         })
         if (error) throw error
-        router.replace('/booking')
+        router.replace('/')
       }
     } catch (err: any) {
       alert(err.message)

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// Hilangkan import useCartStore jika ingin data murni dari DB Supabase
+
 import {
   Mail,
   Phone,
@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-// ── Types ──────────────────────────────────────────────────────
+
 interface UserProfile {
   last_sign_in_at: string | number | Date;
   email_confirmed_at: any;
@@ -59,7 +59,6 @@ interface DBAddress {
   is_primary: boolean;
 }
 
-// ── Helpers ────────────────────────────────────────────────────
 const getInitials = (name: string) =>
   name
     .split(" ")
@@ -212,32 +211,32 @@ export default function AccountPage() {
     title: string;
     sub: string;
   }[] = [
-    {
-      key: "order_confirm",
-      title: "Konfirmasi Pesanan",
-      sub: "Notifikasi saat pesanan dikonfirmasi admin",
-    },
-    {
-      key: "return_reminder",
-      title: "Pengingat Pengembalian",
-      sub: "Peringatan H-1 sebelum batas kembali alat",
-    },
-    {
-      key: "promo",
-      title: "Promo & Penawaran",
-      sub: "Diskon eksklusif dan perlengkapan baru",
-    },
-    {
-      key: "whatsapp",
-      title: "Notifikasi WhatsApp",
-      sub: "Kirim status pesanan via pesan WhatsApp",
-    },
-    {
-      key: "weekly_email",
-      title: "Email Mingguan",
-      sub: "Ringkasan aktivitas akun tiap minggu",
-    },
-  ];
+      {
+        key: "order_confirm",
+        title: "Konfirmasi Pesanan",
+        sub: "Notifikasi saat pesanan dikonfirmasi admin",
+      },
+      {
+        key: "return_reminder",
+        title: "Pengingat Pengembalian",
+        sub: "Peringatan H-1 sebelum batas kembali alat",
+      },
+      {
+        key: "promo",
+        title: "Promo & Penawaran",
+        sub: "Diskon eksklusif dan perlengkapan baru",
+      },
+      {
+        key: "whatsapp",
+        title: "Notifikasi WhatsApp",
+        sub: "Kirim status pesanan via pesan WhatsApp",
+      },
+      {
+        key: "weekly_email",
+        title: "Email Mingguan",
+        sub: "Ringkasan aktivitas akun tiap minggu",
+      },
+    ];
 
   return (
     <div className="min-h-screen bg-[#F1EFE8] font-body">
@@ -361,7 +360,7 @@ export default function AccountPage() {
                     {Math.round(
                       (verifications.filter((v) => v.status === "ok").length /
                         verifications.length) *
-                        100,
+                      100,
                     )}
                     %
                   </span>
@@ -673,20 +672,18 @@ export default function AccountPage() {
                     addresses.map((addr) => (
                       <div
                         key={addr.id}
-                        className={`relative border-2 rounded-2xl p-5 transition-all ${
-                          addr.is_primary
+                        className={`relative border-2 rounded-2xl p-5 transition-all ${addr.is_primary
                             ? "border-emerald-600/20 bg-emerald-50/10"
                             : "border-stone-100 bg-white hover:border-stone-200"
-                        }`}
+                          }`}
                       >
                         {/* Label & Status */}
                         <div className="flex items-center gap-3 mb-3">
                           <Badge
-                            className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md shadow-none border ${
-                              addr.is_primary
+                            className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md shadow-none border ${addr.is_primary
                                 ? "bg-emerald-800 text-white border-emerald-800"
                                 : "bg-stone-100 text-stone-500 border-stone-200"
-                            }`}
+                              }`}
                           >
                             {addr.label}
                           </Badge>
@@ -799,9 +796,9 @@ export default function AccountPage() {
                       <p className="text-sm text-center font-semibold text-stone-800">
                         {user.last_sign_in_at
                           ? new Date(user.last_sign_in_at).toLocaleTimeString(
-                              "id-ID",
-                              { hour: "2-digit", minute: "2-digit" },
-                            )
+                            "id-ID",
+                            { hour: "2-digit", minute: "2-digit" },
+                          )
                           : "Baru saja"}
                       </p>
                     </div>

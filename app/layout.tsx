@@ -55,7 +55,7 @@ export const metadata: Metadata = {
       'Sewa perlengkapan camping dan outdoor premium untuk petualangan tanpa batas.',
     images: [
       {
-        url: '/og-image.jpg', // Buat file ini di /public
+        url: '/og-image.jpg',
         width: 1200,
         height: 630,
         alt: 'Habema — Sewa Alat Outdoor & Camping',
