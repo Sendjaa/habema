@@ -61,7 +61,7 @@ export function FeaturedProducts() {
           </div>
             <Link 
             href="/catalog" 
-            className="group relative px-6 md:px-8 py-3 md:py-4 bg-white border border-forest/10 rounded-xl md:rounded-2xl font-bold text-forest text-sm overflow-hidden transition-all mx-auto ms-75 hover:shadow-2xl hover:shadow-forest/10 md:w-auto text-center"
+            className="group relative px-6 md:px-8 py-3 md:py-4 bg-white border border-forest/10 rounded-xl md:rounded-2xl font-bold text-forest text-sm overflow-hidden transition-all hover:shadow-2xl hover:shadow-forest/10 md:w-auto text-center"
           >
             <span className="relative z-10 flex items-center justify-center gap-3">
               Semua Gear <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
