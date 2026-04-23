@@ -230,21 +230,21 @@ export default function BookingDetailPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-10 space-y-6">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-10 space-y-4 sm:space-y-6">
         {/* Status Card */}
-        <Card className="p-6 border-stone-200 bg-white">
-          <div className="flex items-center justify-between">
+        <Card className="p-4 sm:p-6 border-stone-200 bg-white">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold text-stone-900 mb-2">
+              <h2 className="text-base sm:text-lg font-semibold text-stone-900 mb-2">
                 Status Booking
               </h2>
-              <Badge className={`${getStatusColor(booking.status)} border-none`}>
+              <Badge className={`${getStatusColor(booking.status)} border-none text-xs sm:text-sm`}>
                 {getStatusText(booking.status)}
               </Badge>
             </div>
             <div className="text-right">
-              <p className="text-sm text-stone-500">Total Pembayaran</p>
-              <p className="text-2xl font-bold text-emerald-700">
+              <p className="text-xs sm:text-sm text-stone-500">Total Pembayaran</p>
+              <p className="text-xl sm:text-2xl font-bold text-emerald-700">
                 {formatCurrency(booking.total_cost)}
               </p>
             </div>

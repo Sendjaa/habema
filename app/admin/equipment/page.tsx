@@ -199,7 +199,7 @@ export default function EquipmentManagement() {
       <div className="p-6">
         {/* Search Bar */}
         <Card className="p-4 mb-6">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
@@ -209,18 +209,18 @@ export default function EquipmentManagement() {
                 className="pl-10"
               />
             </div>
-            <Badge variant="outline">
+            <Badge variant="outline" className="w-fit">
               {filteredEquipment.length} items
             </Badge>
           </div>
         </Card>
 
         {/* Equipment Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
           {filteredEquipment.map((item) => (
             <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
               {item.image_url ? (
-                <div className="h-48 bg-gray-100">
+                <div className="h-36 sm:h-40 lg:h-48 bg-gray-100">
                   <img
                     src={item.image_url}
                     alt={item.name}
@@ -228,42 +228,66 @@ export default function EquipmentManagement() {
                   />
                 </div>
               ) : (
-                <div className="h-48 bg-gray-100 flex items-center justify-center">
-                  <Package className="w-12 h-12 text-gray-400" />
+                <div className="h-36 sm:h-40 lg:h-48 bg-gray-100 flex items-center justify-center">
+                  <Package className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-gray-400" />
                 </div>
               )}
               
-              <div className="p-4">
-                <h3 className="font-semibold text-gray-900 mb-2">{item.name}</h3>
+              <div className="p-3 lg:p-4">
+                <h3 className="font-semibold text-gray-900 mb-1 lg:mb-2 text-sm lg:text-base">{item.name}</h3>
                 
                 {item.description && (
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{item.description}</p>
+                  <p className="text-xs lg:text-sm text-gray-600 mb-2 lg:mb-3 line-clamp-2">{item.description}</p>
                 )}
                 
                 {item.category && (
-                  <Badge variant="secondary" className="mb-3">{item.category}</Badge>
+                  <Badge variant="secondary" className="mb-2 lg:mb-3 text-xs">{item.category}</Badge>
                 )}
                 
-                <div className="space-y-2 text-sm">
+                <div className="space-y-1 lg:space-y-2 text-xs lg:text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Price/day:</span>
-                    <span className="font-semibold">{formatCurrency(item.price_per_day)}</span>
+                    <span className="font-medium">{formatCurrency(item.price_per_day)}</span>
                   </div>
-                  
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Stock:</span>
-                    <Badge variant={item.stock > 0 ? "default" : "destructive"}>
-                      {item.stock} available
+                    <span className={`font-medium ${
+                      item.stock_quantity > 5 ? 'text-green-600' : 
+                      item.stock_quantity > 0 ? 'text-amber-600' : 'text-red-600'
+                    }`}>
+                      {item.stock_quantity} {item.stock_quantity > 1 ? 'units' : 'unit'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Status:</span>
+                    <Badge className={
+                      item.is_available 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }>
+                      {item.is_available ? 'Available' : 'Unavailable'}
                     </Badge>
                   </div>
                 </div>
                 
-                <div className="flex gap-2 mt-4">
-                  <Button variant="outline" size="sm" onClick={() => handleEdit(item)}>
-                    <Edit className="w-3 h-3" />
+                <div className="mt-3 lg:mt-4 flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="flex-1 text-xs lg:text-sm"
+                    onClick={() => viewEquipment(item.id)}
+                  >
+                    <Eye className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />
+                    View
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleDelete(item.id)}>
-                    <Trash2 className="w-3 h-3" />
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="flex-1 text-xs lg:text-sm"
+                    onClick={() => editEquipment(item.id)}
+                  >
+                    <Edit className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />
+                    Edit
                   </Button>
                 </div>
               </div>

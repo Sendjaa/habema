@@ -328,48 +328,46 @@ export default function UserManagement() {
         </div>
       </header>
 
-      <div className="p-6">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
+      <div className="p-4 lg:p-6">
+        {/* Stats Cards - Mobile Optimized */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-6 mb-6">
+          <Card className="p-3 lg:p-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Total Users</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.totalUsers}</p>
+                <p className="text-xs lg:text-sm text-gray-600 mb-1">Total Users</p>
+                <p className="text-xl lg:text-3xl font-bold text-gray-900">{stats.totalUsers}</p>
               </div>
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <Users className="w-6 h-6 text-blue-600" />
+              <div className="bg-blue-100 p-2 lg:p-3 rounded-lg">
+                <Users className="w-4 h-4 lg:w-6 lg:h-6 text-blue-600" />
               </div>
             </div>
           </Card>
 
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
+          <Card className="p-3 lg:p-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Active Users</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.activeUsers}</p>
-                <p className="text-xs text-gray-500 mt-1">Last 30 days</p>
+                <p className="text-xs lg:text-sm text-gray-600 mb-1">Active Users</p>
+                <p className="text-xl lg:text-3xl font-bold text-gray-900">{stats.activeUsers}</p>
               </div>
-              <div className="bg-emerald-100 p-3 rounded-lg">
-                <UserCheck className="w-6 h-6 text-emerald-600" />
+              <div className="bg-green-100 p-2 lg:p-3 rounded-lg">
+                <CheckCircle className="w-4 h-4 lg:w-6 lg:h-6 text-green-600" />
               </div>
             </div>
           </Card>
 
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
+          <Card className="p-3 lg:p-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
               <div>
-                <p className="text-sm text-gray-600 mb-1">New Users</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.newUsersThisMonth}</p>
-                <p className="text-xs text-gray-500 mt-1">This month</p>
+                <p className="text-xs lg:text-sm text-gray-600 mb-1">New Users</p>
+                <p className="text-xl lg:text-3xl font-bold text-gray-900">{stats.newUsersThisMonth}</p>
               </div>
-              <div className="bg-amber-100 p-3 rounded-lg">
-                <Calendar className="w-6 h-6 text-amber-600" />
+              <div className="bg-amber-100 p-2 lg:p-3 rounded-lg">
+                <TrendingUp className="w-4 h-4 lg:w-6 lg:h-6 text-amber-600" />
               </div>
             </div>
           </Card>
 
-          <Card className="p-6">
+          <Card className="p-3 lg:p-6 hidden lg:block">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Total Bookings</p>
@@ -381,29 +379,30 @@ export default function UserManagement() {
             </div>
           </Card>
 
-          <Card className="p-6">
+          <Card className="p-3 lg:p-6 hidden lg:block">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Total Revenue</p>
-                <p className="text-lg font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</p>
+                <p className="text-sm text-gray-600 mb-1">Revenue</p>
+                <p className="text-3xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</p>
               </div>
-              <div className="bg-green-100 p-3 rounded-lg">
-                <Shield className="w-6 h-6 text-green-600" />
+              <div className="bg-emerald-100 p-3 rounded-lg">
+                <DollarSign className="w-6 h-6 text-emerald-600" />
               </div>
             </div>
           </Card>
         </div>
 
         {/* Filters */}
-        <Card className="p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="p-4 mb-6">
+          <div className="space-y-4">
+            {/* Search Bar - Full Width on Mobile */}
             <div>
               <Label htmlFor="search" className="text-sm font-medium">Search</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   id="search"
-                  placeholder="Search by email, name..."
+                  placeholder="Search by name, email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -411,55 +410,116 @@ export default function UserManagement() {
               </div>
             </div>
             
-            <div>
-              <Label htmlFor="status" className="text-sm font-medium">Activity</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Users" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Users</SelectItem>
-                  <SelectItem value="active">Active Users</SelectItem>
-                  <SelectItem value="inactive">Inactive Users</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Filter Row - Responsive Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="status-filter" className="text-sm font-medium">Status</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger id="status-filter">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Users</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div>
-              <Label htmlFor="dateFilter" className="text-sm font-medium">Registration Date</Label>
-              <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Time" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Time</SelectItem>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="week">Last 7 Days</SelectItem>
-                  <SelectItem value="month">Last 30 Days</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              <div>
+                <Label htmlFor="date-filter" className="text-sm font-medium">Join Date</Label>
+                <Select value={dateFilter} onValueChange={setDateFilter}>
+                  <SelectTrigger id="date-filter">
+                    <SelectValue placeholder="All Time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Time</SelectItem>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="week">This Week</SelectItem>
+                    <SelectItem value="month">This Month</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="flex items-end">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setSearchTerm("");
-                  setStatusFilter("all");
-                  setDateFilter("all");
-                  setCurrentPage(1);
-                }}
-              >
-                <Filter className="w-4 h-4 mr-2" />
-                Clear Filters
-              </Button>
+              <div className="flex items-end">
+                <Button 
+                  variant="outline" 
+                  className="w-full sm:w-auto"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setStatusFilter("all");
+                    setDateFilter("all");
+                    setCurrentPage(1);
+                  }}
+                >
+                  <Filter className="w-4 h-4 mr-2" />
+                  Clear Filters
+                </Button>
+              </div>
             </div>
           </div>
         </Card>
 
         {/* Users Table */}
-        <Card className="p-6">
-          <div className="overflow-x-auto">
+        <Card className="p-4">
+          {/* Mobile Card View */}
+          <div className="lg:hidden space-y-4">
+            {users.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                <p>No users found</p>
+              </div>
+            ) : (
+              users
+                .filter(user => {
+                  if (statusFilter === "active") return isActiveUser(user);
+                  if (statusFilter === "inactive") return !isActiveUser(user);
+                  return true;
+                })
+                .map((user) => (
+                <Card key={user.id} className="p-4 border border-gray-200">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                          <Users className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{user.full_name || "No Name"}</p>
+                          <p className="text-sm text-gray-500">{user.email}</p>
+                        </div>
+                      </div>
+                      <Badge className={isActiveUser(user) ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
+                        {isActiveUser(user) ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                    
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <p>Phone: {user.phone || "Not provided"}</p>
+                      <p>Bookings: {user.bookingStats?.totalBookings || 0}</p>
+                      <p>Revenue: {formatCurrency(user.bookingStats?.totalRevenue || 0)}</p>
+                      <p>Joined: {new Date(user.created_at).toLocaleDateString('id-ID')}</p>
+                      <p>Last Active: {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString('id-ID') : "Never"}</p>
+                    </div>
+                    
+                    <div className="flex gap-2 pt-2 border-t border-gray-100">
+                      <Button size="sm" variant="outline" onClick={() => viewUser(user.id)}>
+                        <Eye className="w-4 h-4 mr-1" />
+                        View
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => editUser(user.id)}>
+                        <Edit className="w-4 h-4 mr-1" />
+                        Edit
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+          
+          {/* Desktop Table View */}
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
