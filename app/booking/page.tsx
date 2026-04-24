@@ -818,7 +818,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold text-slate-900">Metode Pengambilan</h3>
                   
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button
                       type="button"
                       onClick={() => setDeliveryOption('pickup')}
