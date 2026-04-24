@@ -19,7 +19,6 @@ function PaymentFinishContent() {
   useEffect(() => {
     setMounted(true)
     
-    // Get transaction result from URL params
     const orderId = searchParams.get('order_id')
     const statusCode = searchParams.get('status_code')
     const transactionStatus = searchParams.get('transaction_status')
