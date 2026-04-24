@@ -2,8 +2,18 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { LocationData } from "@/lib/indonesia-regions";
 
 // --- INTERFACES ---
+
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  weight_score: number; // 1 (kecil), 5 (sedang), 10 (besar)
+  [key: string]: any;
+}
 
 export interface UserIdentity {
   fullName: string;
@@ -53,6 +63,7 @@ interface CartStore {
   currentTransaction: TransactionData | null;
   orders: Order[];
   identity: UserIdentity | null;
+  location: LocationData | null;
   addItem: (item: any) => void;
   addToCart: (item: any) => void;
   removeItem: (id: string) => void;
@@ -66,18 +77,25 @@ interface CartStore {
   clearOrders: () => void;
   // --------------------------------------------
   setIdentity: (data: UserIdentity) => void;
+  setLocation: (data: LocationData) => void;
+  clearLocation: () => void;
+  // --- FITUR BARU: Perhitungan Weight Score ---
+  getTotalWeightScore: () => number;
+  getRecommendedVehicle: () => 'motor' | 'car';
+  // --------------------------------------------
 }
 
 // --- STORE IMPLEMENTATION ---
 
 export const useCartStore = create<CartStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // State awal
       items: [],
       currentTransaction: null,
       orders: [],
       identity: null,
+      location: null,
 
       // Menambahkan item ke keranjang
       addItem: (item) =>
@@ -144,6 +162,28 @@ export const useCartStore = create<CartStore>()(
 
       // Menyimpan data identitas penyewa (KTP, dll)
       setIdentity: (data) => set({ identity: data }),
+      
+      // Menyimpan data lokasi pengantaran
+      setLocation: (data) => set({ location: data }),
+      
+      // Menghapus data lokasi
+      clearLocation: () => set({ location: null }),
+
+      // --- FITUR BARU: Perhitungan Weight Score ---
+      getTotalWeightScore: () => {
+        const state = get();
+        return state.items.reduce((total: number, item: any) => {
+          const weightScore = item.weight_score || 1; // Default to 1 if not set
+          const quantity = item.quantity || 1;
+          return total + (weightScore * quantity);
+        }, 0);
+      },
+
+      getRecommendedVehicle: () => {
+        const totalWeightScore = get().getTotalWeightScore();
+        return totalWeightScore > 50 ? 'car' : 'motor';
+      },
+      // --------------------------------------------
     }),
 
     {

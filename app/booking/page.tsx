@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/booking/date-range-picker";
 import { calculateDaysBetween } from "@/lib/booking-utils";
-import { CheckCircle, ShieldCheck, Info, Loader2 } from "lucide-react";
+import { CheckCircle, ShieldCheck, Info, Loader2, MapPin, Calculator, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { IDVerificationForm } from "@/components/checkout/id-verification-form";
+import { leafletService, DeliveryCost } from "@/lib/leaflet-service";
+import { LocationPicker } from "@/components/booking/location-picker";
 
 // Function to create admin notification
 const createAdminNotification = async (bookingId: string, productName: string, userEmail: string | null) => {
@@ -92,6 +94,31 @@ function BookingContent() {
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   
+  // Pickup/Delivery options
+  const [deliveryOption, setDeliveryOption] = useState<'pickup' | 'delivery'>('pickup');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [customerNote, setCustomerNote] = useState('');
+  
+  // Delivery cost calculation
+  const [deliveryCost, setDeliveryCost] = useState<DeliveryCost | null>(null);
+  const [isCalculatingDelivery, setIsCalculatingDelivery] = useState(false);
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
+  
+  // Special location and emergency contact
+  const [specialLocationType, setSpecialLocationType] = useState<'standard' | 'camping' | 'outdoor' | 'remote' | 'emergency'>('standard');
+  const [emergencyContact, setEmergencyContact] = useState({
+    name: '',
+    phone: '',
+    relationship: ''
+  });
+  const [gpsCoordinates, setGpsCoordinates] = useState({
+    latitude: '',
+    longitude: ''
+  });
+  const [deliveryInstructions, setDeliveryInstructions] = useState('');
+  const [deliveryTime, setDeliveryTime] = useState<'morning' | 'afternoon' | 'evening' | 'flexible'>('flexible');
+  const [accessibilityNotes, setAccessibilityNotes] = useState('');
+  
   useEffect(() => {
     const checkUser = async () => {
       const { data } = await supabase.auth.getSession();
@@ -124,11 +151,82 @@ function BookingContent() {
   const days =
     startDate && endDate ? calculateDaysBetween(startDate, endDate) : 0;
   const pricePerNight = product ? Number(product.price_per_night) : 0;
-  const subtotal = pricePerNight * quantity * days;
+  
+  // Calculate subtotal from transaction items if available, otherwise use single product
+  const subtotal = transaction?.items && transaction.items.length > 0
+    ? transaction.items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0) * days
+    : pricePerNight * quantity * days;
+  
   const deposit = Math.round(subtotal * 0.2);
   const tax = Math.round(subtotal * 0.1);
-  const totalPrice = subtotal;
+  const deliveryFee = deliveryOption === 'delivery' ? (deliveryCost?.cost || 0) : 0;
+  const totalPrice = subtotal + deliveryFee;
   const setTransactionData = useCartStore((state) => state.setTransaction);
+
+  // Calculate delivery cost when address changes
+  const calculateDeliveryCost = async (address: string) => {
+    if (!address || deliveryOption !== 'delivery') {
+      setDeliveryCost(null);
+      setDeliveryError(null);
+      return;
+    }
+
+    setIsCalculatingDelivery(true);
+    setDeliveryError(null);
+
+    try {
+      // Validate address first
+      if (!address || address.trim().length < 5) {
+        throw new Error('Alamat tidak lengkap. Masukkan alamat yang lengkap dengan nomor rumah.');
+      }
+
+      // Prepare delivery instructions
+      const instructions = {
+        specialLocation: specialLocationType !== 'standard' ? {
+          type: specialLocationType,
+          name: specialLocationType === 'camping' ? 'Camping Area' :
+                specialLocationType === 'outdoor' ? 'Outdoor Event' :
+                specialLocationType === 'remote' ? 'Remote Area' :
+                specialLocationType === 'emergency' ? 'Emergency Delivery' : '',
+          description: '',
+          surcharge: 0,
+          requirements: [],
+          icon: ''
+        } : undefined,
+        emergencyContact: emergencyContact.name ? emergencyContact : undefined,
+        gpsCoordinates: gpsCoordinates.latitude && gpsCoordinates.longitude ? {
+          latitude: parseFloat(gpsCoordinates.latitude),
+          longitude: parseFloat(gpsCoordinates.longitude)
+        } : undefined,
+        specialInstructions: deliveryInstructions,
+        deliveryTime,
+        accessibilityNotes
+      };
+
+      const cost = await leafletService.calculateDeliveryCost(address, instructions);
+      setDeliveryCost(cost);
+    } catch (error: any) {
+      console.error('Delivery cost calculation error:', error);
+      setDeliveryError(error.message || 'Gagal menghitung biaya pengantaran');
+      setDeliveryCost(null);
+    } finally {
+      setIsCalculatingDelivery(false);
+    }
+  };
+
+  // Debounced address calculation
+  useEffect(() => {
+    if (deliveryOption === 'delivery' && deliveryAddress) {
+      const timeoutId = setTimeout(() => {
+        calculateDeliveryCost(deliveryAddress);
+      }, 1000); // Wait 1 second after user stops typing
+
+      return () => clearTimeout(timeoutId);
+    } else {
+      setDeliveryCost(null);
+      setDeliveryError(null);
+    }
+  }, [deliveryAddress, deliveryOption, specialLocationType, emergencyContact, gpsCoordinates, deliveryInstructions, deliveryTime, accessibilityNotes]);
 
   const handleDateSelect = (start: Date, end: Date) => {
     setStartDate(start);
@@ -153,6 +251,21 @@ function BookingContent() {
         total_cost: Number(totalPrice),
         deposit_amount: Number(deposit),
         status: "pending",
+        delivery_option: deliveryOption,
+        delivery_address: deliveryOption === 'delivery' ? deliveryAddress : null,
+        delivery_cost: deliveryOption === 'delivery' ? deliveryFee : 0,
+        delivery_distance: deliveryOption === 'delivery' ? deliveryCost?.distance || 0 : 0,
+        delivery_duration: deliveryOption === 'delivery' ? deliveryCost?.duration || null : null,
+        delivery_location_type: deliveryOption === 'delivery' ? specialLocationType : null,
+        delivery_gps_lat: deliveryOption === 'delivery' && gpsCoordinates.latitude ? parseFloat(gpsCoordinates.latitude) : null,
+        delivery_gps_lng: deliveryOption === 'delivery' && gpsCoordinates.longitude ? parseFloat(gpsCoordinates.longitude) : null,
+        delivery_time_preference: deliveryOption === 'delivery' ? deliveryTime : null,
+        delivery_instructions: deliveryOption === 'delivery' ? deliveryInstructions : null,
+        delivery_accessibility_notes: deliveryOption === 'delivery' ? accessibilityNotes : null,
+        emergency_contact_name: deliveryOption === 'delivery' && emergencyContact.name ? emergencyContact.name : null,
+        emergency_contact_phone: deliveryOption === 'delivery' && emergencyContact.phone ? emergencyContact.phone : null,
+        emergency_contact_relationship: deliveryOption === 'delivery' && emergencyContact.relationship ? emergencyContact.relationship : null,
+        customer_note: customerNote || null,
       };
 
       // For anonymous users, save to database with null user_id
@@ -169,6 +282,21 @@ function BookingContent() {
           total_cost: Number(totalPrice),
           deposit_amount: Number(deposit),
           status: "pending",
+          delivery_option: deliveryOption,
+          delivery_address: deliveryOption === 'delivery' ? deliveryAddress : null,
+          delivery_cost: deliveryOption === 'delivery' ? deliveryFee : 0,
+          delivery_distance: deliveryOption === 'delivery' ? deliveryCost?.distance || 0 : 0,
+          delivery_duration: deliveryOption === 'delivery' ? deliveryCost?.duration || null : null,
+          delivery_location_type: deliveryOption === 'delivery' ? specialLocationType : null,
+          delivery_gps_lat: deliveryOption === 'delivery' && gpsCoordinates.latitude ? parseFloat(gpsCoordinates.latitude) : null,
+          delivery_gps_lng: deliveryOption === 'delivery' && gpsCoordinates.longitude ? parseFloat(gpsCoordinates.longitude) : null,
+          delivery_time_preference: deliveryOption === 'delivery' ? deliveryTime : null,
+          delivery_instructions: deliveryOption === 'delivery' ? deliveryInstructions : null,
+          delivery_accessibility_notes: deliveryOption === 'delivery' ? accessibilityNotes : null,
+          emergency_contact_name: deliveryOption === 'delivery' && emergencyContact.name ? emergencyContact.name : null,
+          emergency_contact_phone: deliveryOption === 'delivery' && emergencyContact.phone ? emergencyContact.phone : null,
+          emergency_contact_relationship: deliveryOption === 'delivery' && emergencyContact.relationship ? emergencyContact.relationship : null,
+          customer_note: customerNote || null,
         };
 
         // Save anonymous booking to database
@@ -271,6 +399,19 @@ function BookingContent() {
           duration: Number(days),
           totalPrice: Number(totalPrice),
           payment: { method: paymentMethod, bank: selectedBank || undefined },
+          delivery: {
+            option: deliveryOption,
+            address: deliveryOption === 'delivery' ? deliveryAddress : null,
+            note: customerNote || null,
+            cost: deliveryOption === 'delivery' ? deliveryFee : 0,
+            distance: deliveryOption === 'delivery' ? deliveryCost?.distance || 0 : 0,
+            duration: deliveryOption === 'delivery' ? deliveryCost?.duration || null : null,
+            breakdown: deliveryOption === 'delivery' ? deliveryCost?.breakdown || null : null
+          },
+          dates: {
+            start: startDate?.toISOString(),
+            end: endDate?.toISOString()
+          }
         });
 
         // For anonymous users, only WhatsApp is available
@@ -281,6 +422,13 @@ ID Booking: #${newBooking.id.slice(0, 8)}
 User: Guest
 Durasi: ${days} Hari
 Total: Rp${Number(totalPrice).toLocaleString("id-ID")}
+
+Metode Pengambilan: ${deliveryOption === 'pickup' ? 'Ambil di Tempat' : 'Diantar'}${deliveryOption === 'delivery' ? `
+Alamat: ${deliveryAddress}
+Biaya Pengantaran: ${leafletService.formatCost(deliveryFee)}
+Jarak: ${deliveryCost?.distance || 0} km
+Estimasi: ${deliveryCost?.duration || 'N/A'}` : ''}${customerNote ? `
+Pesan: ${customerNote}` : ''}
 
 Data Identitas:
 Nama: ${idData?.fullName || 'Guest'}
@@ -340,6 +488,15 @@ Mohon konfirmasi pesanan saya ya!`;
         duration: Number(days),
         totalPrice: Number(totalPrice),
         payment: { method: paymentMethod, bank: selectedBank || undefined },
+        delivery: {
+          option: deliveryOption,
+          address: deliveryOption === 'delivery' ? deliveryAddress : null,
+          note: customerNote || null
+        },
+        dates: {
+          start: startDate?.toISOString(),
+          end: endDate?.toISOString()
+        }
       });
 
       // 6. Alur Keluar (WhatsApp)
@@ -350,6 +507,26 @@ ID Booking: #${newBooking.id.slice(0, 8)}
 User: ${user ? user.email : "Guest"}
 Durasi: ${days} Hari
 Total: Rp${Number(totalPrice).toLocaleString("id-ID")}
+
+Metode Pengambilan: ${deliveryOption === 'pickup' ? 'Ambil di Tempat' : 'Diantar'}${deliveryOption === 'delivery' ? `
+Alamat: ${deliveryAddress}
+Tipe Lokasi: ${specialLocationType === 'standard' ? 'Standar' :
+  specialLocationType === 'camping' ? 'Camping Area' :
+  specialLocationType === 'outdoor' ? 'Outdoor Event' :
+  specialLocationType === 'remote' ? 'Remote Area' :
+  specialLocationType === 'emergency' ? 'Emergency Delivery' : 'Special'}
+Biaya Pengantaran: ${leafletService.formatCost(deliveryFee)}
+Jarak: ${deliveryCost?.distance || 0} km
+Estimasi: ${deliveryCost?.duration || 'N/A'}
+Waktu: ${deliveryTime === 'flexible' ? 'Fleksibel' :
+  deliveryTime === 'morning' ? 'Pagi (08:00-12:00)' :
+  deliveryTime === 'afternoon' ? 'Siang (12:00-16:00)' :
+  deliveryTime === 'evening' ? 'Sore (16:00-18:00)' : 'N/A'}${gpsCoordinates.latitude && gpsCoordinates.longitude ? `
+GPS: ${gpsCoordinates.latitude}, ${gpsCoordinates.longitude}` : ''}${emergencyContact.name ? `
+Kontak Darurat: ${emergencyContact.name} (${emergencyContact.relationship}) - ${emergencyContact.phone}` : ''}${deliveryInstructions ? `
+Instruksi: ${deliveryInstructions}` : ''}${accessibilityNotes ? `
+Akses: ${accessibilityNotes}` : ''}` : ''}${customerNote ? `
+Pesan: ${customerNote}` : ''}
 
 Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
 
@@ -630,12 +807,366 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
               completed={!!(startDate && endDate)}
               onEdit={() => setStep(1)}
             >
-              <DateRangePicker
-                onDateRangeSelect={handleDateSelect}
-                selectedStartDate={startDate || undefined}
-                selectedEndDate={endDate || undefined}
-              />
-              {startDate && endDate && (
+              <div className="space-y-6">
+                <DateRangePicker
+                  onDateRangeSelect={handleDateSelect}
+                  selectedStartDate={startDate || undefined}
+                  selectedEndDate={endDate || undefined}
+                />
+                
+                {/* Pickup/Delivery Options */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-slate-900">Metode Pengambilan</h3>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryOption('pickup')}
+                      className={`p-4 rounded-xl border-2 transition-all ${
+                        deliveryOption === 'pickup'
+                          ? 'border-emerald-600 bg-emerald-50 text-emerald-900'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-current/10 flex items-center justify-center">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                          </svg>
+                        </div>
+                        <div className="text-sm font-medium">Ambil di Tempat</div>
+                        <div className="text-xs opacity-75">Gratis</div>
+                      </div>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryOption('delivery')}
+                      className={`p-4 rounded-xl border-2 transition-all ${
+                        deliveryOption === 'delivery'
+                          ? 'border-emerald-600 bg-emerald-50 text-emerald-900'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-current/10 flex items-center justify-center">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4-4a2 2 0 104 0" />
+                          </svg>
+                        </div>
+                        <div className="text-sm font-medium">Diantar</div>
+                        <div className="text-xs opacity-75">
+                          {isCalculatingDelivery ? 'Menghitung...' : deliveryCost ? leafletService.formatCost(deliveryCost.cost) : 'Biaya tambahan'}
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                  
+                  {/* Delivery Zone Info Banner */}
+                  {deliveryOption === 'delivery' && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4">
+                      <div className="flex items-start gap-2">
+                        <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <div className="text-xs text-blue-800">
+                          <p className="font-medium mb-1">Area Layanan Pengantaran</p>
+                          <p className="opacity-90">Melayani area Bandung Raya (Bandung, Cimahi, KBB, Lembang, Padalarang) dengan radius maksimal 30km dari Basecamp Cihanjuang.</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Address Input for Delivery */}
+                  {deliveryOption === 'delivery' && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-700">
+                        Pilih Lokasi Pengantaran *
+                      </label>
+                      <LocationPicker
+                        onLocationChange={(location) => {
+                          setDeliveryAddress(location.fullAddress);
+                        }}
+                        onDeliveryCostChange={(cost) => {
+                          // Update delivery cost state
+                          if (cost > 0) {
+                            setDeliveryCost({
+                              cost,
+                              distance: 0, // Will be updated by LocationPicker
+                              duration: '',
+                              durationMinutes: 0,
+                              breakdown: {
+                                baseCost: 15000,
+                                distanceCost: cost - 15000,
+                                surcharge: 0
+                              },
+                              locationType: 'standard'
+                            });
+                          }
+                        }}
+                      />
+                      
+                      {/* Delivery Cost Breakdown */}
+                      {deliveryCost && (
+                        <div className={`${deliveryCost.locationType !== 'standard' ? 'bg-orange-50 border-orange-200' : 'bg-emerald-50 border-emerald-200'} border rounded-xl p-3`}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <MapPin className={`w-4 h-4 ${deliveryCost.locationType !== 'standard' ? 'text-orange-600' : 'text-emerald-600'}`} />
+                            <span className={`text-sm font-medium ${deliveryCost.locationType !== 'standard' ? 'text-orange-900' : 'text-emerald-900'}`}>
+                              Detail Pengantaran
+                              {deliveryCost.locationType !== 'standard' && (
+                                <span className="ml-2 text-xs px-2 py-1 bg-orange-200 text-orange-800 rounded-full">
+                                  {deliveryCost.locationType === 'camping' ? '🏕️ Camping' :
+                                   deliveryCost.locationType === 'outdoor' ? '🎪 Outdoor Event' :
+                                   deliveryCost.locationType === 'remote' ? '🏔️ Remote' :
+                                   deliveryCost.locationType === 'emergency' ? '🚨 Emergency' : 'Special'}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          <div className="space-y-1 text-xs">
+                            <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
+                              <span>Jarak:</span>
+                              <span className="font-medium">{deliveryCost.distance} km</span>
+                            </div>
+                            <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
+                              <span>Estimasi waktu:</span>
+                              <span className="font-medium">{deliveryCost.duration}</span>
+                            </div>
+                            <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
+                              <span>Biaya dasar:</span>
+                              <span className="font-medium">{leafletService.formatCost(deliveryCost.breakdown.baseCost)}</span>
+                            </div>
+                            <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
+                              <span>Biaya jarak ({deliveryCost.distance} km × Rp2.000):</span>
+                              <span className="font-medium">{leafletService.formatCost(deliveryCost.breakdown.distanceCost)}</span>
+                            </div>
+                            {deliveryCost.locationType !== 'standard' && deliveryCost.locationType && (
+                              <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
+                                <span>Tambahan lokasi khusus:</span>
+                                <span className="font-medium">
+                                  {deliveryCost.locationType === 'camping' ? '+25%' :
+                                   deliveryCost.locationType === 'outdoor' ? '+20%' :
+                                   deliveryCost.locationType === 'remote' ? '+35%' :
+                                   deliveryCost.locationType === 'emergency' ? '+50%' : '+0%'}
+                                </span>
+                              </div>
+                            )}
+                            {deliveryCost.specialNotes && (
+                              <div className={`text-xs ${deliveryCost.locationType !== 'standard' ? 'text-orange-700 bg-orange-100' : 'text-emerald-700 bg-emerald-100'} p-2 rounded-lg mt-2`}>
+                                <span className="font-medium">📍 {deliveryCost.specialNotes}</span>
+                              </div>
+                            )}
+                            <div className={`border-t ${deliveryCost.locationType !== 'standard' ? 'border-orange-300' : 'border-emerald-300'} pt-1 mt-1`}>
+                              <div className="flex justify-between font-bold">
+                                <span className={deliveryCost.locationType !== 'standard' ? 'text-orange-900' : 'text-emerald-900'}>
+                                  Total biaya pengantaran:
+                                </span>
+                                <span className={deliveryCost.locationType !== 'standard' ? 'text-orange-900' : 'text-emerald-900'}>
+                                  {leafletService.formatCost(deliveryCost.cost)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Error Message */}
+                      {deliveryError && (
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-xs text-red-800 font-medium">
+                                {deliveryError.includes('di luar jangkauan') || deliveryError.includes('area layanan') 
+                                  ? 'Lokasi di Luar Area Layanan' 
+                                  : 'Gagal menghitung biaya'}
+                              </p>
+                              <p className="text-xs text-red-600 mt-1">{deliveryError}</p>
+                              {deliveryError.includes('di luar jangkauan') || deliveryError.includes('area layanan') ? (
+                                <p className="text-xs text-red-600 mt-2 font-medium">
+                                  Silakan pilih opsi "Ambil di Tempat" atau gunakan alamat di area Bandung Raya.
+                                </p>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Loading State */}
+                      {isCalculatingDelivery && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                            <span className="text-xs text-blue-800">Sedang menghitung biaya pengantaran...</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Special Location Type */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700">
+                          Tipe Lokasi
+                        </label>
+                        <select
+                          value={specialLocationType}
+                          onChange={(e) => setSpecialLocationType(e.target.value as any)}
+                          className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        >
+                          <option value="standard">📍 Lokasi Standar (Rumah/Kantor)</option>
+                          <option value="camping">🏕️ Camping Area</option>
+                          <option value="outdoor">🎪 Outdoor Event</option>
+                          <option value="remote">🏔️ Remote Area</option>
+                          <option value="emergency">🚨 Emergency Delivery</option>
+                        </select>
+                      </div>
+
+                      {/* GPS Coordinates for Remote Areas */}
+                      {(specialLocationType === 'camping' || specialLocationType === 'remote' || specialLocationType === 'emergency') && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-700">
+                            Koordinat GPS {specialLocationType === 'emergency' ? '(Sangat Direkomendasikan)' : '(Direkomendasikan)'}
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              value={gpsCoordinates.latitude}
+                              onChange={(e) => setGpsCoordinates(prev => ({ ...prev, latitude: e.target.value }))}
+                              placeholder="Latitude (ex: -6.826438)"
+                              className="p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            />
+                            <input
+                              type="text"
+                              value={gpsCoordinates.longitude}
+                              onChange={(e) => setGpsCoordinates(prev => ({ ...prev, longitude: e.target.value }))}
+                              placeholder="Longitude (ex: 107.574937)"
+                              className="p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            />
+                          </div>
+                          <p className="text-xs text-slate-500">
+                            Gunakan GPS dari aplikasi maps untuk akurasi terbaik
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Emergency Contact */}
+                      {(specialLocationType === 'camping' || specialLocationType === 'remote' || specialLocationType === 'emergency') && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-700">
+                            Kontak Darurat Lokal *
+                          </label>
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              value={emergencyContact.name}
+                              onChange={(e) => setEmergencyContact(prev => ({ ...prev, name: e.target.value }))}
+                              placeholder="Nama kontak darurat"
+                              className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            />
+                            <div className="grid grid-cols-2 gap-2">
+                              <input
+                                type="tel"
+                                value={emergencyContact.phone}
+                                onChange={(e) => setEmergencyContact(prev => ({ ...prev, phone: e.target.value }))}
+                                placeholder="Nomor telepon"
+                                className="p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                              />
+                              <input
+                                type="text"
+                                value={emergencyContact.relationship}
+                                onChange={(e) => setEmergencyContact(prev => ({ ...prev, relationship: e.target.value }))}
+                                placeholder="Hubungan (ex: Guide, Teman)"
+                                className="p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-500">
+                            Kontak lokal yang bisa dihubungi jika ada kendala pengantaran
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Delivery Time Preference */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700">
+                          Waktu Pengantaran
+                        </label>
+                        <select
+                          value={deliveryTime}
+                          onChange={(e) => setDeliveryTime(e.target.value as any)}
+                          className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        >
+                          <option value="flexible">⏰ Fleksibel</option>
+                          <option value="morning">🌅 Pagi (08:00 - 12:00)</option>
+                          <option value="afternoon">☀️ Siang (12:00 - 16:00)</option>
+                          <option value="evening">🌆 Sore (16:00 - 18:00)</option>
+                        </select>
+                      </div>
+
+                      {/* Special Instructions */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700">
+                          Instruksi Khusus {specialLocationType !== 'standard' ? '(Penting)' : '(Opsional)'}
+                        </label>
+                        <textarea
+                          value={deliveryInstructions}
+                          onChange={(e) => setDeliveryInstructions(e.target.value)}
+                          placeholder={
+                            specialLocationType === 'camping' ? 'Contoh: Dekat tenda biru, sebelah toilet umum, hubungi Pak Budi guide' :
+                            specialLocationType === 'outdoor' ? 'Contoh: Area panggung utama, dekat sound system, kontak panitia Acara' :
+                            specialLocationType === 'remote' ? 'Contoh: Lewat jembatan kayu, dekat masjid, hubungi kepala desa' :
+                            specialLocationType === 'emergency' ? 'Contoh: URGENT - Kebakaran, butuh alat safety segera!' :
+                            'Contoh: Rumah warna merah, belakang toko kelontong, panggil Pak RT'
+                          }
+                          className={`w-full p-3 border rounded-xl text-sm resize-none h-20 focus:outline-none focus:ring-2 ${
+                            specialLocationType !== 'standard' 
+                              ? 'border-orange-300 focus:ring-orange-500 focus:border-orange-500 bg-orange-50/30' 
+                              : 'border-slate-200 focus:ring-emerald-500 focus:border-emerald-500'
+                          }`}
+                          rows={2}
+                        />
+                      </div>
+
+                      {/* Accessibility Notes */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700">
+                          Catatan Akses Lokasi
+                        </label>
+                        <textarea
+                          value={accessibilityNotes}
+                          onChange={(e) => setAccessibilityNotes(e.target.value)}
+                          placeholder="Contoh: Jalan sempit, perlu kendaraan kecil, tidak ada parkir, harus jalan kaki 100m"
+                          className="w-full p-3 border border-slate-200 rounded-xl text-sm resize-none h-16 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          rows={2}
+                        />
+                      </div>
+
+                      <p className="text-xs text-slate-500">
+                        Pengantaran akan dilakukan pada hari pertama sewa. {specialLocationType !== 'standard' ? 'Pastikan semua informasi lokasi lengkap untuk pengantaran yang tepat.' : 'Pastikan alamat lengkap untuk pengantaran yang tepat.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Customer Note */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">
+                    Pesan untuk Pemilik Rental (Opsional)
+                  </label>
+                  <textarea
+                    value={customerNote}
+                    onChange={(e) => setCustomerNote(e.target.value)}
+                    placeholder="Berikan pesan atau catatan khusus untuk pemilik rental (contoh: permintaan khusus, pertanyaan, dll)"
+                    className="w-full p-3 border border-slate-200 rounded-xl text-sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    rows={2}
+                  />
+                </div>
+              </div>
+              
+              {startDate && endDate && 
+                ((deliveryOption === 'pickup') || 
+                 (deliveryOption === 'delivery' && deliveryAddress.trim() && deliveryCost && !deliveryError && !isCalculatingDelivery &&
+                  // Additional validation for special locations
+                  (specialLocationType === 'standard' || 
+                   (specialLocationType !== 'standard' && emergencyContact.name.trim() && emergencyContact.phone.trim()))
+                 )) && (
                 <Button
                   onClick={() => setStep(2)}
                   className="w-full mt-6 bg-slate-900 h-12 rounded-xl font-bold"
@@ -822,7 +1353,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
             </StepCard>
           </div>
 
-          <aside className="lg:col-span-4 sticky top-6">
+          <aside className="lg:col-span-4 sticky top-30">
             <Card className="border-none shadow-sm ring-1 ring-slate-200 rounded-2xl overflow-hidden bg-white">
               <div className="p-5 border-b border-slate-50 flex items-center gap-2">
                 <Info className="w-4 h-4 text-slate-400" />
@@ -831,25 +1362,51 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                 </h3>
               </div>
               <div className="p-5 space-y-4">
-                <div className="flex gap-4">
-                  <img
-                    src={product.image_url}
-                    className="w-14 h-14 rounded-xl object-cover ring-1 ring-slate-100"
-                  />
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 line-clamp-1">
-                      {product.name}
-                    </h4>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">
-                      {product.equipment_categories?.name}
-                    </p>
+                {/* Display all items from transaction */}
+                {transaction?.items && transaction.items.length > 0 ? (
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {transaction.items.map((item: any, index: number) => (
+                      <div key={`${item.id}-${index}`} className="flex gap-3 items-start">
+                        <img
+                          src={item.image_url || '/placeholder.svg'}
+                          className="w-12 h-12 rounded-lg object-cover ring-1 ring-slate-100 flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-xs font-bold text-slate-900 line-clamp-1">
+                            {item.name}
+                          </h4>
+                          <p className="text-[10px] text-slate-500">
+                            {item.quantity} unit × Rp{item.price.toLocaleString('id-ID')}
+                          </p>
+                        </div>
+                        <p className="text-xs font-bold text-slate-900 flex-shrink-0">
+                          Rp{(item.price * item.quantity).toLocaleString('id-ID')}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                ) : (
+                  /* Fallback to single product display */
+                  <div className="flex gap-4">
+                    <img
+                      src={product.image_url}
+                      className="w-14 h-14 rounded-xl object-cover ring-1 ring-slate-100"
+                    />
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 line-clamp-1">
+                        {product.name}
+                      </h4>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">
+                        {product.equipment_categories?.name}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2 pt-4 border-t border-slate-50">
                   <div className="flex justify-between text-xs font-medium">
                     <span className="text-slate-500">
-                      {days} hari x {quantity} Unit
+                      {days} hari x {transaction?.items?.length || quantity} Item
                     </span>
                     <span className="text-slate-900">
                       Rp{subtotal.toLocaleString("id-ID")}
