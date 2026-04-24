@@ -136,45 +136,45 @@ export function RentalConditionsChecklist({
   }
 
   return (
-    <Card className="p-6 bg-white border-border">
-      <div className="mb-6">
-        <h3 className="text-lg font-bold text-forest mb-2">
+    <Card className="p-4 sm:p-6 bg-white border-border">
+      <div className="mb-4 sm:mb-6">
+        <h3 className="text-base sm:text-lg font-bold text-forest mb-1 sm:mb-2">
           Daftar Periksa Kondisi - {equipmentName}
         </h3>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs sm:text-sm text-muted-foreground">
           Periksa kondisi peralatan sebelum serah-terima
         </p>
       </div>
 
       <div className="space-y-6">
         {/* Alert */}
-        <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-blue-800">
+        <div className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <p className="text-xs sm:text-sm text-blue-800">
             Item yang bertanda <span className="font-bold">★</span> adalah
             persyaratan kritis yang harus disetujui
           </p>
         </div>
 
         {/* Checklist Items */}
-        <div className="space-y-2">
+        <div className="space-y-2 sm:space-y-3">
           {checklistItems.map((item) => (
             <div
               key={item.id}
-              className="flex items-center gap-3 p-3 rounded-xl border border-forest/5 bg-white/50"
+              className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl border border-forest/5 bg-white/50"
             >
               {/* Icon Standar */}
-              <div className="w-10 h-10 flex items-center justify-center rounded-full bg-forest/5 text-lg">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-forest/5 text-sm sm:text-lg flex-shrink-0">
                 {item.icon}
               </div>
 
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-reguler text-sm text-black">
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                  <span className="font-reguler text-xs sm:text-sm text-black truncate">
                     {item.label}
                   </span>
                   {item.critical && (
-                    <span className="text-[10px] bg-red-50 text-red-500 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest border border-red-100">
+                    <span className="text-[9px] sm:text-[10px] bg-red-50 text-red-500 px-1.5 sm:px-2 py-0.5 rounded-full font-bold uppercase tracking-widest border border-red-100 w-fit">
                       Wajib
                     </span>
                   )}
@@ -182,7 +182,7 @@ export function RentalConditionsChecklist({
               </div>
 
               {/* Indikator Status (Opsional, hanya sebagai penanda visual bahwa ini standar Habema) */}
-              <div className="text-[10px] font-black text-gold uppercase tracking-widest opacity-50">
+              <div className="text-[9px] sm:text-[10px] font-black text-gold uppercase tracking-widest opacity-50 flex-shrink-0">
                 Standard
               </div>
             </div>
@@ -191,7 +191,7 @@ export function RentalConditionsChecklist({
 
         {/* Terms */}
         {editable && (
-          <div className="flex items-start gap-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+          <div className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-orange-50 border border-orange-200 rounded-lg">
             <Checkbox
               className="bg-white"
               id="terms"
@@ -202,12 +202,12 @@ export function RentalConditionsChecklist({
             />
             <label
               htmlFor="terms"
-              className="text-xs text-orange-900 cursor-pointer"
+              className="text-xs sm:text-sm text-orange-900 cursor-pointer"
             >
               <p className="font-semibold mb-1">
                 Saya setuju dengan syarat dan ketentuan serah-terima:
               </p>
-              <ul className="space-y-1 ml-2">
+              <ul className="space-y-1 ml-2 text-xs sm:text-sm">
                 <li>• Peralatan akan dikembalikan dalam kondisi baik</li>
                 <li>• Kerusakan di luar asuransi akan ditanggung sepenuhnya</li>
                 <li>• Pengembalian terlambat akan dikenakan biaya overtime</li>
@@ -221,7 +221,7 @@ export function RentalConditionsChecklist({
           <Button
             onClick={handleSubmit}
             disabled={!agreedToTerms}
-            className="w-full bg-primary text-primary-foreground hover:bg-forest-dark"
+            className="w-full bg-primary text-primary-foreground hover:bg-forest-dark text-sm sm:text-base"
             size="lg"
           >
             {agreedToTerms

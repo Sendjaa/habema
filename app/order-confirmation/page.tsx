@@ -274,20 +274,21 @@ export default function OrderConfirmationPage() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-emerald-100">
-        <div className="max-w-4xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" asChild className="text-emerald-600 hover:text-emerald-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+              <Button variant="ghost" size="sm" asChild className="text-emerald-600 hover:text-emerald-800 w-fit">
                 <Link href="/" className="flex items-center gap-2">
                   <ArrowLeft className="w-4 h-4" />
-                  Kembali ke Beranda
+                  <span className="hidden sm:inline">Kembali ke Beranda</span>
+                  <span className="sm:hidden">Kembali</span>
                 </Link>
               </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-emerald-900">
+              <div className="text-center sm:text-left">
+                <h1 className="text-xl sm:text-2xl font-bold text-emerald-900">
                   {isWhatsAppBooking ? "Konfirmasi Berhasil!" : "Pesanan Berhasil!"}
                 </h1>
-                <p className="text-emerald-600 mt-1">
+                <p className="text-emerald-600 mt-1 text-sm sm:text-base">
                   {isWhatsAppBooking 
                     ? "Terima kasih! Pesanan Anda telah dikonfirmasi via WhatsApp" 
                     : "Terima kasih telah melakukan pemesanan"
@@ -295,42 +296,43 @@ export default function OrderConfirmationPage() {
                 </p>
               </div>
             </div>
-            <Badge className="bg-emerald-100 text-emerald-700 px-4 py-2">
+            <Badge className="bg-emerald-100 text-emerald-700 px-3 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm w-fit">
               Order #{orderId}
             </Badge>
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="xl:col-span-2 space-y-4 sm:space-y-6">
             {/* Success Message */}
             <Card className="border-0 shadow-lg bg-white/80 backdrop-blur">
-              <div className="p-8 text-center">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-emerald-100 flex items-center justify-center">
-                  <CheckCircle className="w-10 h-10 text-emerald-600" />
+              <div className="p-4 sm:p-6 lg:p-8 text-center">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 rounded-full bg-emerald-100 flex items-center justify-center">
+                  <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-600" />
                 </div>
-                <h2 className="text-2xl font-bold text-emerald-900 mb-2">
+                <h2 className="text-xl sm:text-2xl font-bold text-emerald-900 mb-2">
                   {isWhatsAppBooking ? "Konfirmasi WhatsApp Berhasil!" : "Pembayaran Berhasil!"}
                 </h2>
-                <p className="text-emerald-600 mb-6">
+                <p className="text-emerald-600 mb-4 sm:mb-6 text-sm sm:text-base">
                   {isWhatsAppBooking 
                     ? "Pesanan Anda telah dikonfirmasi via WhatsApp. Admin kami akan segera memproses pesanan Anda. Pembayaran akan dilakukan secara personal melalui WhatsApp."
                     : "Pesanan Anda telah dikonfirmasi dan sedang diproses. Kami akan mengirimkan detail pesanan melalui email."
                   }
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
+                  <Button asChild className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-fit">
                     <Link href="/">
                       <Home className="w-4 h-4 mr-2" />
                       Kembali ke Beranda
                     </Link>
                   </Button>
-                  <Button variant="outline" className="border-emerald-600 text-emerald-600 hover:bg-emerald-50" onClick={handleDownloadInvoice}>
+                  <Button variant="outline" className="border-emerald-600 text-emerald-600 hover:bg-emerald-50 w-full sm:w-fit" onClick={handleDownloadInvoice}>
                     <Download className="w-4 h-4 mr-2" />
-                    Download Invoice
+                    <span className="hidden sm:inline">Download Invoice</span>
+                    <span className="sm:hidden">Invoice</span>
                   </Button>
                 </div>
               </div>
@@ -338,12 +340,12 @@ export default function OrderConfirmationPage() {
 
             {/* Order Details */}
             <Card className="border-0 shadow-lg bg-white/80 backdrop-blur">
-              <div className="p-6">
-                <h3 className="text-xl font-semibold text-emerald-900 mb-6">Detail Pesanan</h3>
+              <div className="p-4 sm:p-6">
+                <h3 className="text-lg sm:text-xl font-semibold text-emerald-900 mb-4 sm:mb-6">Detail Pesanan</h3>
                 
                 <div className="space-y-4">
-                  <div className="flex items-center gap-4 p-4 bg-emerald-50 rounded-xl">
-                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-emerald-100 border-2 border-emerald-200">
+                  <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-emerald-50 rounded-xl">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-emerald-100 border-2 border-emerald-200 flex-shrink-0">
                       {firstItem?.image_url && (
                         <img
                           src={firstItem.image_url}
@@ -352,12 +354,12 @@ export default function OrderConfirmationPage() {
                         />
                       )}
                     </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-emerald-900">{firstItem?.name || 'Produk Sewa'}</h4>
-                      <p className="text-emerald-600">Durasi: {currentTransaction.duration || 1} hari sewa</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge className="bg-emerald-100 text-emerald-700 text-xs">Dikonfirmasi</Badge>
-                        <span className="text-sm text-emerald-600">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-emerald-900 text-sm sm:text-base truncate">{firstItem?.name || 'Produk Sewa'}</h4>
+                      <p className="text-emerald-600 text-xs sm:text-sm">Durasi: {currentTransaction.duration || 1} hari sewa</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2">
+                        <Badge className="bg-emerald-100 text-emerald-700 text-xs w-fit">Dikonfirmasi</Badge>
+                        <span className="text-xs sm:text-sm text-emerald-600">
                           Rp {(firstItem?.price || 0).toLocaleString('id-ID')}/hari
                         </span>
                       </div>
@@ -365,32 +367,34 @@ export default function OrderConfirmationPage() {
                   </div>
 
                   <div className="border-t border-emerald-200 pt-4 space-y-3">
-                    <div className="flex justify-between text-sm">
+                    <div className="grid grid-cols-2 gap-3 text-xs sm:text-sm">
                       <span className="text-emerald-600">Order ID</span>
-                      <span className="font-medium text-emerald-900">{orderId}</span>
+                      <span className="font-medium text-emerald-900 text-right truncate">{orderId}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
+                    <div className="grid grid-cols-2 gap-3 text-xs sm:text-sm">
                       <span className="text-emerald-600">Tanggal Pemesanan</span>
-                      <span className="font-medium text-emerald-900">
+                      <span className="font-medium text-emerald-900 text-right">
                         {new Date().toLocaleDateString('id-ID')}
                       </span>
                     </div>
-                    <div className="flex justify-between text-sm">
+                    <div className="grid grid-cols-2 gap-3 text-xs sm:text-sm">
                       <span className="text-emerald-600">Metode Pembayaran</span>
-                      <span className="font-medium text-emerald-900">
+                      <span className="font-medium text-emerald-900 text-right">
                         {currentTransaction.paymentMethod || 'Midtrans'}
                       </span>
                     </div>
-                    <div className="flex justify-between text-sm">
+                    <div className="grid grid-cols-2 gap-3 text-xs sm:text-sm">
                       <span className="text-emerald-600">Status Pembayaran</span>
-                      <Badge className="bg-emerald-100 text-emerald-700 text-xs">Lunas</Badge>
+                      <div className="text-right">
+                        <Badge className="bg-emerald-100 text-emerald-700 text-xs">Lunas</Badge>
+                      </div>
                     </div>
                   </div>
 
                   <div className="border-t border-emerald-200 pt-4">
                     <div className="flex justify-between items-center">
-                      <span className="font-semibold text-emerald-900">Total Pembayaran</span>
-                      <span className="text-2xl font-bold text-emerald-900">
+                      <span className="font-semibold text-emerald-900 text-sm sm:text-base">Total Pembayaran</span>
+                      <span className="text-lg sm:text-2xl font-bold text-emerald-900">
                         Rp {(currentTransaction.totalPrice || 0).toLocaleString('id-ID')}
                       </span>
                     </div>
@@ -401,34 +405,34 @@ export default function OrderConfirmationPage() {
 
             {/* Next Steps */}
             <Card className="border-0 shadow-lg bg-white/80 backdrop-blur">
-              <div className="p-6">
-                <h3 className="text-xl font-semibold text-emerald-900 mb-4">Langkah Selanjutnya</h3>
-                <div className="space-y-3">
+              <div className="p-4 sm:p-6">
+                <h3 className="text-lg sm:text-xl font-semibold text-emerald-900 mb-3 sm:mb-4">Langkah Selanjutnya</h3>
+                <div className="space-y-3 sm:space-y-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <span className="text-emerald-600 text-xs font-semibold">1</span>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-emerald-900">Konfirmasi Email</h4>
-                      <p className="text-sm text-emerald-600">Cek email Anda untuk detail pesanan lengkap</p>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-emerald-900 text-sm sm:text-base">Konfirmasi Email</h4>
+                      <p className="text-xs sm:text-sm text-emerald-600">Cek email Anda untuk detail pesanan lengkap</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <span className="text-emerald-600 text-xs font-semibold">2</span>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-emerald-900">Persiapan Produk</h4>
-                      <p className="text-sm text-emerald-600">Kami akan mempersiapkan produk sewa Anda</p>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-emerald-900 text-sm sm:text-base">Persiapan Produk</h4>
+                      <p className="text-xs sm:text-sm text-emerald-600">Kami akan mempersiapkan produk sewa Anda</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <span className="text-emerald-600 text-xs font-semibold">3</span>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-emerald-900">Pengambilan/Pengantaran</h4>
-                      <p className="text-sm text-emerald-600">Koordinasi waktu dan tempat pengambilan</p>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-emerald-900 text-sm sm:text-base">Pengambilan/Pengantaran</h4>
+                      <p className="text-xs sm:text-sm text-emerald-600">Koordinasi waktu dan tempat pengambilan</p>
                     </div>
                   </div>
                 </div>
@@ -437,37 +441,38 @@ export default function OrderConfirmationPage() {
           </div>
 
           {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-6 space-y-4">
+          <div className="xl:col-span-1">
+            <div className="sticky top-4 sm:top-6 space-y-3 sm:space-y-4">
               {/* QR Code */}
               <Card className="border-0 shadow-lg bg-white/80 backdrop-blur">
-                <div className="p-6 text-center">
-                  <div className="w-32 h-32 mx-auto mb-4 bg-emerald-50 rounded-xl flex items-center justify-center border-2 border-emerald-200">
-                    <QrCode className="w-16 h-16 text-emerald-400" />
+                <div className="p-4 sm:p-6 text-center">
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-3 sm:mb-4 bg-emerald-50 rounded-xl flex items-center justify-center border-2 border-emerald-200">
+                    <QrCode className="w-12 h-12 sm:w-16 sm:h-16 text-emerald-400" />
                   </div>
-                  <h4 className="font-semibold text-emerald-900 mb-2">QR Code Pesanan</h4>
-                  <p className="text-sm text-emerald-600 mb-4">
+                  <h4 className="font-semibold text-emerald-900 mb-1 sm:mb-2 text-sm sm:text-base">QR Code Pesanan</h4>
+                  <p className="text-xs sm:text-sm text-emerald-600 mb-3 sm:mb-4">
                     Tunjukkan QR code ini saat pengambilan produk
                   </p>
-                  <Button variant="outline" size="sm" className="w-full border-emerald-600 text-emerald-600 hover:bg-emerald-50">
-                    <Share2 className="w-4 h-4 mr-2" />
-                    Bagikan QR Code
+                  <Button variant="outline" size="sm" className="w-full border-emerald-600 text-emerald-600 hover:bg-emerald-50 text-xs sm:text-sm">
+                    <Share2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Bagikan QR Code</span>
+                    <span className="sm:hidden">Bagikan</span>
                   </Button>
                 </div>
               </Card>
 
               {/* Contact Support */}
               <Card className="border-0 shadow-lg bg-white/80 backdrop-blur">
-                <div className="p-6">
-                  <h4 className="font-semibold text-emerald-900 mb-3">Butuh Bantuan?</h4>
-                  <p className="text-sm text-emerald-600 mb-4">
+                <div className="p-4 sm:p-6">
+                  <h4 className="font-semibold text-emerald-900 mb-2 sm:mb-3 text-sm sm:text-base">Butuh Bantuan?</h4>
+                  <p className="text-xs sm:text-sm text-emerald-600 mb-3 sm:mb-4">
                     Tim support kami siap membantu Anda dengan pertanyaan seputar pesanan.
                   </p>
                   <div className="space-y-2">
-                    <Button variant="outline" size="sm" className="w-full border-emerald-600 text-emerald-600 hover:bg-emerald-50">
+                    <Button variant="outline" size="sm" className="w-full border-emerald-600 text-emerald-600 hover:bg-emerald-50 text-xs sm:text-sm">
                       Hubungi Support
                     </Button>
-                    <Button variant="ghost" size="sm" className="w-full text-emerald-600 hover:bg-emerald-50">
+                    <Button variant="ghost" size="sm" className="w-full text-emerald-600 hover:bg-emerald-50 text-xs sm:text-sm">
                       FAQ Pesanan
                     </Button>
                   </div>
@@ -476,20 +481,25 @@ export default function OrderConfirmationPage() {
 
               {/* Quick Actions */}
               <Card className="border-0 shadow-lg bg-white/80 backdrop-blur">
-                <div className="p-6">
-                  <h4 className="font-semibold text-emerald-900 mb-3">Aksi Cepat</h4>
+                <div className="p-4 sm:p-6">
+                  <h4 className="font-semibold text-emerald-900 mb-2 sm:mb-3 text-sm sm:text-base">Aksi Cepat</h4>
                   <div className="space-y-2">
-                    <Button variant="ghost" size="sm" className="w-full text-emerald-600 hover:bg-emerald-50 justify-start">
-                      <Download className="w-4 h-4 mr-2" />
-                      Download Invoice
+                    <Button variant="ghost" size="sm" className="w-full text-emerald-600 hover:bg-emerald-50 justify-start text-xs sm:text-sm" onClick={handleDownloadInvoice}>
+                      <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                      <span className="hidden sm:inline">Download Invoice</span>
+                      <span className="sm:hidden">Invoice</span>
                     </Button>
-                    <Button variant="ghost" size="sm" className="w-full text-emerald-600 hover:bg-emerald-50 justify-start">
-                      <Share2 className="w-4 h-4 mr-2" />
-                      Bagikan Pesanan
+                    <Button variant="ghost" size="sm" className="w-full text-emerald-600 hover:bg-emerald-50 justify-start text-xs sm:text-sm">
+                      <Share2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                      <span className="hidden sm:inline">Bagikan Pesanan</span>
+                      <span className="sm:hidden">Bagikan</span>
                     </Button>
-                    <Button variant="ghost" size="sm" className="w-full text-emerald-600 hover:bg-emerald-50 justify-start">
-                      <Home className="w-4 h-4 mr-2" />
-                      Pesanan Lain
+                    <Button variant="ghost" size="sm" className="w-full text-emerald-600 hover:bg-emerald-50 justify-start text-xs sm:text-sm" asChild>
+                      <Link href="/">
+                        <Home className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                        <span className="hidden sm:inline">Pesanan Lain</span>
+                        <span className="sm:hidden">Lain</span>
+                      </Link>
                     </Button>
                   </div>
                 </div>
