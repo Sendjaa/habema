@@ -173,13 +173,20 @@ export default function BookingManagement() {
     }
 
     try {
+      console.log('Deleting booking:', bookingId);
+      
       // Delete booking items first
       const { error: itemsError } = await supabase
         .from("booking_items")
         .delete()
         .eq("booking_id", bookingId);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error('Error deleting booking items:', itemsError);
+        throw itemsError;
+      }
+
+      console.log('Booking items deleted successfully');
 
       // Delete booking
       const { error: bookingError } = await supabase
@@ -187,8 +194,12 @@ export default function BookingManagement() {
         .delete()
         .eq("id", bookingId);
 
-      if (bookingError) throw bookingError;
+      if (bookingError) {
+        console.error('Error deleting booking:', bookingError);
+        throw bookingError;
+      }
 
+      console.log('Booking deleted successfully');
       toast.success("Booking deleted successfully");
       fetchBookings();
       setShowDetailModal(false);

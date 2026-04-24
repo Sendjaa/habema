@@ -7,14 +7,67 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/booking/date-range-picker";
 import { calculateDaysBetween } from "@/lib/booking-utils";
-import { CheckCircle, ShieldCheck, Info } from "lucide-react";
+import { CheckCircle, ShieldCheck, Info, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { IDVerificationForm } from "@/components/checkout/id-verification-form";
+
+// Function to create admin notification
+const createAdminNotification = async (bookingId: string, productName: string, userEmail: string | null) => {
+  try {
+    const notificationData = {
+      user_id: null, // System notification for admin
+      booking_id: bookingId,
+      title: "Pesanan Baru",
+      message: `Pesanan baru untuk ${productName}${userEmail ? ` dari ${userEmail}` : ' (Guest User)'}`,
+      notification_type: "new_booking",
+      is_read: false
+    };
+
+    const { error } = await supabase
+      .from("notifications")
+      .insert([notificationData]);
+
+    if (error) {
+      console.error("Error creating admin notification:", error);
+    } else {
+      console.log("Admin notification created successfully");
+    }
+  } catch (error) {
+    console.error("Error in createAdminNotification:", error);
+  }
+};
+
+// Load Midtrans Snap script
+const loadMidtransScript = () => {
+  return new Promise((resolve) => {
+    if (window.snap) {
+      
+      resolve(window.snap)
+      return
+    }
+
+    const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || ''
+    console.log('Client-side Midtrans Client Key:', clientKey.substring(0, 10) + '...')
+    
+    const script = document.createElement('script')
+    script.src = 'https://app.midtrans.com/snap/snap.js'
+    script.setAttribute('data-client-key', clientKey)
+    script.onload = () => resolve(window.snap)
+    document.body.appendChild(script)
+  })
+}
+
+declare global {
+  interface Window {
+    snap: any
+  }
+}
 import {
   RentalConditionsChecklist,
   ConditionChecklistData,
 } from "@/components/checkout/rental-conditions-checklist";
 import { useCartStore } from "@/lib/store";
+import { toast } from "sonner";
 
 function BookingContent() {
   const searchParams = useSearchParams();
@@ -37,7 +90,8 @@ function BookingContent() {
   const [paymentMethod, setPaymentMethod] = useState("Transfer Bank");
   const [isSuccess, setIsSuccess] = useState(false);
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
-
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  
   useEffect(() => {
     const checkUser = async () => {
       const { data } = await supabase.auth.getSession();
@@ -203,7 +257,16 @@ function BookingContent() {
         
         // Update transaction data with booking info
         setTransactionData({
-          items: product,
+          items: [
+            {
+              id: product.id,
+              name: product.name,
+              price: Number(pricePerNight),
+              quantity: Number(quantity),
+              category: product.equipment_categories?.name || "Equipment",
+              image_url: product.image_url
+            }
+          ],
           days: Number(days),
           duration: Number(days),
           totalPrice: Number(totalPrice),
@@ -227,12 +290,12 @@ Tipe: ${idData?.idType || '-'}
 Mohon konfirmasi pesanan saya ya!`;
 
           window.open(
-            `https://wa.me/628123456789?text=${encodeURIComponent(waMessage)}`,
+            `https://wa.me/6289509162484?text=${encodeURIComponent(waMessage)}`,
             "_blank",
           );
         }
 
-        router.push("/checkout");
+        router.push("/order-confirmation");
         return;
       }
 
@@ -245,7 +308,7 @@ Mohon konfirmasi pesanan saya ya!`;
 
       if (bookingError) throw bookingError;
 
-      // 4. Persiapkan data untuk Tabel Booking_Items
+      // 4. Persiapkan data untuk Tabel Booking_Items 
       const itemData = {
         booking_id: newBooking.id,
         equipment_id: productId,
@@ -260,9 +323,19 @@ Mohon konfirmasi pesanan saya ya!`;
 
       if (itemError) throw itemError;
 
+      // 6. Create notification for admin
+      await createAdminNotification(newBooking.id, product.name, user?.email || null);
+
       // 5. Update Global State (Zustand)
       setTransactionData({
-        items: product,
+        items: [{
+          id: product.id,
+          name: product.name,
+          price: Number(pricePerNight),
+          quantity: Number(quantity),
+          category: product.equipment_categories?.name || "Equipment",
+          image_url: product.image_url
+        }],
         days: Number(days),
         duration: Number(days),
         totalPrice: Number(totalPrice),
@@ -280,13 +353,37 @@ Total: Rp${Number(totalPrice).toLocaleString("id-ID")}
 
 Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
 
+        // Save booking data to localStorage for guest users
+        if (!user) {
+          const bookingData = {
+            id: newBooking.id,
+            product: product.name,
+            days: Number(days),
+            totalPrice: Number(totalPrice),
+            pricePerNight: Number(pricePerNight),
+            quantity: Number(quantity),
+            timestamp: new Date().toISOString()
+          };
+          localStorage.setItem('recentBooking', JSON.stringify(bookingData));
+        }
+
         window.open(
-          `https://wa.me/628123456789?text=${encodeURIComponent(waMessage)}`,
+          `https://wa.me/6289509162484?text=${encodeURIComponent(waMessage)}`,
           "_blank",
         );
       }
 
-      router.push("/checkout");
+      // Handle payment based on selected method
+      if (paymentMethod === "QRIS" || paymentMethod === "Transfer Bank") {
+        // Process payment via Midtrans
+        await handleMidtransPayment(newBooking.id);
+      } else if (paymentMethod === "WhatsApp Konfirmasi") {
+        // For WhatsApp confirmation, redirect to order confirmation
+        router.push("/order-confirmation");
+      } else {
+        // Fallback to order confirmation
+        router.push("/order-confirmation");
+      }
     } catch (error: any) {
       console.error("Error lengkap:", error);
       alert(
@@ -295,6 +392,183 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
     }
   };
 
+  const handleMidtransPayment = async (bookingId: string) => {
+    setIsProcessingPayment(true);
+    
+    try {
+      // Validate required data before sending to Midtrans
+      console.log('=== DEBUG: Data yang akan dikirim ke Midtrans ===');
+      console.log('Product:', product);
+      console.log('Days:', days);
+      console.log('TotalPrice:', totalPrice);
+      console.log('Quantity:', quantity);
+      console.log('ID Data:', idData);
+      console.log('User:', user);
+      console.log('Payment Method:', paymentMethod);
+      console.log('Selected Bank:', selectedBank);
+      console.log('Booking ID:', bookingId);
+      
+      // Check for missing required fields
+      if (!product || !product.id || !product.name || !product.price_per_night) {
+        throw new Error('Data produk tidak lengkap');
+      }
+      
+      // Check if all steps are completed
+      if (!startDate || !endDate) {
+        throw new Error('Silakan pilih tanggal sewa terlebih dahulu');
+      }
+      
+      if (!conditionData) {
+        throw new Error('Silakan lengkapi syarat dan kondisi terlebih dahulu');
+      }
+      
+      if (!idData) {
+        throw new Error('Silakan lengkapi verifikasi identitas terlebih dahulu');
+      }
+      
+      if (!paymentMethod) {
+        throw new Error('Silakan pilih metode pembayaran terlebih dahulu');
+      }
+      
+      if (paymentMethod === "Transfer Bank" && !selectedBank) {
+        throw new Error('Silakan pilih bank terlebih dahulu');
+      }
+      
+      if (!days || days <= 0) {
+        throw new Error('Durasi sewa tidak valid');
+      }
+      
+      if (!totalPrice || totalPrice <= 0) {
+        throw new Error('Total harga tidak valid');
+      }
+      
+      if (!quantity || quantity <= 0) {
+        throw new Error('Jumlah produk tidak valid');
+      }
+      
+      // Prepare transaction data for Midtrans
+      const transactionData = {
+        items: [{
+          id: product.id,
+          name: product.name,
+          price: Number(product.price_per_night),
+          quantity: quantity,
+          category: "equipment"
+        }],
+        duration: Number(days),
+        days: Number(days),
+        payment: { 
+          method: paymentMethod, 
+          bank: selectedBank || undefined,
+          bookingId: bookingId
+        },
+        paymentMethod: 'Midtrans',
+        totalPrice: Number(totalPrice)
+      };
+
+      console.log('Transaction Data:', transactionData);
+
+      // Set transaction data to store for payment processing
+      useCartStore.getState().setTransaction(transactionData);
+
+      // Prepare Midtrans payload
+      const midtransPayload = {
+        items: [{
+          id: product.id,
+          name: product.name,
+          price: Number(product.price_per_night),
+          quantity: quantity,
+          category: "equipment"
+        }],
+        customerDetails: {
+          firstName: idData?.fullName || 'Customer',
+          email: user?.email || 'customer@example.com',
+          phone: idData?.phone || '+62800000000'
+        },
+        totalPrice: Number(totalPrice)
+      };
+
+      console.log('Midtrans Payload:', midtransPayload);
+
+      // Create Midtrans transaction
+      const response = await fetch('/api/midtrans/create-transaction', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(midtransPayload)
+      });
+
+      const result = await response.json();
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      // Handle mock mode (development)
+      if (result.mockMode) {
+        console.log('Using mock payment flow');
+        setTimeout(() => {
+          setIsProcessingPayment(false);
+          router.push('/order-confirmation');
+        }, 2000);
+        return;
+      }
+
+      // Load Midtrans Snap script
+      await loadMidtransScript();
+
+      console.log('About to open Snap popup with token:', result.token);
+      console.log('Snap available:', !!window.snap);
+
+      try {
+        // Try using redirect URL if available, otherwise use Snap popup
+        if (result.redirect_url) {
+          console.log('Using redirect URL:', result.redirect_url);
+          window.open(result.redirect_url, '_blank');
+          setIsProcessingPayment(false);
+        } else {
+          console.log('Using Snap popup with token:', result.token);
+          // Open Midtrans Snap popup
+          window.snap.pay(result.token, {
+            onSuccess: function (result: any) {
+              console.log('Payment success:', result);
+              setIsProcessingPayment(false);
+              router.push('/order-confirmation');
+            },
+            onPending: function (result: any) {
+              console.log('Payment pending:', result);
+              setIsProcessingPayment(false);
+              router.push('/payment/pending');
+            },
+            onError: function (result: any) {
+              console.log('Payment error:', result);
+              setIsProcessingPayment(false);
+              toast.error('Pembayaran gagal. Silakan coba lagi.');
+            },
+            onClose: function () {
+              console.log('Payment popup closed');
+              setIsProcessingPayment(false);
+            }
+          });
+        }
+      } catch (error: any) {
+        console.error('Error opening payment:', error);
+        setIsProcessingPayment(false);
+        toast.error('Gagal membuka pembayaran. Silakan coba lagi.');
+      }
+
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      setIsProcessingPayment(false);
+      
+      // Show specific error message from validation or generic error
+      const errorMessage = error?.message || 'Terjadi kesalahan saat memproses pembayaran.';
+      toast.error(errorMessage);
+    }
+  };
+
+  
   if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center text-slate-400 animate-pulse font-medium">
@@ -523,19 +797,28 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                 <Button
                   onClick={handleFinalAction}
                   disabled={
+                    isProcessingPayment ||
                     !paymentMethod ||
                     (paymentMethod === "Transfer Bank" && !selectedBank)
                   }
                   className={`w-full h-14 mt-4 rounded-xl font-bold text-lg shadow-lg ${
                     paymentMethod &&
-                    (paymentMethod !== "Transfer Bank" || selectedBank)
+                    (paymentMethod !== "Transfer Bank" || selectedBank) &&
+                    !isProcessingPayment
                       ? "bg-emerald-600 hover:bg-emerald-700 text-white"
                       : "bg-slate-200 text-slate-400"
                   }`}
                 >
-                  {paymentMethod === "WhatsApp Konfirmasi"
-                    ? "Pesan via WhatsApp"
-                    : "Konfirmasi Pesanan"}
+                  {isProcessingPayment ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Memproses Pembayaran...
+                    </>
+                  ) : paymentMethod === "WhatsApp Konfirmasi" ? (
+                    "Pesan via WhatsApp"
+                  ) : (
+                    "Bayar Sekarang"
+                  )}
                 </Button>
               </div>
             </StepCard>

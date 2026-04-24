@@ -24,6 +24,7 @@ import {
   Clock,
   AlertCircle,
   ChevronRight,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -97,6 +98,8 @@ export default function AccountPage() {
   const [addresses, setAddresses] = useState<DBAddress[]>([]);
   const [loading, setLoading] = useState(true);
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<DBOrder | null>(null);
   const [notif, setNotif] = useState(DEFAULT_NOTIF);
 
   // ── Fetch Data ──
@@ -210,6 +213,51 @@ export default function AccountPage() {
     router.push(`/bookings/${bookingId}`);
   }, [router]);
 
+  const handleCancelOrder = useCallback((order: DBOrder) => {
+    // Open confirmation modal with order details
+    setOrderToCancel(order);
+    setCancelModalOpen(true);
+  }, []);
+
+  const confirmCancelOrder = useCallback(async () => {
+    if (!orderToCancel) return;
+
+    try {
+      // Update booking status to cancelled in database
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: 'cancelled',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderToCancel.id);
+
+      if (error) {
+        console.error('Error cancelling booking:', error);
+        toast.error('Gagal membatalkan pesanan. Silakan coba lagi.');
+        return;
+      }
+
+      // Update local state
+      setDbOrders(prev => 
+        prev.map(order => 
+          order.id === orderToCancel.id 
+            ? { ...order, status: 'cancelled' }
+            : order
+        )
+      );
+
+      // Close modal
+      setCancelModalOpen(false);
+      setOrderToCancel(null);
+
+      toast.success('Pesanan berhasil dibatalkan');
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      toast.error('Terjadi kesalahan. Silakan coba lagi.');
+    }
+  }, [orderToCancel]);
+
   const toggleNotif = (key: keyof typeof DEFAULT_NOTIF) =>
     setNotif((prev) => ({ ...prev, [key]: !prev[key] }));
 
@@ -233,6 +281,7 @@ export default function AccountPage() {
   const activeOrders = dbOrders.filter(
     (o) => !["returned", "completed", "cancelled"].includes(o.status),
   );
+  const cancelledOrders = dbOrders.filter((o) => o.status === "cancelled");
   const historyOrders = dbOrders.filter((o) =>
     ["returned", "completed"].includes(o.status),
   );
@@ -624,14 +673,25 @@ export default function AccountPage() {
                                 </div>
                               )}
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleBookingDetail(o.id)}
-                              className="h-7 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 rounded-lg"
-                            >
-                              Detail <ChevronRight className="w-3 h-3 ml-1" />
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleCancelOrder(o)}
+                                className="h-7 text-[11px] font-bold text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg"
+                              >
+                                <X className="w-3 h-3 mr-1" />
+                                Batalkan
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleBookingDetail(o.id)}
+                                className="h-7 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 rounded-lg"
+                              >
+                                Detail <ChevronRight className="w-3 h-3 ml-1" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -639,7 +699,56 @@ export default function AccountPage() {
                   )}
                 </div>
 
-                {/* Bagian 2: Riwayat Pesanan */}
+                {/* Bagian 2: Pesanan Dibatalkan */}
+                {cancelledOrders.length > 0 && (
+                  <div>
+                    <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mb-4 px-1">
+                      Pesanan Dibatalkan
+                    </p>
+                    <div className="space-y-2">
+                      {cancelledOrders.map((o) => (
+                        <div
+                          key={o.id}
+                          className="flex items-center justify-between p-3 rounded-xl bg-red-50 border border-red-100 opacity-75"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                              <X className="w-4 h-4 text-red-600" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-red-600 uppercase tracking-tight">
+                                  ID: #{o.id.slice(0, 8)}
+                                </span>
+                                <Badge className="bg-red-100 text-red-700 border-none text-[9px] font-bold uppercase px-2 py-0">
+                                  Dibatalkan
+                                </Badge>
+                              </div>
+                              <h4 className="font-medium text-red-800 text-sm">
+                                {o.items?.[0] || "Perlengkapan Outdoor"}
+                                {o.items?.length > 1 && (
+                                  <span className="text-red-600 font-normal">
+                                    {" "}
+                                    +{o.items.length - 1} alat lainnya
+                                  </span>
+                                )}
+                              </h4>
+                              <div className="flex items-center gap-1.5 text-[11px] text-red-500 mt-1">
+                                <Clock className="w-3 h-3" />
+                                <span>{o.start_date} - {o.end_date}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="font-bold text-red-800 text-sm">
+                            {formatCurrency(o.total)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Bagian 3: Riwayat Pesanan */}
                 <div>
                   <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mb-4 px-1">
                     Riwayat Selesai
@@ -1017,6 +1126,96 @@ export default function AccountPage() {
           </Card>
         </div>
       </div>
+
+      {/* Cancel Order Confirmation Modal */}
+      {cancelModalOpen && orderToCancel && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-5 max-w-sm w-full shadow-xl">
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-100 mx-auto mb-3">
+              <X className="w-5 h-5 text-red-600" />
+            </div>
+            
+            <h3 className="text-base font-semibold text-center text-stone-900 mb-2">
+              Batalkan Pesanan?
+            </h3>
+            
+            <p className="text-xs text-stone-600 text-center mb-4">
+              Apakah Anda yakin ingin membatalkan pesanan ini?
+            </p>
+
+            {/* Order Details */}
+            <div className="bg-stone-50 rounded-lg p-3 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center flex-shrink-0">
+                  <Package className="w-4 h-4 text-stone-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium text-stone-900 text-xs truncate">
+                    {orderToCancel.items?.[0] || "Perlengkapan Outdoor"}
+                    {orderToCancel.items && orderToCancel.items.length > 1 && (
+                      <span className="text-stone-500 font-normal">
+                        {" +" + (orderToCancel.items.length - 1)}
+                      </span>
+                    )}
+                  </h4>
+                  <p className="text-xs text-stone-500">
+                    ID: #{orderToCancel.id.slice(0, 8)}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between pt-2 border-t border-stone-200">
+                <div className="flex items-center gap-1 text-xs text-stone-500">
+                  <Clock className="w-3 h-3" />
+                  <span className="truncate">
+                    {orderToCancel.start_date} - {orderToCancel.end_date}
+                  </span>
+                </div>
+                <p className="font-bold text-stone-900 text-xs">
+                  {formatCurrency(orderToCancel.total)}
+                </p>
+              </div>
+            </div>
+
+            {/* Warning Message */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-4">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-3 h-3 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-amber-900">
+                    Peringatan
+                  </p>
+                  <p className="text-xs text-amber-700">
+                    Tindakan ini tidak dapat dibatalkan
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setCancelModalOpen(false);
+                  setOrderToCancel(null);
+                }}
+                className="flex-1 border-stone-300 text-stone-700 hover:bg-stone-50 h-8 text-xs"
+              >
+                Batal
+              </Button>
+              <Button
+                size="sm"
+                onClick={confirmCancelOrder}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white h-8 text-xs"
+              >
+                Ya, Batalkan
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

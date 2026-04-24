@@ -154,7 +154,7 @@ export default function AdminDashboard() {
     { dot: 'bg-amber-500',   label: 'Pending',    count: stats.pendingBookings },
     { dot: 'bg-teal-500',    label: 'Aktif',      count: stats.activeBookings },
     { dot: 'bg-emerald-600', label: 'Selesai',    count: stats.completedBookings },
-    { dot: 'bg-stone-400',   label: 'Dibatalkan', count: 0 },
+    { dot: 'bg-stone-400',   label: 'Dibatalkan', count: 0 },  
   ]
 
   const QUICK_ACTIONS = [
@@ -242,7 +242,7 @@ export default function AdminDashboard() {
             <Button
               size="sm"
               className="h-8 px-3 text-xs bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg shadow-none gap-1.5"
-              onClick={() => window.open('https://www.habema.vercel.app', '_blank')}
+              onClick={() => window.open('/', '_blank')}
             >
               <Package className="w-3 h-3" /> Kunjungi
             </Button>
@@ -251,7 +251,7 @@ export default function AdminDashboard() {
 
         <StatCard
             label="Total Pendapatan" value={formatCurrency(stats.totalRevenue)} hint="Sepanjang waktu"
-            icon={<DollarSign className="w-4 h-4 text-amber-700 block md:hidden" />} iconBg="bg-amber-50"
+            icon={<DollarSign className="w-4 h-4 text-amber-700 hidden md:block" />} iconBg="bg-amber-50"
           />
 
         {/* ── Mobile: status grid + nav ── */}
@@ -291,7 +291,7 @@ export default function AdminDashboard() {
           />
           <StatCard
             label="Total Pendapatan" value={formatCurrency(stats.totalRevenue)} hint="Sepanjang waktu"
-            icon={<DollarSign className="w-4 h-4 text-amber-700" />} iconBg="bg-amber-50"
+            icon={<DollarSign className="w-4 h-4 text-amber-700 hidden md:block" />} iconBg="bg-amber-50"
           />
           <StatCard
             label="Pesanan Tamu" value={stats.anonymousBookings} hint="Tanpa akun"

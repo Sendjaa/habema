@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useCartStore } from "@/lib/store";
 import { 
   ArrowLeft, 
   Package, 
@@ -15,7 +16,8 @@ import {
   Phone,
   Mail,
   User,
-  Loader2
+  Loader2,
+  CreditCard
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -53,10 +55,11 @@ interface BookingDetail {
 export default function BookingDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const bookingId = params.id as string;
-
+  const setTransaction = useCartStore((state) => state.setTransaction);
   const [booking, setBooking] = useState<BookingDetail | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const bookingId = params.id as string;
 
   useEffect(() => {
     const fetchBookingDetail = async () => {
@@ -156,15 +159,13 @@ export default function BookingDetailPage() {
       case "pending":
         return "bg-amber-100 text-amber-800";
       case "confirmed":
+        return "bg-emerald-100 text-emerald-800";
+      case "completed":
         return "bg-blue-100 text-blue-800";
-      case "picked_up":
-        return "bg-purple-100 text-purple-800";
-      case "returned":
-        return "bg-green-100 text-green-800";
       case "cancelled":
         return "bg-red-100 text-red-800";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-stone-100 text-stone-800";
     }
   };
 
@@ -178,11 +179,43 @@ export default function BookingDetailPage() {
         return "Diambil";
       case "returned":
         return "Dikembalikan";
+      case "completed":
+        return "Selesai";
       case "cancelled":
         return "Dibatalkan";
       default:
         return status;
     }
+  };
+
+  const handlePayment = () => {
+    if (!booking) return;
+
+    // Prepare transaction data for payment
+    const transactionData = {
+      items: booking.booking_items.map(item => ({
+        id: item.equipment.id,
+        name: item.equipment.name,
+        image_url: item.equipment.image_url || "/placeholder.png",
+        price: item.unit_price,
+        quantity: item.quantity,
+        category: "equipment"
+      })),
+      duration: booking.rental_days,
+      days: booking.rental_days,
+      payment: { 
+        method: 'Pending', 
+        bookingId: booking.id
+      },
+      paymentMethod: 'Midtrans',
+      totalPrice: booking.total_cost
+    };
+
+    // Set transaction data to store
+    setTransaction(transactionData);
+    
+    // Navigate to payment page
+    router.push('/payment');
   };
 
   if (loading) {
@@ -247,6 +280,15 @@ export default function BookingDetailPage() {
               <p className="text-xl sm:text-2xl font-bold text-emerald-700">
                 {formatCurrency(booking.total_cost)}
               </p>
+              {booking.status === 'pending' && (
+                <Button
+                  onClick={handlePayment}
+                  className="mt-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Bayar Sekarang
+                </Button>
+              )}
             </div>
           </div>
         </Card>

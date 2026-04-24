@@ -135,6 +135,14 @@ export default function ProductDetailPage({
       price: product.price_per_night,
       image_url: product.image_url,
       quantity: 1,
+      category: product.equipment_categories?.name,
+      description: product.description,
+      specifications: product.specifications,
+      weight_kg: product.weight_kg,
+      dimensions: product.dimensions,
+      capacity: product.capacity,
+      material: product.material,
+      weather_rating: product.weather_rating,
     });
 
     toast.success(`${product.name} masuk keranjang!`, {

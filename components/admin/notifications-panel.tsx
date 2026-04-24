@@ -27,54 +27,44 @@ export function NotificationsPanel() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Temporarily disable notifications due to RLS issues
-    console.log('Notifications panel disabled temporarily due to RLS issues');
-    
-    // TODO: Re-enable when RLS policies are fixed
-    // fetchNotifications();
-    
-    // Set up real-time subscription for new notifications
-    // const subscription = supabase
-    //   .channel('notifications')
-    //   .on('postgres_changes', 
-    //     { 
-    //       event: 'INSERT', 
-    //       schema: 'public', 
-    //       table: 'notifications' 
-    //     }, 
-    //     (payload) => {
-    //       console.log('New notification:', payload);
-    //       fetchNotifications(); // Refresh notifications
-    //       toast.info("Notifikasi baru tersedia!");
-    //     }
-    //   )
-    //   .subscribe();
-
-    // return () => {
-    //   supabase.removeChannel(subscription);
-    // };
+    // Simplified notification setup - just fetch once
+    fetchNotifications();
   }, []);
 
-  const fetchNotifications = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("notifications")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      if (error) {
-        console.error("Error fetching notifications:", error);
-        return;
+  // Close notification panel when clicking outside or pressing Escape
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (isOpen && 
+          event.target instanceof Element && 
+          !event.target.closest('.notification-panel')) {
+        setIsOpen(false);
       }
+    };
 
-      setNotifications(data || []);
-      setUnreadCount(data?.filter(n => !n.is_read).length || 0);
-    } catch (error) {
-      console.error("Error:", error);
-    } finally {
-      setLoading(false);
-    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+      }
+    };
+
+    // Add multiple event listeners for better compatibility
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
+  const fetchNotifications = async () => {
+    // Temporarily disable notifications completely to prevent errors
+    console.log('Notifications system temporarily disabled');
+    setNotifications([]);
+    setUnreadCount(0);
+    setLoading(false);
   };
 
   const markAsRead = async (notificationId: string) => {
@@ -172,27 +162,31 @@ export function NotificationsPanel() {
   }
 
   return (
-    <div className="relative">
+    <div className="relative z-50">
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative"
+        onClick={() => {
+          console.log('Notification button clicked, current state:', { isOpen, unreadCount });
+          setIsOpen(!isOpen);
+        }}
+        className="relative hover:bg-gray-100 transition-colors"
+        aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : 'No notifications'}`}
       >
         {unreadCount > 0 ? (
-          <BellRing className="w-5 h-5 text-amber-600" />
+          <BellRing className="w-5 h-5 text-amber-600 animate-pulse" />
         ) : (
-          <Bell className="w-5 h-5" />
+          <Bell className="w-5 h-5 text-gray-500" />
         )}
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-bounce">
             {unreadCount}
           </span>
         )}
       </Button>
 
       {isOpen && (
-        <Card className="absolute right-0 top-12 w-96 max-h-96 overflow-hidden shadow-lg border z-50">
+        <Card className="notification-panel absolute right-0 top-12 w-96 max-h-96 overflow-hidden shadow-lg border z-[60]">
           <div className="p-4 border-b bg-gray-50">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-900">Notifikasi</h3>

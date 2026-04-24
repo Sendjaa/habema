@@ -28,34 +28,116 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  // Function to insert identity data to Supabase
-  const insertIdentityToSupabase = async (identityData: any) => {
+  // Function to check if identity already exists
+  const checkExistingIdentity = async (userId: string) => {
     try {
-      console.log('Inserting identity data:', identityData);
-      
       const { data, error } = await supabase
         .from('user_identity')
-        .insert({
-          user_id: identityData.user_id,
-          id_type: identityData.idType,
-          id_number: identityData.idNumber,
-          id_photo_url: identityData.photoUrl,
-          verification_status: 'pending'
-        });
+        .select('id, id_type, id_number, id_photo_url, verification_status')
+        .eq('user_id', userId)
+        .single();
       
-      console.log('Supabase response:', { data, error });
+      return { data, error };
+    } catch (error) {
+      return { data: null, error };
+    }
+  };
+
+  // Function to insert or update identity data to Supabase
+  const upsertIdentityToSupabase = async (identityData: any) => {
+    try {
+      console.log('Upserting identity data:', identityData);
       
-      if (error) {
-        console.error('Supabase error details:', JSON.stringify(error, null, 2));
-        throw error;
+      // First check if identity already exists
+      const { data: existingIdentity } = await checkExistingIdentity(identityData.user_id);
+      
+      let result;
+      if (existingIdentity) {
+        // Update existing identity
+        console.log('Updating existing identity for user:', identityData.user_id);
+        const { data, error } = await supabase
+          .from('user_identity')
+          .update({
+            id_type: identityData.idType,
+            id_number: identityData.idNumber,
+            id_photo_url: identityData.photoUrl,
+            verification_status: 'pending',
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', identityData.user_id)
+          .select()
+          .single();
+        
+        result = { data, error };
+      } else {
+        // Insert new identity
+        console.log('Inserting new identity for user:', identityData.user_id);
+        const { data, error } = await supabase
+          .from('user_identity')
+          .insert({
+            user_id: identityData.user_id,
+            id_type: identityData.idType,
+            id_number: identityData.idNumber,
+            id_photo_url: identityData.photoUrl,
+            verification_status: 'pending'
+          })
+          .select()
+          .single();
+        
+        result = { data, error };
       }
       
-      return data;
+      console.log('Supabase response:', result);
+      
+      if (result.error) {
+        console.error('Supabase error details:', JSON.stringify(result.error, null, 2));
+        throw result.error;
+      }
+      
+      return result.data;
     } catch (error) {
-      console.error('Error inserting identity details:', JSON.stringify(error, null, 2));
+      console.error('Error upserting identity details:', JSON.stringify(error, null, 2));
       throw error;
     }
   };
+
+  // Load existing identity from database if user is authenticated
+  useEffect(() => {
+    const loadExistingIdentity = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          const { data: existingIdentity } = await checkExistingIdentity(user.id);
+          
+          if (existingIdentity) {
+            // Pre-fill form with existing data
+            setIdType(existingIdentity.id_type || "ktp");
+            setIdNumber(existingIdentity.id_number || "");
+            setPhotoPreview(existingIdentity.id_photo_url || null);
+            
+            // Also save to Zustand for consistency
+            setIdentity({
+              idType: existingIdentity.id_type,
+              idNumber: existingIdentity.id_number,
+              photoUrl: existingIdentity.id_photo_url,
+              fullName: fullName, // Keep current full name from form
+              nik: existingIdentity.id_number, // Use id_number as nik
+              phone: "", // Empty for now
+              address: "", // Empty for now
+              verified: existingIdentity.verification_status === 'verified',
+            });
+            
+            toast.info("Data identitas Anda sebelumnya telah dimuat");
+          }
+        }
+      } catch (error) {
+        console.log('No existing identity found or user not authenticated');
+      }
+    };
+    
+    loadExistingIdentity();
+  }, []); // Run once on component mount
 
   // Sync state dengan Zustand (PENTING untuk menangani re-render dan hydration)
   useEffect(() => {
@@ -156,11 +238,11 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
 
         // Insert to Supabase
         try {
-          await insertIdentityToSupabase({
+          await upsertIdentityToSupabase({
             ...data,
             user_id: user.id
           });
-          toast.success("Identitas berhasil disimpan ke database");
+          toast.success("Identitas berhasil disimpan");
         } catch (supabaseError) {
           console.error('Supabase failed, saving to local only:', supabaseError);
           toast.warning("Database gagal, data disimpan lokal saja");

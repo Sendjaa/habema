@@ -44,6 +44,7 @@ export default function CartPage() {
     // Simpan data lengkap ke transaction store agar halaman booking bisa memproses detailnya
     setTransaction({
       duration: duration,
+      days: duration,
       totalPrice: totalKeseluruhan,
       items: cart,
       payment: {
@@ -83,13 +84,56 @@ export default function CartPage() {
           <div className="lg:col-span-2 space-y-4">
             {cart.map((item) => (
               <Card key={item.id} className="p-5 bg-white border border-forest/5 rounded-2xl">
-                <div className="flex flex-col sm:flex-row gap-6 items-center">
+                <div className="flex flex-col sm:flex-row gap-6 items-start">
                   <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-slate-100">
-                    <Image src={item.image_url || '/placeholder-tent.png'} alt={item.name} fill className="object-cover" />
+                    <Image src={item.image_url || '/placeholder.svg'} alt={item.name} fill className="object-cover" />
                   </div>
                   <div className="flex-1 text-center sm:text-left">
-                    <h3 className="font-bold text-forest text-lg">{item.name}</h3>
-                    <p className="text-gold font-bold">Rp {item.price.toLocaleString('id-ID')} <span className="text-[10px] text-forest/40">/hari</span></p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-bold text-forest text-lg">{item.name}</h3>
+                      {item.category && (
+                        <span className="text-xs bg-forest/10 text-forest px-2 py-1 rounded-full">
+                          {item.category}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-gold font-bold mb-2">Rp {item.price.toLocaleString('id-ID')} <span className="text-[10px] text-forest/40">/hari</span></p>
+                    
+                    {/* Product Details */}
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      {item.description && (
+                        <p className="line-clamp-2">{item.description}</p>
+                      )}
+                      
+                      {/* Key Specifications */}
+                      <div className="flex flex-wrap gap-3 text-xs">
+                        {item.weight_kg && (
+                          <span className="bg-slate-100 px-2 py-1 rounded">
+                            {item.weight_kg}kg
+                          </span>
+                        )}
+                        {item.dimensions && (
+                          <span className="bg-slate-100 px-2 py-1 rounded">
+                            {item.dimensions}
+                          </span>
+                        )}
+                        {item.capacity && (
+                          <span className="bg-slate-100 px-2 py-1 rounded">
+                            {item.capacity}
+                          </span>
+                        )}
+                        {item.material && (
+                          <span className="bg-slate-100 px-2 py-1 rounded">
+                            {item.material}
+                          </span>
+                        )}
+                        {item.weather_rating && (
+                          <span className="bg-slate-100 px-2 py-1 rounded">
+                            {item.weather_rating}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3 bg-forest/5 p-1 rounded-xl">
                     <button onClick={() => item.quantity > 1 ? updateItemQuantity(item.id, item.quantity - 1) : removeFromCart(item.id)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white shadow-sm"><Minus size={14} /></button>
@@ -105,7 +149,7 @@ export default function CartPage() {
           <div className="lg:col-span-1">
             <Card className="p-6 bg-white border-2 border-gold sticky top-24 space-y-6 rounded-2xl shadow-xl">
               <h3 className="font-bold text-xl text-forest">Ringkasan Sewa</h3>
-              
+               
               <div className="bg-forest/5 p-4 rounded-xl space-y-3">
                 <label className="text-sm font-bold text-forest flex items-center gap-2">
                   <Calendar size={16} /> Durasi Sewa (Hari)
@@ -140,7 +184,7 @@ export default function CartPage() {
               </div>
 
               <Button
-                onClick={handleCheckout}
+                onClick={() => router.push('/booking')}
                 className="w-full bg-[#1B4332] hover:bg-[#143326] font-bold h-12 rounded-lg text-white"
               >
                 Sewa Sekarang

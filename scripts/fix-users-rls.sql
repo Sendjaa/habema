@@ -1,51 +1,48 @@
--- Fix RLS policies for users table
--- This script ensures admin can access users table properly
+-- Fix RLS policies for users and user_identity tables
+-- This script ensures proper access for identity verification
 
--- Disable RLS temporarily
-ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;
-
--- Re-enable RLS
+-- First, ensure RLS is enabled on both tables
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_identity ENABLE ROW LEVEL SECURITY;
 
--- Drop all existing policies
+-- Drop all existing policies for users table
 DROP POLICY IF EXISTS "Admins can view all users" ON public.users;
 DROP POLICY IF EXISTS "Users can view own profile" ON public.users;
 DROP POLICY IF EXISTS "Users can insert own profile" ON public.users;
 DROP POLICY IF EXISTS "Users can update own profile" ON public.users;
+DROP POLICY IF EXISTS "Users can read all users" ON public.users;
 
--- Create admin policy for users
-CREATE POLICY "Admins can view all users" ON public.users
-  FOR SELECT USING (
-    auth.uid() IS NOT NULL AND 
-    EXISTS (
-      SELECT 1 FROM auth.users 
-      WHERE auth.users.id = auth.uid() 
-      AND auth.users.email = 'bibitsayur23@gmail.com'
-    )
-  );
+-- Drop all existing policies for user_identity table
+DROP POLICY IF EXISTS "Users can see their own identity" ON public.user_identity;
+DROP POLICY IF EXISTS "Users can update their own identity" ON public.user_identity;
+DROP POLICY IF EXISTS "Users can insert their own identity" ON public.user_identity;
 
--- Create admin policy for insert/update/delete
-CREATE POLICY "Admins can manage users" ON public.users
-  FOR ALL USING (
-    auth.uid() IS NOT NULL AND 
-    EXISTS (
-      SELECT 1 FROM auth.users 
-      WHERE auth.users.id = auth.uid() 
-      AND auth.users.email = 'bibitsayur23@gmail.com'
-    )
-  );
+-- Create policies for users table - Allow authenticated users to read users table for FK checks
+CREATE POLICY "Allow authenticated users to read users" ON public.users
+  FOR SELECT USING (auth.role() = 'authenticated');
 
--- Create user policy for own profile
+-- Create policies for users table - Users can manage their own profile
 CREATE POLICY "Users can view own profile" ON public.users
   FOR SELECT USING (auth.uid() = id);
 
--- Create user policy for own profile insert
 CREATE POLICY "Users can insert own profile" ON public.users
   FOR INSERT WITH CHECK (auth.uid() = id);
 
--- Create user policy for own profile update
 CREATE POLICY "Users can update own profile" ON public.users
   FOR UPDATE USING (auth.uid() = id);
+
+-- Create policies for user_identity table
+CREATE POLICY "Users can insert their own identity"
+  ON public.user_identity FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can see their own identity"
+  ON public.user_identity FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own identity"
+  ON public.user_identity FOR UPDATE
+  USING (auth.uid() = user_id);
 
 -- Test the policy
 SELECT 'Users RLS policies updated successfully' as status;
