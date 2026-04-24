@@ -86,7 +86,15 @@ export default function CartPage() {
               <Card key={item.id} className="p-5 bg-white border border-forest/5 rounded-2xl">
                 <div className="flex flex-col sm:flex-row gap-6 items-start">
                   <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-slate-100">
-                    <Image src={item.image_url || '/placeholder.svg'} alt={item.name} fill className="object-cover" />
+                    <Image 
+                      src={item.image_url || '/placeholder.svg'} 
+                      alt={item.name} 
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw"
+                      className="object-cover"
+                      placeholder="blur"
+                      blurDataURL="data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='40' height='40' fill='%23e2e8f'/%3E%3C/svg%3E"
+                    />
                   </div>
                   <div className="flex-1 text-center sm:text-left">
                     <div className="flex items-center gap-2 mb-1">

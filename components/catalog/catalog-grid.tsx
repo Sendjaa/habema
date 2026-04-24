@@ -42,9 +42,11 @@ export function CatalogGrid({ equipment }: { equipment: any[] }) {
                     src={product.image_url}
                     alt={product.name}
                     fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw"
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
                     priority={false}
+                    placeholder="blur"
+                    blurDataURL="data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='40' height='40' fill='%23e2e8f'/%3E%3C/svg%3E"
                   />
                 ) : (
                   /* Placeholder jika gambar tidak ada */

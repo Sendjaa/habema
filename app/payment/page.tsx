@@ -4,6 +4,7 @@
 import { useCartStore } from '@/lib/store'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -238,10 +239,14 @@ export default function PaymentPage() {
                 <div className="flex items-center gap-4">
                   <div className="w-20 h-20 rounded-2xl overflow-hidden bg-emerald-50 border-2 border-emerald-100">
                     {productToRent.image_url && (
-                      <img
+                      <Image
                         src={productToRent.image_url}
                         alt={productToRent.name}
-                        className="w-full h-full object-cover"
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw"
+                        className="object-cover"
+                        placeholder="blur"
+                        blurDataURL="data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='40' height='40' fill='%23e2e8f'/%3E%3C/svg%3E"
                       />
                     )}
                   </div>

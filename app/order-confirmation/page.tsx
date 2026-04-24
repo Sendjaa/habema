@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -347,10 +348,14 @@ export default function OrderConfirmationPage() {
                   <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-emerald-50 rounded-xl">
                     <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-emerald-100 border-2 border-emerald-200 flex-shrink-0">
                       {firstItem?.image_url && (
-                        <img
+                        <Image
                           src={firstItem.image_url}
                           alt={firstItem?.name}
-                          className="w-full h-full object-cover"
+                          fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw"
+                          className="object-cover"
+                          placeholder="blur"
+                          blurDataURL="data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='40' height='40' fill='%23e2e8f'/%3E%3C/svg%3E"
                         />
                       )}
                     </div>
