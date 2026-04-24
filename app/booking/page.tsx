@@ -505,13 +505,11 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
         throw new Error(result.error);
       }
 
-      // Handle mock mode (development)
+      // CRITICAL: No mock mode - ensure real payment processing
       if (result.mockMode) {
-        console.log('Using mock payment flow');
-        setTimeout(() => {
-          setIsProcessingPayment(false);
-          router.push('/order-confirmation');
-        }, 2000);
+        console.error('CRITICAL: Mock mode detected in production!');
+        setIsProcessingPayment(false);
+        toast.error('Payment system configuration error. Please contact support.');
         return;
       }
 

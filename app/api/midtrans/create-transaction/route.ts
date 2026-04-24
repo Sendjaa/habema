@@ -19,19 +19,23 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { items, customerDetails, totalPrice } = body
 
-    // Check if Midtrans is configured or use mock mode for development
+    // Check if Midtrans is configured - CRITICAL: No fallback in production
     if (!clientKey || !serverKey) {
-      console.log('Midtrans credentials not configured, using mock mode')
-      // Fallback: Create mock transaction for testing
-      const mockOrderId = generateOrderId()
-      return NextResponse.json({
-        success: true,
-        orderId: mockOrderId,
-        token: 'mock-token-' + mockOrderId,
-        redirect_url: null,
-        mockMode: true,
-        message: 'Mock payment mode - no real transaction'
+      console.error('CRITICAL: Midtrans credentials not configured!')
+      console.error('Missing environment variables:', {
+        clientKey: !!clientKey,
+        serverKey: !!serverKey,
+        isProduction
       })
+      
+      return NextResponse.json(
+        { 
+          error: 'Payment system not properly configured. Please contact administrator.',
+          details: 'Midtrans credentials missing',
+          isProduction
+        },
+        { status: 500 }
+      )
     }
 
     // Validate required fields
@@ -108,20 +112,14 @@ export async function POST(request: NextRequest) {
     } else {
       console.error('Midtrans transaction failed:', result.error)
       
-      // Fallback: Create mock transaction for testing
-      if (!isProduction) {
-        console.log('Using mock transaction for development')
-        return NextResponse.json({
-          success: true,
-          orderId,
-          token: 'mock-token-' + orderId,
-          redirect_url: null,
-          mockMode: true
-        })
-      }
-      
+      // CRITICAL: No fallback to mock mode - fail fast in production
       return NextResponse.json(
-        { error: result.error },
+        { 
+          error: 'Payment processing failed. Please try again or contact support.',
+          details: result.error,
+          orderId,
+          isProduction
+        },
         { status: 500 }
       )
     }

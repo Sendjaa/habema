@@ -1,57 +1,111 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
-import { User, LogIn } from "lucide-react";
+import { User, LogIn, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export function NavbarUserControl() {
+function NavbarUserControlInner() {
   const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Cek sesi saat ini
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
+    let mounted = true;
+    
+    const initializeAuth = async () => {
+      try {
+        // 1. Cek sesi saat ini
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (mounted) {
+          setUser(session?.user ?? null);
+          setIsLoading(false);
+        }
+
+        // 2. Listen perubahan auth (login/logout)
+        const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (mounted) {
+            setUser(session?.user ?? null);
+            setIsLoading(false);
+          }
+        });
+
+        return () => {
+          authListener.subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
     };
 
-    getSession();
-
-    // 2. Listen perubahan auth (login/logout)
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
+    initializeAuth();
 
     return () => {
-      authListener.subscription.unsubscribe();
+      mounted = false;
     };
   }, []);
 
-  // Jika belum login, tampilkan tombol Login
-  if (!user) {
+  // Loading state - tampilkan skeleton yang sama dengan login button
+  if (isLoading) {
     return (
       <Button 
         variant="outline" 
-        className="hidden sm:flex ms-3 border-emerald-600 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-600 rounded-xl font-bold" 
-        asChild
+        className="hidden sm:flex ms-3 border-emerald-600 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-600 rounded-xl font-bold opacity-90" 
+        disabled
       >
-        <Link href="/login">Masuk</Link>
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        <span className="opacity-0">Masuk</span>
       </Button>
     );
   }
 
-  // Jika sudah login, tampilkan icon Profile (tombol asli kamu)
+  // Jika sudah login, tampilkan icon Profile
+  if (user) {
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="hidden sm:flex text-emerald-900/70"
+        asChild
+      >
+        <Link href="/account">
+          <User className="w-[22px] h-[22px]" />
+        </Link>
+      </Button>
+    );
+  }
+
+  // Default: belum login
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="hidden sm:flex text-emerald-900/70"
+    <Button 
+      variant="outline" 
+      className="hidden sm:flex ms-3 border-emerald-600 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-600 rounded-xl font-bold" 
       asChild
     >
-      <Link href="/account">
-        <User className="w-[22px] h-[22px]" />
-      </Link>
+      <Link href="/login">Masuk</Link>
     </Button>
+  );
+}
+
+export function NavbarUserControl() {
+  return (
+    <Suspense 
+      fallback={
+        <Button 
+          variant="outline" 
+          className="hidden sm:flex ms-3 border-emerald-600 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-600 rounded-xl font-bold opacity-90" 
+          disabled
+        >
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          <span className="opacity-0">Masuk</span>
+        </Button>
+      }
+    >
+      <NavbarUserControlInner />
+    </Suspense>
   );
 }

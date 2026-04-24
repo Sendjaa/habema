@@ -61,7 +61,7 @@ export function NotificationsPanel() {
 
   const fetchNotifications = async () => {
     // Temporarily disable notifications completely to prevent errors
-    console.log('Notifications system temporarily disabled');
+    console.log('Notifications temporarily disabled - using empty state');
     setNotifications([]);
     setUnreadCount(0);
     setLoading(false);
@@ -69,19 +69,10 @@ export function NotificationsPanel() {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      const { error } = await supabase
-        .from("notifications")
-        .update({ 
-          is_read: true, 
-          read_at: new Date().toISOString() 
-        })
-        .eq("id", notificationId);
-
-      if (error) {
-        console.error("Error marking as read:", error);
-        return;
-      }
-
+      // Since we're using bookings as notifications, we'll just update local state
+      // In a real implementation, you might want to add a read_status field to bookings
+      console.log('Marking notification as read:', notificationId);
+      
       // Update local state
       setNotifications(prev => 
         prev.map(n => 
@@ -102,18 +93,7 @@ export function NotificationsPanel() {
       
       if (unreadIds.length === 0) return;
 
-      const { error } = await supabase
-        .from("notifications")
-        .update({ 
-          is_read: true, 
-          read_at: new Date().toISOString() 
-        })
-        .in("id", unreadIds);
-
-      if (error) {
-        console.error("Error marking all as read:", error);
-        return;
-      }
+      console.log('Marking all notifications as read:', unreadIds);
 
       // Update local state
       setNotifications(prev => 
