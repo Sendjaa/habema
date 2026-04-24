@@ -192,7 +192,7 @@ export default function CartPage() {
               </div>
 
               <Button
-                onClick={() => router.push('/booking')}
+                onClick={handleCheckout}
                 className="w-full bg-[#1B4332] hover:bg-[#143326] font-bold h-12 rounded-lg text-white"
               >
                 Sewa Sekarang

@@ -12,7 +12,7 @@ export async function proxy(req: NextRequest) {
   )
 
   // Protected routes yang memerlukan autentikasi
-  const protectedRoutes = ['/account', '/account/', '/admin', '/admin/']
+  const protectedRoutes = ['/account', '/account/']
   
   // Check if current path is protected
   const isProtectedRoute = protectedRoutes.some(route => 
