@@ -20,6 +20,19 @@ const nextConfig = {
       },
     ],
   },
+  // Add proxy configuration for authentication
+  async rewrites() {
+    return [
+      {
+        source: '/api/auth/:path*',
+        destination: '/api/auth/:path*',
+      },
+      {
+        source: '/proxy/:path*',
+        destination: '/proxy/:path*',
+      },
+    ];
+  },
 }
 
 export default nextConfig
