@@ -1,13 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
+
+// Force dynamic rendering to prevent prerendering errors
+export const dynamic = 'force-dynamic'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { CheckCircle, ArrowLeft, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 
-export default function PaymentFinishPage() {
+function PaymentFinishContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [mounted, setMounted] = useState(false)
@@ -125,5 +128,17 @@ export default function PaymentFinishPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function PaymentFinishPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-emerald-700" />
+      </div>
+    }>
+      <PaymentFinishContent />
+    </Suspense>
   )
 }
