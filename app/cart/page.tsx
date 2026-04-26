@@ -115,6 +115,16 @@ export default function CartPage() {
                       
                       {/* Key Specifications */}
                       <div className="flex flex-wrap gap-3 text-xs">
+                        {item.brand && (
+                          <span className="bg-slate-100 px-2 py-1 rounded font-medium">
+                            {item.brand}
+                          </span>
+                        )}
+                        {item.capacity && (
+                          <span className="bg-slate-100 px-2 py-1 rounded">
+                            {item.capacity}
+                          </span>
+                        )}
                         {item.weight_kg && (
                           <span className="bg-slate-100 px-2 py-1 rounded">
                             {item.weight_kg}kg
@@ -123,11 +133,6 @@ export default function CartPage() {
                         {item.dimensions && (
                           <span className="bg-slate-100 px-2 py-1 rounded">
                             {item.dimensions}
-                          </span>
-                        )}
-                        {item.capacity && (
-                          <span className="bg-slate-100 px-2 py-1 rounded">
-                            {item.capacity}
                           </span>
                         )}
                         {item.material && (

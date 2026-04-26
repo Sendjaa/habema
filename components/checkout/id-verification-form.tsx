@@ -17,19 +17,12 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
   const savedIdentity = useCartStore((state) => state.identity);
   const setIdentity = useCartStore((state) => state.setIdentity);
 
-  // Progress stepper steps
-  const checkoutSteps = [
-    { id: 1, name: 'Pilih Alat', status: 'completed' },
-    { id: 2, name: 'Pilih Tanggal', status: 'completed' },
-    { id: 3, name: 'Verifikasi ID', status: 'current' },
-    { id: 4, name: 'Pembayaran', status: 'upcoming' }
-  ];
-
   // Local State
   const [idType, setIdType] = useState<any>("ktp");
   const [idNumber, setIdNumber] = useState("");
   const [fullName, setFullName] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -293,6 +286,24 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
       return;
     }
     
+    // Upload file to Supabase storage if file was uploaded (not camera photo)
+    let photoUrl = photoPreview;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user && uploadedFile) {
+        // Upload file to Supabase storage
+        toast.loading("Mengupload file...", { id: "upload" });
+        photoUrl = await uploadFileToSupabase(uploadedFile, user.id);
+        toast.dismiss("upload");
+        toast.success("File berhasil diupload");
+      }
+    } catch (uploadError) {
+      console.error('Upload error:', uploadError);
+      // If upload fails, fall back to base64 photoPreview
+      toast.warning("Gagal upload ke storage, menggunakan base64");
+    }
+    
     // Prepare data first (needed for both authenticated and anonymous flows)
     const data = {
       fullName,
@@ -301,7 +312,7 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
       address: "", // Empty string for now, can be added later
       idType,
       idNumber,
-      photoUrl: photoPreview || undefined,
+      photoUrl: photoUrl || undefined,
       verified: true,
     };
     
@@ -423,9 +434,41 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
         toast.error("File terlalu besar (Maksimal 5MB)");
         return;
       }
+      if (!file.type.startsWith('image/')) {
+        toast.error("File harus berupa gambar (JPG, PNG, dll)");
+        return;
+      }
+      setUploadedFile(file);
       const reader = new FileReader();
-      reader.onloadend = () => setPhotoPreview(reader.result as string);
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string);
+        if (errors.photo) setErrors({ ...errors, photo: "" });
+      };
       reader.readAsDataURL(file);
+    }
+  };
+
+  // Upload file to Supabase storage
+  const uploadFileToSupabase = async (file: File, userId: string): Promise<string> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}/${Date.now()}.${fileExt}`;
+      
+      const { data, error } = await supabase.storage
+        .from('id-documents')
+        .upload(fileName, file);
+      
+      if (error) throw error;
+      
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('id-documents')
+        .getPublicUrl(fileName);
+      
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      throw new Error('Gagal mengupload file ke storage');
     }
   };
 
@@ -615,40 +658,6 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
 
   return (
     <div className="space-y-6">
-      {/* Progress Stepper */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200">
-        <div className="flex items-center justify-between">
-          {checkoutSteps.map((step, index) => (
-            <div key={step.id} className="flex items-center">
-              <div className="flex flex-col items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
-                  step.status === 'completed' 
-                    ? 'bg-green-500 text-white' 
-                    : step.status === 'current'
-                    ? 'bg-slate-900 text-white ring-2 ring-slate-900 ring-offset-2'
-                    : 'bg-slate-200 text-slate-400'
-                }`}>
-                  {step.status === 'completed' ? '✓' : step.id}
-                </div>
-                <span className={`text-[9px] font-medium mt-1 ${
-                  step.status === 'current' 
-                    ? 'text-slate-900' 
-                    : step.status === 'completed'
-                    ? 'text-green-600'
-                    : 'text-slate-400'
-                }`}>
-                  {step.name}
-                </span>
-              </div>
-              {index < checkoutSteps.length - 1 && (
-                <div className={`w-8 h-0.5 mx-2 transition-all ${
-                  step.status === 'completed' ? 'bg-green-500' : 'bg-slate-200'
-                }`} />
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* Security Indicator */}
       <div className="bg-blue-50 rounded-xl p-3 border border-blue-200">
@@ -856,6 +865,7 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
                 type="button"
                 onClick={() => {
                   setPhotoPreview(null);
+                  setUploadedFile(null);
                   // Opsional: reset error foto saat user menghapus preview untuk mencoba lagi
                   if (errors.photo) setErrors({ ...errors, photo: "" });
                 }}
@@ -909,6 +919,28 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
               <p className="text-[9px] text-slate-400 mt-2 text-center max-w-xs">
                 Untuk keamanan dan validasi, foto harus diambil langsung melalui kamera
               </p>
+              
+              {/* File Upload Option */}
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <p className="text-[9px] text-slate-500 text-center mb-2">Atau upload file dari perangkat</p>
+                <input
+                  type="file"
+                  id="id-upload"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="id-upload"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer transition-colors"
+                >
+                  <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  <span className="text-[10px] font-medium text-slate-700">Upload File</span>
+                </label>
+                <p className="text-[8px] text-slate-400 mt-2 text-center">Maksimal 5MB (JPG, PNG)</p>
+              </div>
               
               {/* Manual Upload Fallback */}
               {showManualUpload && (

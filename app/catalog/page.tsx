@@ -127,7 +127,7 @@ export default function CatalogPage() {
 
   return (
     <div className="min-h-screen bg-[#F7F8FA]">
-      <main className="bg-[#FDFCFB] pt-24 pb-8">
+      <main className="bg-[#FDFCFB] pt-2 pb-8">
       <div className="max-w-7xl mx-auto px-6">
         
         {/* Top Navigation Row */}
@@ -183,10 +183,10 @@ export default function CatalogPage() {
       {/* Banner Header */}
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
+        <div className="flex flex-col lg:flex-row gap-2">
           {/* Sidebar Filter */}
           <aside className="lg:w-64 shrink-0">
-            <div className="sticky top-24">
+            <div className="sticky top-31">
               <CatalogFilters
                 dbCategories={dbCategories}
                 selectedCategory={selectedCategory}
@@ -207,7 +207,7 @@ export default function CatalogPage() {
 
             {/* Content Area */}
             {loading ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {[...Array(10)].map((_, i) => (
                   <div
                     key={i}

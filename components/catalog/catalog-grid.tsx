@@ -22,7 +22,7 @@ export function CatalogGrid({ equipment }: { equipment: any[] }) {
   }, [equipment]);
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-2">
       {equipment.map((product) => {
         const inventory = inventoryStatus[product.id];
         const isAvailable = inventory && inventory.availableUnits > 0;
@@ -36,7 +36,7 @@ export function CatalogGrid({ equipment }: { equipment: any[] }) {
           >
             <Card className="group flex flex-col h-full rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-all overflow-hidden cursor-pointer">
               {/* Image Section */}
-              <div className="relative aspect-square bg-slate-100 overflow-hidden rounded-t-xl">
+              <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden rounded-t-xl">
                 {product.image_url ? (
                   <Image
                     src={product.image_url}
@@ -60,22 +60,22 @@ export function CatalogGrid({ equipment }: { equipment: any[] }) {
               </div>
 
               {/* Content Section */}
-              <div className="p-3 flex flex-col flex-grow">
+              <div className="p-2.5 flex flex-col flex-grow">
                 {/* Nama Produk */}
-                <h3 className="text-[13px] font-medium text-slate-700 line-clamp-2 mb-1 min-h-[36px] group-hover:text-[#1B4332] transition-colors">
+                <h3 className="text-[12px] font-medium text-slate-700 line-clamp-2 mb-1 min-h-[32px] group-hover:text-[#1B4332] transition-colors">
                   {product.name}
                 </h3>
 
                 {/* Harga */}
-                <div className="mb-2">
-                  <span className="text-base font-bold text-[#FF6B35]">
+                <div className="mb-1.5">
+                  <span className="text-sm font-bold text-[#FF6B35]">
                     Rp{price.toLocaleString("id-ID")}
                   </span>
-                  <span className="text-[10px] text-slate-400 ml-1">/hari</span>
+                  <span className="text-[9px] text-slate-400 ml-1">/hari</span>
                 </div>
 
                 {/* Rating & Stats (Footer Card) */}
-                <div className="mt-auto pt-2 flex items-center gap-1 text-[10px] text-slate-500 font-medium border-t border-slate-50">
+                <div className="mt-auto pt-1.5 flex items-center gap-1 text-[9px] text-slate-500 font-medium border-t border-slate-50">
                   <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
                   <span>4.9</span>
                   <span className="text-slate-300">|</span>

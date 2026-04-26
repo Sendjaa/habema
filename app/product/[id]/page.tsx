@@ -143,6 +143,7 @@ export default function ProductDetailPage({
       capacity: product.capacity,
       material: product.material,
       weather_rating: product.weather_rating,
+      brand: product.brand,
     });
 
     toast.success(`${product.name} masuk keranjang!`, {

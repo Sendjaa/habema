@@ -82,11 +82,11 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-habema-32x32.ico', sizes: '32x32', type: 'image/x-icon' },
       { url: '/icon.svg', type: 'image/svg+xml' },
     ],
     apple: '/apple-touch-icon.png',
-    shortcut: '/favicon-16x16.png',
+    shortcut: '/favicon-habema-32x32.ico',
   },
   manifest: '/site.webmanifest',
 }
@@ -114,6 +114,9 @@ export default function RootLayout({
       className={`${fraunces.variable} ${dmSans.variable} bg-background scroll-smooth`}
       suppressHydrationWarning
     >
+      <head>
+        <link rel="icon" type="image/x-icon" sizes="32x32" href="/favicon-habema-32x32.ico" />
+      </head>
       <body className="font-body antialiased bg-background text-foreground min-h-screen">
         {/* Toast notifications */}
         <Toaster

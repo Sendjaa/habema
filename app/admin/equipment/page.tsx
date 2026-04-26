@@ -35,11 +35,13 @@ type FormData = {
   category: string
   image_url: string
   is_available: boolean
+  brand: string
+  capacity: string
 }
 
 const EMPTY_FORM: FormData = {
   name: '', description: '', price_per_day: '', stock_quantity: '',
-  category: '', image_url: '', is_available: true,
+  category: '', image_url: '', is_available: true, brand: '', capacity: '',
 }
 
 const CATEGORIES = ['Tenda', 'Tidur', 'Carrier', 'Penerangan', 'Masak', 'Navigasi', 'Pakaian', 'Lainnya']
@@ -76,6 +78,8 @@ function EquipmentModal({
         category: editingItem.category ?? '',
         image_url: editingItem.image_url ?? '',
         is_available: editingItem.is_available,
+        brand: (editingItem as any).brand ?? '',
+        capacity: (editingItem as any).capacity ?? '',
       })
     } else {
       setForm(EMPTY_FORM)
@@ -225,6 +229,32 @@ function EquipmentModal({
               />
             </div>
 
+            {/* Brand + Capacity */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] text-stone-400 font-medium uppercase tracking-widest">
+                  Brand/Merk
+                </Label>
+                <Input
+                  value={form.brand}
+                  onChange={(e) => set('brand', e.target.value)}
+                  placeholder="cth. Coleman"
+                  className="h-10 text-sm rounded-lg border-stone-200 bg-stone-50 focus:border-emerald-500 focus:bg-white"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] text-stone-400 font-medium uppercase tracking-widest">
+                  Kapasitas
+                </Label>
+                <Input
+                  value={form.capacity}
+                  onChange={(e) => set('capacity', e.target.value)}
+                  placeholder="cth. 4 Orang"
+                  className="h-10 text-sm rounded-lg border-stone-200 bg-stone-50 focus:border-emerald-500 focus:bg-white"
+                />
+              </div>
+            </div>
+
             {/* Preview gambar */}
             {form.image_url && (
               <div className="rounded-lg overflow-hidden border border-stone-200 h-28">
@@ -367,6 +397,8 @@ export default function EquipmentManagement() {
         stock_quantity: parseInt(form.stock_quantity),
         category: form.category || null,
         image_url: form.image_url.trim() || null,
+        brand: form.brand.trim() || null,
+        capacity: form.capacity.trim() || null,
         is_available: form.is_available,
       }
 

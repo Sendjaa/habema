@@ -12,6 +12,8 @@ export interface Product {
   price: number;
   quantity: number;
   weight_score: number; // 1 (kecil), 5 (sedang), 10 (besar)
+  brand?: string;
+  capacity?: string;
   [key: string]: any;
 }
 

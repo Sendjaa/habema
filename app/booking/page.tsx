@@ -1,5 +1,6 @@
 "use client";
 
+// ==================== IMPORTS ====================
 import { useState, Suspense, useEffect } from "react";
 import type { User } from "@supabase/supabase-js";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -71,12 +72,14 @@ import {
 import { useCartStore } from "@/lib/store";
 import { toast } from "sonner";
 
+// ==================== MAIN COMPONENT ====================
 function BookingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const productId = searchParams.get("id");
   const quantity = parseInt(searchParams.get("quantity") || "1");
 
+  // ==================== STATE DECLARATIONS ====================
   // hybrid checkout
   const [user, setUser] = useState<User | null>(null);
   const transaction = useCartStore((state) => state.currentTransaction);
@@ -119,6 +122,7 @@ function BookingContent() {
   const [deliveryTime, setDeliveryTime] = useState<'morning' | 'afternoon' | 'evening' | 'flexible'>('flexible');
   const [accessibilityNotes, setAccessibilityNotes] = useState('');
   
+  // ==================== EFFECTS ====================
   useEffect(() => {
     const checkUser = async () => {
       const { data } = await supabase.auth.getSession();
@@ -148,6 +152,7 @@ function BookingContent() {
     fetchProduct();
   }, [productId]);
 
+  // ==================== CALCULATIONS ====================
   const days =
     startDate && endDate ? calculateDaysBetween(startDate, endDate) : 0;
   const pricePerNight = product ? Number(product.price_per_night) : 0;
@@ -163,76 +168,12 @@ function BookingContent() {
   const totalPrice = subtotal + deliveryFee;
   const setTransactionData = useCartStore((state) => state.setTransaction);
 
-  // Calculate delivery cost when address changes
-  const calculateDeliveryCost = async (address: string) => {
-    if (!address || deliveryOption !== 'delivery') {
-      setDeliveryCost(null);
-      setDeliveryError(null);
-      return;
-    }
-
-    setIsCalculatingDelivery(true);
-    setDeliveryError(null);
-
-    try {
-      // Validate address first
-      if (!address || address.trim().length < 5) {
-        throw new Error('Alamat tidak lengkap. Masukkan alamat yang lengkap dengan nomor rumah.');
-      }
-
-      // Prepare delivery instructions
-      const instructions = {
-        specialLocation: specialLocationType !== 'standard' ? {
-          type: specialLocationType,
-          name: specialLocationType === 'camping' ? 'Camping Area' :
-                specialLocationType === 'outdoor' ? 'Outdoor Event' :
-                specialLocationType === 'remote' ? 'Remote Area' :
-                specialLocationType === 'emergency' ? 'Emergency Delivery' : '',
-          description: '',
-          surcharge: 0,
-          requirements: [],
-          icon: ''
-        } : undefined,
-        emergencyContact: emergencyContact.name ? emergencyContact : undefined,
-        gpsCoordinates: gpsCoordinates.latitude && gpsCoordinates.longitude ? {
-          latitude: parseFloat(gpsCoordinates.latitude),
-          longitude: parseFloat(gpsCoordinates.longitude)
-        } : undefined,
-        specialInstructions: deliveryInstructions,
-        deliveryTime,
-        accessibilityNotes
-      };
-
-      const cost = await leafletService.calculateDeliveryCost(address, instructions);
-      setDeliveryCost(cost);
-    } catch (error: any) {
-      console.error('Delivery cost calculation error:', error);
-      setDeliveryError(error.message || 'Gagal menghitung biaya pengantaran');
-      setDeliveryCost(null);
-    } finally {
-      setIsCalculatingDelivery(false);
-    }
-  };
-
-  // Debounced address calculation
-  useEffect(() => {
-    if (deliveryOption === 'delivery' && deliveryAddress) {
-      const timeoutId = setTimeout(() => {
-        calculateDeliveryCost(deliveryAddress);
-      }, 1000); // Wait 1 second after user stops typing
-
-      return () => clearTimeout(timeoutId);
-    } else {
-      setDeliveryCost(null);
-      setDeliveryError(null);
-    }
-  }, [deliveryAddress, deliveryOption, specialLocationType, emergencyContact, gpsCoordinates, deliveryInstructions, deliveryTime, accessibilityNotes]);
-
   const handleDateSelect = (start: Date, end: Date) => {
     setStartDate(start);
     setEndDate(end);
   };
 
+  // ==================== BOOKING HANDLERS ====================
   const handleFinalAction = async () => {
     try {
       // 1. Ambil data user yang sedang login dari Supabase Auth
@@ -359,29 +300,6 @@ function BookingContent() {
         console.log('Payment Method:', paymentMethod);
         console.log('=================================');
         
-        // Save anonymous booking to localStorage for tracking
-        const anonymousBooking = {
-          id: newBooking.id, // Use database booking ID
-          localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Local reference
-          productId: productId,
-          productName: product?.name,
-          quantity: quantity,
-          startDate: startDate?.toISOString(),
-          endDate: endDate?.toISOString(),
-          days: days,
-          totalPrice: totalPrice,
-          paymentMethod: paymentMethod,
-          identityData: idData,
-          createdAt: new Date().toISOString(),
-          status: 'pending'
-        };
-        
-        // Get existing anonymous bookings
-        const existingBookings = JSON.parse(localStorage.getItem('anonymousBookings') || '[]');
-        existingBookings.push(anonymousBooking);
-        localStorage.setItem('anonymousBookings', JSON.stringify(existingBookings));
-        
-        console.log('Anonymous booking saved to localStorage:', anonymousBooking);
         
         // Update transaction data with booking info
         setTransactionData({
@@ -569,6 +487,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
     }
   };
 
+  // ==================== PAYMENT HANDLERS ====================
   const handleMidtransPayment = async (bookingId: string) => {
     setIsProcessingPayment(true);
     
@@ -743,7 +662,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
     }
   };
 
-  
+  // ==================== LOADING & ERROR STATES ====================
   if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center text-slate-400 animate-pulse font-medium">
@@ -757,6 +676,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
       </div>
     );
 
+  // ==================== SUCCESS STATE ====================
   if (isSuccess) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
@@ -783,9 +703,10 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
     );
   }
 
+  // ==================== MAIN RENDER ====================
   return (
     <div className="min-h-screen bg-slate-50/50 pb-24">
-      <div className="max-w-5xl mx-auto px-4 py-10">
+      <div className="max-w-7xl mx-auto px-4 py-10">
         <header className="mb-10">
           <div className="flex items-center gap-2 mb-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
@@ -798,8 +719,54 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
           </h1>
         </header>
 
+        {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          <div className="lg:col-span-8 space-y-4">
+          {/* Left Column: Stepper */}
+          <div className="hidden lg:block lg:col-span-3 space-y-4 sticky top-30">
+            <div className="bg-white rounded-2xl p-4 border border-slate-200">
+              <h3 className="text-sm font-bold text-slate-900 mb-4">Langkah Pemesanan</h3>
+              <div className="space-y-4">
+                {[
+                  { id: 1, name: 'Jadwal Sewa', status: step >= 1 ? (step > 1 ? 'completed' : 'current') : 'upcoming' },
+                  { id: 2, name: 'Syarat & Kondisi', status: step >= 2 ? (step > 2 ? 'completed' : 'current') : 'upcoming' },
+                  { id: 3, name: 'Verifikasi Identitas', status: step >= 3 ? (step > 3 ? 'completed' : 'current') : 'upcoming' },
+                  { id: 4, name: 'Pembayaran', status: step >= 4 ? 'current' : 'upcoming' },
+                ].map((stepItem, index) => (
+                  <div key={stepItem.id} className="flex items-start gap-3">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 transition-all ${
+                      stepItem.status === 'completed' 
+                        ? 'bg-emerald-600 text-white' 
+                        : stepItem.status === 'current'
+                        ? 'bg-slate-900 text-white ring-2 ring-slate-900 ring-offset-2'
+                        : 'bg-slate-200 text-slate-400'
+                    }`}>
+                      {stepItem.status === 'completed' ? '✓' : stepItem.id}
+                    </div>
+                    <div className="flex-1">
+                      <span className={`text-xs font-medium ${
+                        stepItem.status === 'current' 
+                          ? 'text-slate-900' 
+                          : stepItem.status === 'completed'
+                          ? 'text-emerald-600'
+                          : 'text-slate-400'
+                      }`}>
+                        {stepItem.name}
+                      </span>
+                      {index < 3 && (
+                        <div className={`w-0.5 h-4 mt-1 ml-3 transition-all ${
+                          stepItem.status === 'completed' ? 'bg-emerald-600' : 'bg-slate-200'
+                        }`} />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Middle Column: Booking Steps */}
+          <div className="lg:col-span-6 space-y-4">
+            {/* Step 1: Jadwal Sewa */}
             <StepCard
               number={1}
               title="Jadwal Sewa"
@@ -841,12 +808,19 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                     
                     <button
                       type="button"
-                      onClick={() => setDeliveryOption('delivery')}
+                      onClick={() => {
+                        if (!user) {
+                          toast.error("Login diperlukan untuk menggunakan layanan pengantaran");
+                          return;
+                        }
+                        setDeliveryOption('delivery');
+                      }}
+                      disabled={!user}
                       className={`p-4 rounded-xl border-2 transition-all ${
                         deliveryOption === 'delivery'
                           ? 'border-emerald-600 bg-emerald-50 text-emerald-900'
                           : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                      }`}
+                      } ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       <div className="text-center">
                         <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-current/10 flex items-center justify-center">
@@ -856,14 +830,14 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                         </div>
                         <div className="text-sm font-medium">Diantar</div>
                         <div className="text-xs opacity-75">
-                          {isCalculatingDelivery ? 'Menghitung...' : deliveryCost ? leafletService.formatCost(deliveryCost.cost) : 'Biaya tambahan'}
+                          {!user ? 'Login diperlukan' : isCalculatingDelivery ? 'Menghitung...' : deliveryCost ? leafletService.formatCost(deliveryCost.cost) : 'Biaya tambahan'}
                         </div>
                       </div>
                     </button>
                   </div>
                   
                   {/* Delivery Zone Info Banner */}
-                  {deliveryOption === 'delivery' && (
+                  {/* {deliveryOption === 'delivery' && (
                     <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4">
                       <div className="flex items-start gap-2">
                         <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -873,7 +847,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                         </div>
                       </div>
                     </div>
-                  )}
+                  )} */}
                   
                   {/* Address Input for Delivery */}
                   {deliveryOption === 'delivery' && (
@@ -885,17 +859,17 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                         onLocationChange={(location) => {
                           setDeliveryAddress(location.fullAddress);
                         }}
-                        onDeliveryCostChange={(cost) => {
-                          // Update delivery cost state
-                          if (cost > 0) {
+                        onDeliveryCostChange={(deliveryData) => {
+                          // Update delivery cost state with full data from LocationPicker
+                          if (deliveryData && deliveryData.cost > 0) {
                             setDeliveryCost({
-                              cost,
-                              distance: 0, // Will be updated by LocationPicker
+                              cost: deliveryData.cost,
+                              distance: deliveryData.distance || 0,
                               duration: '',
                               durationMinutes: 0,
-                              breakdown: {
+                              breakdown: deliveryData.breakdown || {
                                 baseCost: 15000,
-                                distanceCost: cost - 15000,
+                                distanceCost: deliveryData.cost - 15000,
                                 volumeSurcharge: 0,
                                 vehicleType: 'motor'
                               },
@@ -904,70 +878,8 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                           }
                         }}
                       />
-                      
-                      {/* Delivery Cost Breakdown */}
-                      {deliveryCost && (
-                        <div className={`${deliveryCost.locationType !== 'standard' ? 'bg-orange-50 border-orange-200' : 'bg-emerald-50 border-emerald-200'} border rounded-xl p-3`}>
-                          <div className="flex items-center gap-2 mb-2">
-                            <MapPin className={`w-4 h-4 ${deliveryCost.locationType !== 'standard' ? 'text-orange-600' : 'text-emerald-600'}`} />
-                            <span className={`text-sm font-medium ${deliveryCost.locationType !== 'standard' ? 'text-orange-900' : 'text-emerald-900'}`}>
-                              Detail Pengantaran
-                              {deliveryCost.locationType !== 'standard' && (
-                                <span className="ml-2 text-xs px-2 py-1 bg-orange-200 text-orange-800 rounded-full">
-                                  {deliveryCost.locationType === 'camping' ? '🏕️ Camping' :
-                                   deliveryCost.locationType === 'outdoor' ? '🎪 Outdoor Event' :
-                                   deliveryCost.locationType === 'remote' ? '🏔️ Remote' :
-                                   deliveryCost.locationType === 'emergency' ? '🚨 Emergency' : 'Special'}
-                                </span>
-                              )}
-                            </span>
-                          </div>
-                          <div className="space-y-1 text-xs">
-                            <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
-                              <span>Jarak:</span>
-                              <span className="font-medium">{deliveryCost.distance} km</span>
-                            </div>
-                            <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
-                              <span>Estimasi waktu:</span>
-                              <span className="font-medium">{deliveryCost.duration}</span>
-                            </div>
-                            <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
-                              <span>Biaya dasar:</span>
-                              <span className="font-medium">{leafletService.formatCost(deliveryCost.breakdown.baseCost)}</span>
-                            </div>
-                            <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
-                              <span>Biaya jarak ({deliveryCost.distance} km × Rp2.000):</span>
-                              <span className="font-medium">{leafletService.formatCost(deliveryCost.breakdown.distanceCost)}</span>
-                            </div>
-                            {deliveryCost.locationType !== 'standard' && deliveryCost.locationType && (
-                              <div className="flex justify-between text-orange-800">
-                                <span>Tambahan lokasi khusus:</span>
-                                <span className="font-medium">
-                                  {deliveryCost.locationType === 'camping' ? '+25%' :
-                                   deliveryCost.locationType === 'outdoor' ? '+20%' :
-                                   deliveryCost.locationType === 'remote' ? '+35%' :
-                                   deliveryCost.locationType === 'emergency' ? '+50%' : '+0%'}
-                                </span>
-                              </div>
-                            )}
-                            {deliveryCost.specialNotes && (
-                              <div className={`text-xs ${deliveryCost.locationType !== 'standard' ? 'text-orange-700 bg-orange-100' : 'text-emerald-700 bg-emerald-100'} p-2 rounded-lg mt-2`}>
-                                <span className="font-medium">📍 {deliveryCost.specialNotes}</span>
-                              </div>
-                            )}
-                            <div className={`border-t ${deliveryCost.locationType !== 'standard' ? 'border-orange-300' : 'border-emerald-300'} pt-1 mt-1`}>
-                              <div className="flex justify-between font-bold">
-                                <span className={deliveryCost.locationType !== 'standard' ? 'text-orange-900' : 'text-emerald-900'}>
-                                  Total biaya pengantaran:
-                                </span>
-                                <span className={deliveryCost.locationType !== 'standard' ? 'text-orange-900' : 'text-emerald-900'}>
-                                  {leafletService.formatCost(deliveryCost.cost)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+
+
                       
                       {/* Error Message */}
                       {deliveryError && (
@@ -1094,15 +1006,15 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                           onChange={(e) => setDeliveryTime(e.target.value as any)}
                           className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         >
-                          <option value="flexible">⏰ Fleksibel</option>
-                          <option value="morning">🌅 Pagi (08:00 - 12:00)</option>
-                          <option value="afternoon">☀️ Siang (12:00 - 16:00)</option>
-                          <option value="evening">🌆 Sore (16:00 - 18:00)</option>
+                          <option value="flexible">Fleksibel</option>
+                          <option value="morning">Pagi (08:00 - 12:00)</option>
+                          <option value="afternoon">Siang (12:00 - 16:00)</option>
+                          <option value="evening">Sore (16:00 - 18:00)</option>
                         </select>
                       </div>
 
                       {/* Special Instructions */}
-                      <div className="space-y-2">
+                      {/* <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-700">
                           Instruksi Khusus {specialLocationType !== 'standard' ? '(Penting)' : '(Opsional)'}
                         </label>
@@ -1123,7 +1035,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                           }`}
                           rows={2}
                         />
-                      </div>
+                      </div> */}
 
                       {/* Accessibility Notes */}
                       <div className="space-y-2">
@@ -1177,6 +1089,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
               )}
             </StepCard>
 
+            {/* Step 2: Syarat & Kondisi */}
             <StepCard
               number={2}
               title="Syarat & Kondisi"
@@ -1194,6 +1107,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
               />
             </StepCard>
 
+            {/* Step 3: Verifikasi Identitas */}
             <StepCard
               number={3}
               title="Verifikasi Identitas"
@@ -1210,7 +1124,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
               />
             </StepCard>
 
-            {/* pembayaran */}
+            {/* Step 4: Metode Pembayaran */}
             <StepCard
               number={4}
               title="Metode Pembayaran"
@@ -1354,7 +1268,8 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
             </StepCard>
           </div>
 
-          <aside className="lg:col-span-4 sticky top-30">
+          {/* Right Column: Order Summary */}
+          <aside className="lg:col-span-3 sticky top-30">
             <Card className="border-none shadow-sm ring-1 ring-slate-200 rounded-2xl overflow-hidden bg-white">
               <div className="p-5 border-b border-slate-50 flex items-center gap-2">
                 <Info className="w-4 h-4 text-slate-400" />
@@ -1423,6 +1338,70 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                     </span>
                   </div>
                 </div>
+
+                {/* Delivery Cost Breakdown */}
+                {deliveryCost && (
+                  <div className={`${deliveryCost.locationType !== 'standard' ? 'bg-orange-50 border-orange-200' : 'bg-emerald-50 border-emerald-200'} border rounded-xl p-3 mt-4`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <MapPin className={`w-4 h-4 ${deliveryCost.locationType !== 'standard' ? 'text-orange-600' : 'text-emerald-600'}`} />
+                      <span className={`text-sm font-medium ${deliveryCost.locationType !== 'standard' ? 'text-orange-900' : 'text-emerald-900'}`}>
+                        Detail Pengantaran
+                        {deliveryCost.locationType !== 'standard' && (
+                          <span className="ml-2 text-xs px-2 py-1 bg-orange-200 text-orange-800 rounded-full">
+                            {deliveryCost.locationType === 'camping' ? '🏕️ Camping' :
+                             deliveryCost.locationType === 'outdoor' ? '🎪 Outdoor Event' :
+                             deliveryCost.locationType === 'remote' ? '🏔️ Remote' :
+                             deliveryCost.locationType === 'emergency' ? '🚨 Emergency' : 'Special'}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="space-y-1 text-xs">
+                      <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
+                        <span>Jarak:</span>
+                        <span className="font-medium">{deliveryCost.distance} km</span>
+                      </div>
+                      <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
+                        <span>Estimasi waktu:</span>
+                        <span className="font-medium">{deliveryCost.duration}</span>
+                      </div>
+                      <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
+                        <span>Biaya dasar:</span>
+                        <span className="font-medium">{leafletService.formatCost(deliveryCost.breakdown.baseCost)}</span>
+                      </div>
+                      <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
+                        <span>Biaya jarak ({deliveryCost.distance} km × Rp2.000):</span>
+                        <span className="font-medium">{leafletService.formatCost(deliveryCost.breakdown.distanceCost)}</span>
+                      </div>
+                      {deliveryCost.locationType !== 'standard' && deliveryCost.locationType && (
+                        <div className="flex justify-between text-orange-800">
+                          <span>Tambahan lokasi khusus:</span>
+                          <span className="font-medium">
+                            {deliveryCost.locationType === 'camping' ? '+25%' :
+                             deliveryCost.locationType === 'outdoor' ? '+20%' :
+                             deliveryCost.locationType === 'remote' ? '+35%' :
+                             deliveryCost.locationType === 'emergency' ? '+50%' : '+0%'}
+                          </span>
+                        </div>
+                      )}
+                      {deliveryCost.specialNotes && (
+                        <div className={`text-xs ${deliveryCost.locationType !== 'standard' ? 'text-orange-700 bg-orange-100' : 'text-emerald-700 bg-emerald-100'} p-2 rounded-lg mt-2`}>
+                          <span className="font-medium">📍 {deliveryCost.specialNotes}</span>
+                        </div>
+                      )}
+                      <div className={`border-t ${deliveryCost.locationType !== 'standard' ? 'border-orange-300' : 'border-emerald-300'} pt-1 mt-1`}>
+                        <div className="flex justify-between font-bold">
+                          <span className={deliveryCost.locationType !== 'standard' ? 'text-orange-900' : 'text-emerald-900'}>
+                            Total biaya pengantaran:
+                          </span>
+                          <span className={deliveryCost.locationType !== 'standard' ? 'text-orange-900' : 'text-emerald-900'}>
+                            {leafletService.formatCost(deliveryCost.cost)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
           </aside>
@@ -1432,6 +1411,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
   );
 }
 
+// ==================== STEP CARD COMPONENT ====================
 function StepCard({
   number,
   title,
@@ -1466,6 +1446,7 @@ function StepCard({
   );
 }
 
+// ==================== PAGE WRAPPER ====================
 export default function BookingPage() {
   return (
     <Suspense

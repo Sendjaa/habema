@@ -8,7 +8,7 @@ import { useCartStore } from "@/lib/store";
 
 interface LocationPickerProps {
   onLocationChange?: (location: LocationData) => void;
-  onDeliveryCostChange?: (cost: number) => void;
+  onDeliveryCostChange?: (deliveryData: any) => void;
 }
 
 const BASE_CAMP = {
@@ -75,7 +75,7 @@ export function LocationPicker({ onLocationChange, onDeliveryCostChange }: Locat
     if (selectedDistrict && selectedRegency) {
       calculateDeliveryCost();
     }
-  }, [selectedDistrict]);
+  }, [selectedDistrict, selectedVillage, villageInput]);
 
   // Update Zustand store and notify parent
   useEffect(() => {
@@ -100,8 +100,12 @@ export function LocationPicker({ onLocationChange, onDeliveryCostChange }: Locat
     
     setLocation(locationData);
     onLocationChange?.(locationData);
-    onDeliveryCostChange?.(deliveryCost || 0);
-  }, [selectedRegency, selectedDistrict, selectedVillage, villageInput, streetAddress, distance, deliveryCost]);
+    onDeliveryCostChange?.({
+      cost: deliveryCost,
+      distance: distance,
+      breakdown: deliveryBreakdown
+    });
+  }, [selectedRegency, selectedDistrict, selectedVillage, villageInput, streetAddress, distance, deliveryCost, deliveryBreakdown]);
 
   const loadRegencies = async () => {
     setLoading(true);
@@ -149,7 +153,12 @@ export function LocationPicker({ onLocationChange, onDeliveryCostChange }: Locat
     setError(null);
     
     try {
-      const address = `${selectedDistrict.name}, ${selectedRegency.name}, Jawa Barat`;
+      // Build more precise address including village if available
+      const villageName = selectedVillage ? selectedVillage.name : villageInput;
+      const address = villageName 
+        ? `${villageName}, ${selectedDistrict.name}, ${selectedRegency.name}, Jawa Barat`
+        : `${selectedDistrict.name}, ${selectedRegency.name}, Jawa Barat`;
+      
       const totalWeightScore = useCartStore.getState().getTotalWeightScore();
       const cost = await leafletService.calculateDeliveryCost(address, undefined, totalWeightScore);
       

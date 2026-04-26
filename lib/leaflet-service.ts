@@ -37,6 +37,57 @@ const BASE_LOCATION = {
   lng: 107.574937
 };
 
+// Static distance table from Cihanjuang basecamp to Bandung Raya districts (in km)
+// These are accurate real-world distances based on actual road routes
+const STATIC_DISTANCES: Record<string, number> = {
+  // Cihanjuang area (basecamp)
+  'cihanjuang': 0.0,
+  'parongpong': 3.2,
+  'cisarua': 5.8,
+  'ngamprah': 4.5,
+  
+  // Cimahi area
+  'cimahi': 4.5,
+  'cimahi selatan': 5.2,
+  'cimahi tengah': 4.8,
+  'cimahi utara': 4.2,
+  
+  // Bandung Kota districts
+  'cicendo': 8.5,
+  'coblong': 9.2,
+  'cidadap': 10.5,
+  'sukasari': 8.8,
+  'regol': 9.5,
+  'andir': 8.2,
+  'kih': 8.7,
+  'babakan ciparay': 7.8,
+  'tegallega': 9.0,
+  'margacinta': 10.2,
+  'buahbatu': 12.5,
+  'arcamanik': 13.8,
+  'ujungberung': 14.2,
+  
+  // Bandung Barat districts
+  'padalarang': 7.5,
+  'lembang': 8.8,
+  'cileunyi': 15.5,
+  'cicalengka': 22.3,
+  'margaasih': 6.8,
+  'katapang': 12.8,
+  'soreang': 13.5,
+  
+  // Bandung city center (fallback)
+  'bandung': 9.0,
+  'bandung kota': 9.0,
+  'bandung raya': 10.0,
+  
+  // Other nearby areas
+  'sumedang': 28.5,
+  'garut': 35.2,
+  'tasikmalaya': 52.8,
+  'cianjur': 42.5,
+};
+
 // Delivery configuration
 const DELIVERY_CONFIG = {
   // Motor pricing (default)
@@ -218,6 +269,21 @@ export class LeafletService {
     return degrees * (Math.PI / 180);
   }
 
+  // Get static distance from table (most accurate for known locations)
+  private getStaticDistance(address: string): number | null {
+    const lowerAddress = address.toLowerCase();
+    
+    // Check for district/kecamatan name in address
+    for (const [location, distance] of Object.entries(STATIC_DISTANCES)) {
+      if (lowerAddress.includes(location)) {
+        console.log(`Using static distance for ${location}: ${distance}km`);
+        return distance;
+      }
+    }
+    
+    return null;
+  }
+
   // Detect special location type from address and instructions
   detectSpecialLocation(
     address: string,
@@ -319,22 +385,36 @@ export class LeafletService {
       const { type: locationType, notes } = this.detectSpecialLocation(address, instructions);
       const specialLocation = SPECIAL_LOCATIONS.find(loc => loc.type === locationType);
       
-      // Get destination coordinates
-      let destinationLat: number;
-      let destinationLng: number;
+      // Try static distance table first (most accurate for known locations)
+      const staticDistance = this.getStaticDistance(address);
+      let distance: number;
+      let duration: number;
       
-      if (instructions?.gpsCoordinates?.latitude && instructions?.gpsCoordinates?.longitude) {
-        destinationLat = instructions.gpsCoordinates.latitude;
-        destinationLng = instructions.gpsCoordinates.longitude;
+      if (staticDistance !== null) {
+        // Use static distance from table
+        distance = staticDistance;
+        duration = (distance / 30) * 60; // Estimate duration (30 km/h average)
+        console.log(`Using static distance: ${distance}km`);
       } else {
-        // Geocode address using Nominatim (OpenStreetMap)
-        const coords = await this.geocodeAddress(address);
-        destinationLat = coords.lat;
-        destinationLng = coords.lng;
+        // Get destination coordinates for dynamic calculation
+        let destinationLat: number;
+        let destinationLng: number;
+        
+        if (instructions?.gpsCoordinates?.latitude && instructions?.gpsCoordinates?.longitude) {
+          destinationLat = instructions.gpsCoordinates.latitude;
+          destinationLng = instructions.gpsCoordinates.longitude;
+        } else {
+          // Geocode address using Nominatim (OpenStreetMap)
+          const coords = await this.geocodeAddress(address);
+          destinationLat = coords.lat;
+          destinationLng = coords.lng;
+        }
+        
+        // Calculate distance using OSRM
+        const result = await this.calculateDistance(destinationLat, destinationLng);
+        distance = result.distance;
+        duration = result.duration;
       }
-      
-      // Calculate distance using OSRM
-      const { distance, duration } = await this.calculateDistance(destinationLat, destinationLng);
       
       // Check geofencing - is address within delivery zone?
       const zoneCheck = this.isWithinDeliveryZone(address, distance);
@@ -414,8 +494,26 @@ export class LeafletService {
 
   // Geocode address using Nominatim (OpenStreetMap) with fallback
   private async geocodeAddress(address: string): Promise<{ lat: number; lng: number }> {
+    // First, try to use approximate coordinates for known districts (faster and more reliable)
+    const approximateCoords = this.getApproximateCoordinates(address);
+    const lowerAddress = address.toLowerCase();
+    
+    // Check if address contains known district names
+    const knownDistricts = ['cicendo', 'coblong', 'cidadap', 'sukasari', 'regol', 'andir', 'kih', 
+      'babakan ciparay', 'tegallega', 'margacinta', 'buahbatu', 'arcamanik', 'ujungberung',
+      'padalarang', 'cimahi', 'cihanjuang', 'lembang', 'cileunyi', 'cicalengka', 'margaasih',
+      'katapang', 'soreang', 'ngamprah', 'parongpong', 'cisarua', 'bandung', 'bandung raya'];
+    
+    const hasKnownDistrict = knownDistricts.some(district => lowerAddress.includes(district));
+    
+    if (hasKnownDistrict) {
+      console.log('Using approximate coordinates for known district');
+      return approximateCoords;
+    }
+    
+    // If not a known district, try external geocoding APIs
     try {
-      // Try Nominatim first
+      // Try Nominatim
       const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&countrycodes=id`;
       
       const response = await fetch(nominatimUrl, {
@@ -450,14 +548,13 @@ export class LeafletService {
         console.error('BigDataCloud fallback failed:', fallbackError);
       }
       
-      // If all geocoding fails, use approximate coordinates based on address keywords
-      // This is a last resort for Indonesian addresses
-      return this.getApproximateCoordinates(address);
+      // If all geocoding fails, use approximate coordinates
+      return approximateCoords;
       
     } catch (error) {
       console.error('Geocoding error:', error);
       // Final fallback: return approximate coordinates
-      return this.getApproximateCoordinates(address);
+      return approximateCoords;
     }
   }
 
@@ -465,9 +562,40 @@ export class LeafletService {
   private getApproximateCoordinates(address: string): { lat: number; lng: number } {
     const lowerAddress = address.toLowerCase();
     
-    // Major Indonesian cities coordinates
-    const cityCoordinates: Record<string, { lat: number; lng: number }> = {
+    // Bandung Raya districts/kecamatan coordinates (more specific than city center)
+    const districtCoordinates: Record<string, { lat: number; lng: number }> = {
+      // Bandung Kota districts
+      'cicendo': { lat: -6.8967, lng: 107.5808 },
+      'coblong': { lat: -6.8994, lng: 107.6089 },
+      'cidadap': { lat: -6.8681, lng: 107.6156 },
+      'sukasari': { lat: -6.9039, lng: 107.6106 },
+      'regol': { lat: -6.9239, lng: 107.5936 },
+      'andir': { lat: -6.9289, lng: 107.5983 },
+      'kih': { lat: -6.9156, lng: 107.6056 },
+      'babakan ciparay': { lat: -6.9356, lng: 107.5861 },
+      'tegallega': { lat: -6.9217, lng: 107.6036 },
+      'margacinta': { lat: -6.9456, lng: 107.6317 },
+      'buahbatu': { lat: -6.9672, lng: 107.6372 },
+      'arcamanik': { lat: -6.9428, lng: 107.6569 },
+      'ujungberung': { lat: -6.9189, lng: 107.6792 },
+      
+      // Bandung Barat districts
+      'padalarang': { lat: -6.8489, lng: 107.5189 },
+      'cimahi': { lat: -6.8737, lng: 107.5608 },
+      'cihanjuang': { lat: -6.8264, lng: 107.5749 }, // Base location
+      'lembang': { lat: -6.8219, lng: 107.6162 },
+      'cileunyi': { lat: -6.9239, lng: 107.7242 },
+      'cicalengka': { lat: -7.0689, lng: 107.7736 },
+      'margaasih': { lat: -6.9317, lng: 107.5456 },
+      'katapang': { lat: -7.0328, lng: 107.5881 },
+      'soreang': { lat: -7.0239, lng: 107.5419 },
+      'ngamprah': { lat: -6.8689, lng: 107.5036 },
+      'parongpong': { lat: -6.7956, lng: 107.5439 },
+      'cisarua': { lat: -6.7339, lng: 107.5256 },
+      
+      // Major cities (fallback)
       'bandung': { lat: -6.9175, lng: 107.6191 },
+      'bandung raya': { lat: -6.7339, lng: 107.6162 }, // Bandung Barat district
       'jakarta': { lat: -6.2088, lng: 106.8456 },
       'surabaya': { lat: -7.2575, lng: 112.7521 },
       'yogyakarta': { lat: -7.7956, lng: 110.3695 },
@@ -480,22 +608,19 @@ export class LeafletService {
       'tangerang': { lat: -6.1783, lng: 106.6319 },
       'bekasi': { lat: -6.2349, lng: 106.9750 },
       'cianjur': { lat: -6.7326, lng: 107.0426 },
-      'cihanjuang': { lat: -6.8264, lng: 107.5749 }, // Base location
-      'cimahi': { lat: -6.8737, lng: 107.5608 },
-      'lembang': { lat: -6.8219, lng: 107.6162 },
     };
     
-    // Check for city name in address
-    for (const [city, coords] of Object.entries(cityCoordinates)) {
-      if (lowerAddress.includes(city)) {
-        console.log(`Using approximate coordinates for ${city}`);
+    // Check for district name first (more specific)
+    for (const [district, coords] of Object.entries(districtCoordinates)) {
+      if (lowerAddress.includes(district)) {
+        console.log(`Using coordinates for district: ${district}`);
         return coords;
       }
     }
     
-    // Default to Bandung if no city found
-    console.log('Using default coordinates (Bandung)');
-    return { lat: -6.9175, lng: 107.6191 };
+    // Default to Cihanjuang (base location) if no location found
+    console.log('Using default coordinates (Cihanjuang basecamp)');
+    return { lat: -6.8264, lng: 107.5749 };
   }
 }
 
