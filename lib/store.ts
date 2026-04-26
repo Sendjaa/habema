@@ -56,6 +56,25 @@ interface TransactionData {
     accountNumber?: string;
   };
   totalPrice: number;
+  delivery?: {
+    option: string;
+    address: string | null;
+    note: string | null;
+    cost?: number;
+    distance?: number;
+    duration?: string | null;
+    breakdown?: {
+      baseCost: number;
+      distanceCost: number;
+      volumeSurcharge: number;
+      vehicleType: 'motor' | 'car';
+      surcharge?: number;
+    };
+  };
+  dates?: {
+    start: string | undefined;
+    end: string | undefined;
+  };
 }
 
 interface CartStore {

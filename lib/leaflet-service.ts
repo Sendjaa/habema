@@ -8,6 +8,7 @@ export interface DeliveryCost {
     distanceCost: number;
     volumeSurcharge: number;
     vehicleType: 'motor' | 'car';
+    surcharge?: number;
   };
   locationType: 'standard' | 'camping' | 'outdoor' | 'remote' | 'emergency';
   specialNotes?: string;

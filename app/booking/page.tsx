@@ -406,7 +406,7 @@ function BookingContent() {
             cost: deliveryOption === 'delivery' ? deliveryFee : 0,
             distance: deliveryOption === 'delivery' ? deliveryCost?.distance || 0 : 0,
             duration: deliveryOption === 'delivery' ? deliveryCost?.duration || null : null,
-            breakdown: deliveryOption === 'delivery' ? deliveryCost?.breakdown || null : null
+            breakdown: deliveryOption === 'delivery' ? deliveryCost?.breakdown || undefined : undefined
           },
           dates: {
             start: startDate?.toISOString(),
@@ -896,7 +896,8 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                               breakdown: {
                                 baseCost: 15000,
                                 distanceCost: cost - 15000,
-                                surcharge: 0
+                                volumeSurcharge: 0,
+                                vehicleType: 'motor'
                               },
                               locationType: 'standard'
                             });
@@ -939,7 +940,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                               <span className="font-medium">{leafletService.formatCost(deliveryCost.breakdown.distanceCost)}</span>
                             </div>
                             {deliveryCost.locationType !== 'standard' && deliveryCost.locationType && (
-                              <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
+                              <div className="flex justify-between text-orange-800">
                                 <span>Tambahan lokasi khusus:</span>
                                 <span className="font-medium">
                                   {deliveryCost.locationType === 'camping' ? '+25%' :
@@ -1165,7 +1166,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                  (deliveryOption === 'delivery' && deliveryAddress.trim() && deliveryCost && !deliveryError && !isCalculatingDelivery &&
                   // Additional validation for special locations
                   (specialLocationType === 'standard' || 
-                   (specialLocationType !== 'standard' && emergencyContact.name.trim() && emergencyContact.phone.trim()))
+                   (emergencyContact.name.trim() && emergencyContact.phone.trim()))
                  )) && (
                 <Button
                   onClick={() => setStep(2)}
