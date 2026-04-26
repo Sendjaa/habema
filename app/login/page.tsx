@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 type Mode = 'login' | 'register'
 
@@ -22,6 +22,8 @@ const COPY = {
 
 export default function AuthPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirectTo') || '/'
   const [mode, setMode] = useState<Mode>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -37,7 +39,7 @@ export default function AuthPage() {
     setLoading(true)
     try {
       if (mode === 'register') {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: {
@@ -46,18 +48,24 @@ export default function AuthPage() {
           },
         })
         if (error) throw error
-        alert('Cek email kamu untuk konfirmasi akun!')
-        setMode('login')
+        // Check if email confirmation is required
+        if (data.user && !data.session) {
+          alert('Cek email kamu untuk konfirmasi akun!')
+          setMode('login')
+        } else if (data.session) {
+          // Auto login if no email confirmation required
+          router.replace('/')
+        }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
         })
         if (error) throw error
-        router.replace('/')
+        router.replace(redirectTo)
       }
     } catch (err: any) {
-      alert(err.message)
+      alert(err.message || 'Terjadi kesalahan saat login')
     } finally {
       setLoading(false)
     }
@@ -66,7 +74,23 @@ export default function AuthPage() {
   const handleGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/booking` },
+      options: { redirectTo: `${window.location.origin}/` },
+    })
+    if (error) alert(error.message)
+  }
+
+  const handleFacebook = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'facebook',
+      options: { redirectTo: `${window.location.origin}/` },
+    })
+    if (error) alert(error.message)
+  }
+
+  const handleApple = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'apple',
+      options: { redirectTo: `${window.location.origin}/` },
     })
     if (error) alert(error.message)
   }
@@ -125,7 +149,7 @@ export default function AuthPage() {
                       <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.7 9.05 7.4c1.29.07 2.18.74 3.01.76 1.15-.22 2.25-.92 3.45-.84 1.46.12 2.56.7 3.28 1.86-3.03 1.8-2.3 5.75.28 6.87-.55 1.4-1.27 2.79-2.02 4.23M12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25" />
                     </svg>
                   ),
-                  onClick: undefined,
+                  onClick: handleApple,
                 },
                 {
                   label: 'Google',
@@ -145,7 +169,7 @@ export default function AuthPage() {
                       <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                     </svg>
                   ),
-                  onClick: undefined,
+                  onClick: handleFacebook,
                 },
               ].map(({ label, icon, onClick }) => (
                 <button

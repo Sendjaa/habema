@@ -77,9 +77,9 @@ export function CatalogGrid({ equipment }: { equipment: any[] }) {
                 {/* Rating & Stats (Footer Card) */}
                 <div className="mt-auto pt-1.5 flex items-center gap-1 text-[9px] text-slate-500 font-medium border-t border-slate-50">
                   <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                  <span>4.9</span>
+                  <span>{product.average_rating || 4.9}</span>
                   <span className="text-slate-300">|</span>
-                  <span>Terjual 100+</span>
+                  <span>Tersewa {product.rental_count || 0}x</span>
                 </div>
               </div>
             </Card>

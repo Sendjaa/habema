@@ -15,16 +15,26 @@ function NavbarUserControlInner() {
     
     const initializeAuth = async () => {
       try {
-        // 1. Cek sesi saat ini
-        const { data: { session } } = await supabase.auth.getSession();
+        // 1. Cek sesi saat ini dengan retry
+        let session = null;
+        for (let i = 0; i < 3; i++) {
+          const result = await supabase.auth.getSession();
+          session = result.data.session;
+          console.log(`[Navbar] Attempt ${i + 1}: Session found?`, !!session, session?.user?.email);
+          
+          if (session) break;
+          if (i < 2) await new Promise(resolve => setTimeout(resolve, 300));
+        }
         
         if (mounted) {
           setUser(session?.user ?? null);
           setIsLoading(false);
+          console.log('[Navbar] Final auth state:', session?.user ? 'logged in' : 'not logged in');
         }
 
         // 2. Listen perubahan auth (login/logout)
-        const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+          console.log('[Navbar] Auth state changed:', event, session?.user?.email);
           if (mounted) {
             setUser(session?.user ?? null);
             setIsLoading(false);
@@ -35,7 +45,7 @@ function NavbarUserControlInner() {
           authListener.subscription.unsubscribe();
         };
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        console.error('[Navbar] Auth initialization error:', error);
         if (mounted) {
           setIsLoading(false);
         }

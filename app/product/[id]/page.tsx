@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use, useEffect } from "react";
+import { useState, use, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInventoryStatus } from "@/lib/catalog-context";
+import { ReviewForm } from "@/components/product/review-form";
 import {
   ShoppingCart,
   Heart,
@@ -50,6 +51,8 @@ export default function ProductDetailPage({
   const [showSelection, setShowSelection] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showCart, setShowCart] = useState(false);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [showReviewForm, setShowReviewForm] = useState(false);
   // const [likedReviews, setLikedReviews] = useState<number[]>([]);
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<string>("Semua");
@@ -76,6 +79,44 @@ export default function ProductDetailPage({
   };
 
   const reviewFilters = ["Semua", "Dengan Foto", "Bintang 5", "Bintang 4"];
+
+  // Calculate rating statistics from reviews
+  const ratingStats = useMemo(() => {
+    if (reviews.length === 0) {
+      return {
+        average: 0,
+        total: 0,
+        distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+        satisfaction: 0,
+      };
+    }
+
+    const total = reviews.length;
+    const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+    const average = sum / total;
+
+    const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    reviews.forEach((r) => {
+      distribution[r.rating as keyof typeof distribution]++;
+    });
+
+    const satisfaction = Math.round((distribution[5] + distribution[4]) / total * 100);
+
+    return { average, total, distribution, satisfaction };
+  }, [reviews]);
+
+  const handleReviewSubmitted = () => {
+    // Refetch reviews after submission
+    if (product) {
+      supabase
+        .from("reviews")
+        .select("*, users(full_name)")
+        .eq("equipment_id", product.id)
+        .order("created_at", { ascending: false })
+        .then(({ data }) => setReviews(data || []));
+    }
+    setShowReviewForm(false);
+  };
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -112,6 +153,14 @@ export default function ProductDetailPage({
         .neq("id", product.id)
         .limit(8)
         .then(({ data }) => setPopularProducts(data || []));
+
+      // Fetch reviews
+      supabase
+        .from("reviews")
+        .select("*, users(full_name)")
+        .eq("equipment_id", product.id)
+        .order("created_at", { ascending: false })
+        .then(({ data }) => setReviews(data || []));
     }
   }, [product]);
 
@@ -618,42 +667,42 @@ export default function ProductDetailPage({
           <div className="flex flex-col md:flex-row gap-8 mb-8 pb-8 border-b border-slate-50">
             <div className="flex flex-col items-center justify-center text-center px-4 border-r border-slate-100 pr-8">
               <div className="text-5xl font-black text-slate-800 flex items-baseline gap-1">
-                4.9
+                {ratingStats.average.toFixed(1)}
                 <span className="text-lg text-slate-400 font-normal">/5.0</span>
               </div>
               <div className="flex gap-1 my-2">
                 {[...Array(5)].map((_, i) => (
                   <Star
                     key={i}
-                    className="w-5 h-5 fill-amber-400 text-amber-400"
+                    className={`w-5 h-5 ${i < Math.round(ratingStats.average) ? "fill-amber-400 text-amber-400" : "fill-slate-200 text-slate-200"}`}
                   />
                 ))}
               </div>
               <p className="text-xs text-slate-500 font-medium">
-                98% penyewa puas dengan alat ini
+                {ratingStats.satisfaction}% penyewa puas dengan alat ini ({ratingStats.total} review)
               </p>
             </div>
 
             <div className="flex-1 space-y-2">
-              {[5, 4, 3, 2, 1].map((star) => (
-                <div key={star} className="flex items-center gap-3 text-xs">
-                  <div className="flex items-center gap-1 w-6">
-                    <span className="font-bold text-slate-600">{star}</span>
-                    <Star className="w-3 h-3 fill-slate-400 text-slate-400" />
+              {[5, 4, 3, 2, 1].map((star) => {
+                const count = ratingStats.distribution[star as keyof typeof ratingStats.distribution];
+                const percentage = ratingStats.total > 0 ? (count / ratingStats.total) * 100 : 0;
+                return (
+                  <div key={star} className="flex items-center gap-3 text-xs">
+                    <div className="flex items-center gap-1 w-6">
+                      <span className="font-bold text-slate-600">{star}</span>
+                      <Star className="w-3 h-3 fill-slate-400 text-slate-400" />
+                    </div>
+                    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-amber-400 rounded-full transition-all duration-500"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                    <span className="text-slate-400 w-8 text-right">{count}</span>
                   </div>
-                  <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-amber-400 rounded-full transition-all duration-500"
-                      style={{
-                        width: star === 5 ? "85%" : star === 4 ? "10%" : "2%",
-                      }}
-                    />
-                  </div>
-                  <span className="text-slate-400 w-8 text-right">
-                    {star === 5 ? "42" : star === 4 ? "5" : "1"}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -677,88 +726,94 @@ export default function ProductDetailPage({
 
           {/* LIST KOMENTAR */}
           <div className="space-y-8">
-            {[0, 1].map((index) => (
-              <div key={index} className="space-y-3 group">
-                <div className="flex justify-between items-start">
-                  <div className="flex gap-3">
-                    <div className="w-10 h-10 rounded-full bg-slate-200 shrink-0 overflow-hidden relative">
-                      {/* Placeholder avatar */}
-                      <div className="absolute inset-0 flex items-center justify-center text-slate-400 font-bold">
-                        B
+            {reviews.length > 0 ? (
+              reviews.slice(0, 2).map((review) => (
+                <div key={review.id} className="space-y-3 group">
+                  <div className="flex justify-between items-start">
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-200 shrink-0 overflow-hidden relative">
+                        <div className="absolute inset-0 flex items-center justify-center text-slate-400 font-bold">
+                          {review.users?.full_name?.charAt(0) || "U"}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">
+                          {review.users?.full_name || "User"}
+                        </p>
+                        <div className="flex gap-0.5 my-0.5">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`w-3 h-3 ${i < review.rating ? "fill-amber-400 text-amber-400" : "fill-slate-200 text-slate-200"}`}
+                            />
+                          ))}
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                          {new Date(review.created_at).toLocaleDateString("id-ID", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                          })}
+                        </p>
                       </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-800">
-                        Budi Santoso {index + 1}
-                      </p>
-                      <div className="flex gap-0.5 my-0.5">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className="w-3 h-3 fill-amber-400 text-amber-400"
-                          />
-                        ))}
-                      </div>
-                      <p className="text-[10px] text-slate-400">
-                        {index === 0
-                          ? "2 hari yang lalu"
-                          : "1 minggu yang lalu"}{" "}
-                        • Variasi: Hijau Army
-                      </p>
-                    </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 text-slate-300 hover:text-slate-600"
-                  >
-                    <Settings2 className="w-4 h-4" />
-                  </Button>
-                </div>
 
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Barangnya sangat terawat, bersih, dan wanginya enak.
-                  Pengirimannya juga cepat banget. Sangat recommended buat yang
-                  mau naik gunung tapi males beli alat mahal.
-                </p>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    {review.comment}
+                  </p>
 
-                {/* FOTO DARI USER */}
-                <div className="flex gap-2">
-                  <div className="relative w-20 h-20 rounded-lg overflow-hidden border group-hover:border-[#1B4332] transition-colors cursor-zoom-in">
-                    <Image
-                      src={product.image_url}
-                      alt="user review"
-                      fill
-                      className="object-cover hover:scale-110 transition-transform duration-300"
-                    />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-[10px] text-slate-400 hover:text-slate-600"
+                    >
+                      <MessageSquare className="w-3 h-3 mr-1" />
+                      Balas
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-[10px] text-slate-400 hover:text-slate-600"
+                    >
+                      <MessageCircle className="w-3 h-3 mr-1" />
+                      Lapor
+                    </Button>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-4 pt-2">
-                  <button
-                    className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${
-                      isLiked[index]
-                        ? "text-[#1B4332]"
-                        : "text-slate-500 hover:text-[#1B4332]"
-                    }`}
-                    onClick={() => handleHelpfulClick(index)}
-                  >
-                    <TrendingUp
-                      className={`w-4 h-4 ${isLiked[index] ? "animate-bounce" : ""}`}
-                    />
-                    Membantu ({helpfulCount[index]})
-                  </button>
-                  <button
-                    className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#1B4332] transition-colors"
-                    onClick={() => alert("Fitur balas akan segera hadir!")}
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    Balas
-                  </button>
-                </div>
-                {index === 0 && <Separator className="mt-6 opacity-50" />}
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm text-slate-500">Belum ada ulasan untuk produk ini</p>
               </div>
-            ))}
+            )}
+          </div>
+
+          {/* ADD REVIEW BUTTON */}
+          <div className="mt-8 pt-8 border-t border-slate-50">
+            {!showReviewForm ? (
+              <Button
+                onClick={() => setShowReviewForm(true)}
+                className="w-full"
+              >
+                Tulis Ulasan
+              </Button>
+            ) : (
+              <div className="space-y-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowReviewForm(false)}
+                  className="w-full"
+                >
+                  Batal
+                </Button>
+                <ReviewForm
+                  equipmentId={product.id}
+                  onReviewSubmitted={handleReviewSubmitted}
+                />
+              </div>
+            )}
           </div>
         </div>
 
