@@ -42,11 +42,9 @@ const nextConfig = {
       removeUnusedCss: true,
     },
   },
-  // Turbopack configuration - empty to silence migration warning
-  turbopack: {},
   // CSS optimization
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+    removeConsole: process.env.NODE_ENV === 'production', 
   },
   // Compression and caching
   compress: true,
