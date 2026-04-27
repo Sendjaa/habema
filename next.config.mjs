@@ -41,6 +41,7 @@ const nextConfig = {
       inlineCss: true,
       removeUnusedCss: true,
     },
+    turbo: {},
   },
   // CSS optimization
   compiler: {

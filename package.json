@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
     "supabase:types": "supabase gen types typescript --project-id \"$NEXT_PUBLIC_SUPABASE_URL\" --schema public > types/supabase.ts"
