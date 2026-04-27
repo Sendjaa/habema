@@ -1,7 +1,9 @@
 'use client'
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter, useSearchParams } from 'next/navigation'
+
+export const dynamic = "force-dynamic"
 
 type Mode = 'login' | 'register'
 
@@ -20,7 +22,7 @@ const COPY = {
   },
 }
 
-export default function AuthPage() {
+function AuthPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo') || '/'
@@ -43,7 +45,7 @@ export default function AuthPage() {
           email: email.trim(),
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: '/',
             data: { full_name: `${firstName} ${lastName}`.trim() },
           },
         })
@@ -74,7 +76,7 @@ export default function AuthPage() {
   const handleGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/` },
+      options: { redirectTo: '/' },
     })
     if (error) alert(error.message)
   }
@@ -82,7 +84,7 @@ export default function AuthPage() {
   const handleFacebook = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'facebook',
-      options: { redirectTo: `${window.location.origin}/` },
+      options: { redirectTo: '/' },
     })
     if (error) alert(error.message)
   }
@@ -90,7 +92,7 @@ export default function AuthPage() {
   const handleApple = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
-      options: { redirectTo: `${window.location.origin}/` },
+      options: { redirectTo: '/' },
     })
     if (error) alert(error.message)
   }
@@ -166,7 +168,7 @@ export default function AuthPage() {
                   label: 'Facebook',
                   icon: (
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#1877F2">
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874V2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                     </svg>
                   ),
                   onClick: handleFacebook,
@@ -282,25 +284,17 @@ export default function AuthPage() {
               <p className="text-white text-[13px] font-medium leading-none">Parongpong, Bandung Barat</p>
             </div>
           </div>
-
-          {/* Floating card — right */}
-          {/* <div className="absolute right-6 bottom-24 bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-4 py-3 text-right">
-            <p
-              className="text-white text-2xl leading-none"
-              style={{ fontFamily: "'Fraunces', serif" }}
-            >
-              4.200
-            </p>
-            <p className="text-white/70 text-[11px] mt-1.5 leading-snug">meter di atas<br />permukaan laut</p>
-          </div> */}
-
-          {/* Floating pill — bottom center */}
-          {/* <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-white/15 backdrop-blur-md border border-white/25 rounded-full px-5 py-2.5">
-            <p className="text-white text-xs font-medium whitespace-nowrap">Jalur Habema — Nduga</p>
-          </div> */}
         </div>
 
       </div>
     </div>
+  )
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#F1EFE8] flex items-center justify-center"><div className="text-stone-600">Loading...</div></div>}>
+      <AuthPageContent />
+    </Suspense>
   )
 }
