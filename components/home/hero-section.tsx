@@ -88,10 +88,7 @@ export function HeroSection() {
             viewport={{ once: true }}
             transition={{ duration: 1 }}
           >
-            <motion.img 
-              src="/images/bannerImage.png" 
-              alt="Outdoor Gear" 
-              className="w-[90%] sm:w-[70%] md:w-[60%] lg:w-full h-auto object-contain"
+            <motion.div
               animate={{
                 y: [0, -20, 0],
               }}
@@ -100,7 +97,18 @@ export function HeroSection() {
                 repeat: Infinity,
                 ease: "easeInOut",
               }}
-            />
+            >
+              <Image
+                src="/images/bannerImage.png"
+                alt="Outdoor Gear"
+                width={800}
+                height={600}
+                className="w-[90%] sm:w-[70%] md:w-[60%] lg:w-full h-auto object-contain"
+                priority={true}
+                fetchPriority="high"
+                sizes="(max-width: 768px) 70vw, (max-width: 1024px) 60vw, 55vw"
+              />
+            </motion.div>
           </motion.div>
 
         </div>

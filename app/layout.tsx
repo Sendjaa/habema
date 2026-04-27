@@ -123,6 +123,14 @@ export default function RootLayout({
         <link rel="preload" href="/favicon-habema-32x32.ico" as="image" type="image/x-icon" />
         <link rel="preload" href="/og-image.jpg" as="image" />
         
+        {/* Preload LCP image for faster loading */}
+        <link 
+          rel="preload" 
+          href="/images/bannerImage.png" 
+          as="image" 
+          fetchPriority="high"
+        />
+        
         {/* Preconnect to external domains */}
         <link rel="preconnect" href="https://images.unsplash.com" />
         <link rel="preconnect" href="https://i.pinimg.com" />
