@@ -72,7 +72,8 @@ export function FeaturedProducts() {
 
         {/* Grid - FIXED: 2 columns on mobile, 4 on desktop */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
-          {featured.map((product, index) => {
+          {Array.isArray(featured) && featured.length > 0 ? (
+            featured.map((product, index) => {
             const price = Number(product.price_per_night || 0);
 
             return (
@@ -138,7 +139,14 @@ export function FeaturedProducts() {
                 </Link>
               </motion.div>
             );
-          })}
+            })
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <p className="text-forest/60">
+                Memuat data produk...
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </section>

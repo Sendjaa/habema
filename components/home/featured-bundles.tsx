@@ -43,9 +43,10 @@ export function FeaturedBundles() {
 
         {/* Bundles Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {bundles.map((bundle) => {
-            const savings = bundle.originalPrice - bundle.bundlePrice
-            const savingsPercent = Math.round((savings / bundle.originalPrice) * 100)
+          {Array.isArray(bundles) && bundles.length > 0 ? (
+            bundles.map((bundle) => {
+              const savings = (bundle.originalPrice || 0) - (bundle.bundlePrice || 0)
+              const savingsPercent = bundle.originalPrice ? Math.round((savings / bundle.originalPrice) * 100) : 0
 
             return (
               <Card
@@ -85,12 +86,12 @@ export function FeaturedBundles() {
                       Berisi:
                     </p>
                     <div className="space-y-1">
-                      {bundle.items.map((item: { quantity: number }, idx: number) => (
+                      {Array.isArray(bundle.items) ? bundle.items.map((item: { quantity: number }, idx: number) => (
                         <div key={idx} className="text-sm text-foreground flex items-center gap-2">
                           <span className="text-gold">•</span>
                           {item.quantity}x item
                         </div>
-                      ))}
+                      )) : []}
                     </div>
                   </div>
 
@@ -146,7 +147,14 @@ export function FeaturedBundles() {
                 </div>
               </Card>
             )
-          })}
+          })
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <p className="text-muted-foreground">
+                Memuat data paket...
+              </p>
+            </div>
+          )}
         </div>
 
         {/* View All */}
