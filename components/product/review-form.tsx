@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabaseClient";
+import type { Database } from "@/types/supabase";
 
 interface ReviewFormProps {
   equipmentId: string;
@@ -41,12 +42,14 @@ export function ReviewForm({ equipmentId, onReviewSubmitted }: ReviewFormProps) 
         return;
       }
 
-      const { error } = await supabase.from("reviews").insert({
-        equipment_id: equipmentId,
-        user_id: user.id,
-        rating,
-        comment: comment.trim(),
-      });
+      const { error } = await (supabase as any)
+        .from("reviews")
+        .insert({
+          equipment_id: equipmentId,
+          user_id: user.id,
+          rating,
+          comment: comment.trim(),
+        });
 
       if (error) throw error;
 
