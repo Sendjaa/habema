@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { LayoutWrapper } from '@/components/layout-wrapper'
 import { Toaster } from 'sonner'
 import { PerformanceMonitor } from '@/components/performance-monitor'
+import { CssLoader } from '@/components/css-loader'
 import './globals.css'
 
 // ── Fonts ──────────────────────────────────────────────────────
@@ -146,25 +147,15 @@ export default function RootLayout({
           `
         }} />
         
-        {/* Non-blocking CSS - load after initial render */}
-        <link 
-          rel="stylesheet" 
-          href="/globals.css" 
-          media="print" 
-          onLoad={(e) => {
-            const target = e.target as HTMLLinkElement;
-            target.media = 'all';
-          }}
-        />
-        <noscript>
-          <link rel="stylesheet" href="/globals.css" />
-        </noscript>
-        
+                
         {/* DNS prefetch for non-critical resources */}
         <link rel="dns-prefetch" href="//fonts.googleapis.com" />
         <link rel="dns-prefetch" href="//www.googletagmanager.com" />
       </head>
       <body className="font-body antialiased bg-background text-foreground min-h-screen">
+        {/* CSS loader for non-blocking styles */}
+        <CssLoader />
+        
         {/* Performance monitoring */}
         <PerformanceMonitor />
         
