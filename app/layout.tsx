@@ -4,6 +4,7 @@ import { Fraunces, DM_Sans } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { LayoutWrapper } from '@/components/layout-wrapper'
 import { Toaster } from 'sonner'
+import { PerformanceMonitor } from '@/components/performance-monitor'
 import './globals.css'
 
 // ── Fonts ──────────────────────────────────────────────────────
@@ -116,8 +117,60 @@ export default function RootLayout({
     >
       <head>
         <link rel="icon" type="image/x-icon" sizes="32x32" href="/favicon-habema-32x32.ico" />
+        
+        {/* Preload critical resources */}
+        <link rel="preload" href="/favicon-habema-32x32.ico" as="image" type="image/x-icon" />
+        <link rel="preload" href="/og-image.jpg" as="image" />
+        
+        {/* Preconnect to external domains */}
+        <link rel="preconnect" href="https://images.unsplash.com" />
+        <link rel="preconnect" href="https://i.pinimg.com" />
+        <link rel="preconnect" href="https://vercel.app" crossOrigin="anonymous" />
+        
+        {/* Critical CSS - inlined for fastest render */}
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            * { box-sizing: border-box; }
+            body { margin: 0; background: #F5EFE7; font-family: var(--font-body); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+            .bg-background { background-color: #F5EFE7; }
+            .text-foreground { color: #2D5016; }
+            .font-body { font-family: var(--font-body); }
+            .antialiased { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+            .min-h-screen { min-height: 100vh; }
+            .loading-spinner { width: 40px; height: 40px; border: 4px solid #E8DFCF; border-top: 4px solid #2D5016; border-radius: 50%; animation: spin 1s linear infinite; }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            .navbar-container { position: sticky; top: 0; z-index: 50; background: rgba(245, 239, 231, 0.95); backdrop-filter: blur(10px); }
+            .hero-gradient { background: linear-gradient(135deg, #2D5016 0%, #3E6B1F 100%); }
+            .no-js { display: none; }
+            .js-loaded { opacity: 1; transition: opacity 0.3s ease; }
+          `
+        }} />
+        
+        {/* Non-blocking CSS for full styles */}
+        <link 
+          rel="preload" 
+          href="/globals.css" 
+          as="style" 
+          onLoad={() => {
+            // This will be handled by the browser's built-in behavior
+            const link = document.querySelector('link[href="/globals.css"]') as HTMLLinkElement;
+            if (link) {
+              link.rel = 'stylesheet';
+            }
+          }}
+        />
+        <noscript>
+          <link rel="stylesheet" href="/globals.css" />
+        </noscript>
+        
+        {/* DNS prefetch for non-critical resources */}
+        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="//www.googletagmanager.com" />
       </head>
       <body className="font-body antialiased bg-background text-foreground min-h-screen">
+        {/* Performance monitoring */}
+        <PerformanceMonitor />
+        
         {/* Toast notifications */}
         <Toaster
           position="top-center"

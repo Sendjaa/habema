@@ -33,6 +33,18 @@ const nextConfig = {
       },
     ];
   },
+  // Performance optimizations
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['lucide-react', 'sonner'],
+  },
+  // CSS optimization
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  // Compression and caching
+  compress: true,
+  poweredByHeader: false,
 }
 
 export default nextConfig
