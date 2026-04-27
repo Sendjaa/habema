@@ -149,7 +149,7 @@ function OrderCard({
   return (
     <div
       className={`bg-white rounded-xl border border-stone-100 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden ${
-        dimmed ? "opacity-60" : ""
+        dimmed ? "opacity-60" : "" 
       }`}
     >
       {/* Top accent bar */}

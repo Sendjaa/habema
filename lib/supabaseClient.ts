@@ -11,3 +11,5 @@ export const supabase = createClient(supabaseUrl, supabasePublicKey, {
     flowType: 'pkce',
   },
 });
+
+export { createClient };
