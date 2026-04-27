@@ -42,18 +42,8 @@ const nextConfig = {
       removeUnusedCss: true,
     },
   },
-  // Turbopack configuration
-  turbopack: {
-    cssLoader: true,
-    rules: {
-      '*.module.css': {
-        loaders: ['css-loader'],
-      },
-      '*.css': {
-        loaders: ['css-loader'],
-      },
-    },
-  },
+  // Turbopack configuration - empty to silence migration warning
+  turbopack: {},
   // CSS optimization
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
