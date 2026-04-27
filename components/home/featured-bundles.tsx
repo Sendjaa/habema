@@ -100,19 +100,19 @@ export function FeaturedBundles() {
                     <div className="flex items-baseline justify-between">
                       <span className="text-sm text-muted-foreground">Harga Normal:</span>
                       <span className="line-through text-muted-foreground">
-                        Rp{bundle.originalPrice.toLocaleString('id-ID')}
+                        Rp{(bundle.originalPrice || 0).toLocaleString('id-ID')}
                       </span>
                     </div>
                     <div className="flex items-baseline justify-between">
                       <span className="text-sm font-semibold text-forest">Harga Paket:</span>
                       <span className="text-2xl font-bold text-gold">
-                        Rp{bundle.bundlePrice.toLocaleString('id-ID')}
+                        Rp{(bundle.bundlePrice || 0).toLocaleString('id-ID')}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Zap className="w-4 h-4 text-gold" />
                       <span className="text-sm font-semibold text-gold">
-                        Hemat Rp{savings.toLocaleString('id-ID')} ({savingsPercent}%)
+                        Hemat Rp{(savings || 0).toLocaleString('id-ID')} ({savingsPercent}%)
                       </span>
                     </div>
                   </div>
