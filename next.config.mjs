@@ -42,23 +42,17 @@ const nextConfig = {
       removeUnusedCss: true,
     },
   },
-  // Reduce CSS chunk splitting
-  webpack: (config, { dev, isServer }) => {
-    if (!dev && !isServer) {
-      config.optimization.splitChunks = {
-        ...config.optimization.splitChunks,
-        cacheGroups: {
-          ...config.optimization.splitChunks.cacheGroups,
-          styles: {
-            name: 'styles',
-            test: /\.(css|scss|sass)$/,
-            chunks: 'all',
-            enforce: true,
-          },
-        },
-      }
-    }
-    return config
+  // Turbopack configuration
+  turbopack: {
+    cssLoader: true,
+    rules: {
+      '*.module.css': {
+        loaders: ['css-loader'],
+      },
+      '*.css': {
+        loaders: ['css-loader'],
+      },
+    },
   },
   // CSS optimization
   compiler: {
