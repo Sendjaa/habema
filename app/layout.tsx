@@ -146,17 +146,14 @@ export default function RootLayout({
           `
         }} />
         
-        {/* Non-blocking CSS for full styles */}
+        {/* Non-blocking CSS - load after initial render */}
         <link 
-          rel="preload" 
+          rel="stylesheet" 
           href="/globals.css" 
-          as="style" 
-          onLoad={() => {
-            // This will be handled by the browser's built-in behavior
-            const link = document.querySelector('link[href="/globals.css"]') as HTMLLinkElement;
-            if (link) {
-              link.rel = 'stylesheet';
-            }
+          media="print" 
+          onLoad={(e) => {
+            const target = e.target as HTMLLinkElement;
+            target.media = 'all';
           }}
         />
         <noscript>

@@ -37,6 +37,28 @@ const nextConfig = {
   experimental: {
     optimizeCss: true,
     optimizePackageImports: ['lucide-react', 'sonner'],
+    optimizeCss: {
+      inlineCss: true,
+      removeUnusedCss: true,
+    },
+  },
+  // Reduce CSS chunk splitting
+  webpack: (config, { dev, isServer }) => {
+    if (!dev && !isServer) {
+      config.optimization.splitChunks = {
+        ...config.optimization.splitChunks,
+        cacheGroups: {
+          ...config.optimization.splitChunks.cacheGroups,
+          styles: {
+            name: 'styles',
+            test: /\.(css|scss|sass)$/,
+            chunks: 'all',
+            enforce: true,
+          },
+        },
+      }
+    }
+    return config
   },
   // CSS optimization
   compiler: {
