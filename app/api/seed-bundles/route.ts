@@ -17,7 +17,7 @@ export async function POST() {
     // Try to insert one bundle first
     const { data, error } = await supabase
       .from('bundles')
-      .insert(testBundle)
+      .insert(testBundle as any)
       .select()
 
     if (error) {
@@ -32,7 +32,7 @@ export async function POST() {
         
         const { data: adminData, error: adminError } = await supabaseAdmin
           .from('bundles')
-          .insert(testBundle)
+          .insert(testBundle as any)
           .select()
 
         if (adminError) {

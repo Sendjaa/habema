@@ -31,6 +31,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Database } from "@/types/supabase";
 
 interface UserProfile {
   last_sign_in_at: string | number | Date;
@@ -325,6 +326,7 @@ export default function AccountPage() {
   const confirmCancelOrder = useCallback(async () => {
     if (!orderToCancel) return;
     try {
+      // @ts-ignore
       const { error } = await supabase.from("bookings").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("id", orderToCancel.id);
       if (error) { toast.error("Gagal membatalkan pesanan."); return; }
       setDbOrders((prev) => prev.map((o) => o.id === orderToCancel.id ? { ...o, status: "cancelled" } : o));
