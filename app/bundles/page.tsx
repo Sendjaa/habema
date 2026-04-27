@@ -137,7 +137,7 @@ function Card({ pkg, index }: { pkg: Package; index: number }) {
               Include
             </p>
             <ul className="space-y-1">
-              {pkg.include?.map((it) => (
+              {pkg.include?.map?.((it) => (
                 <li key={it} className="flex gap-2 text-sm text-stone-600">
                   <span
                     style={{ color: pkg.accent }}
@@ -156,7 +156,7 @@ function Card({ pkg, index }: { pkg: Package; index: number }) {
                   Exclude
                 </p>
                 <ul className="space-y-1">
-                  {pkg.exclude?.map((it) => (
+                  {pkg.exclude?.map?.((it) => (
                     <li key={it} className="flex gap-2 text-sm text-stone-400">
                       <span className="flex-shrink-0 mt-0.5 text-xs">✕</span>
                       {it}
@@ -544,7 +544,7 @@ export default function HabemaPackages() {
 
         {/* FILTER TABS */}
         <div className="flex flex-wrap gap-2 mb-10">
-          {CATEGORIES?.map((cat) => (
+          {CATEGORIES?.map?.((cat) => (
             <button
               key={cat}
               onClick={() => setActive(cat)}
@@ -570,9 +570,17 @@ export default function HabemaPackages() {
 
         {/* CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered?.map((pkg, i) => (
-            <Card key={pkg.id} pkg={pkg} index={i} />
-          ))}
+          {Array.isArray(filtered) && filtered.length > 0 ? (
+            filtered.map((pkg, i) => (
+              <Card key={pkg?.id || `pkg-${i}`} pkg={pkg} index={i} />
+            ))
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <p className="text-stone-500">
+                {loading ? "Memuat data..." : "Tidak ada paket yang tersedia untuk kategori ini"}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* CONTACT STRIP */}
