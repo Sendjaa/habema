@@ -459,7 +459,7 @@ export default function GuidePage() {
       {/* Hero */}
       <div style={{
         background: "linear-gradient(135deg, #059669 0%, #0284c7 100%)",
-        padding: "64px 24px 80px", position: "relative", overflow: "hidden",
+        padding: "clamp(40px, 8vw, 64px) clamp(16px, 4vw, 24px) clamp(48px, 10vw, 80px)", position: "relative", overflow: "hidden",
       }}>
         <div style={{ position: "absolute", top: -40, right: -40, width: 200, height: 200,
           background: "rgba(255,255,255,0.06)", borderRadius: "50%" }} />
@@ -474,10 +474,10 @@ export default function GuidePage() {
             <BookOpen size={14} color="#fff" />
             <span style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>Pusat Bantuan & Panduan</span>
           </div>
-          <h1 style={{ margin: "0 0 16px", color: "#fff", fontSize: 40, fontWeight: 800, lineHeight: 1.2 }}>
+          <h1 style={{ margin: "0 0 16px", color: "#fff", fontSize: "clamp(28px, 5vw, 40px)", fontWeight: 800, lineHeight: 1.2 }}>
             Panduan Lengkap Habema
           </h1>
-          <p style={{ margin: "0 0 32px", color: "rgba(255,255,255,0.88)", fontSize: 17, lineHeight: 1.6 }}>
+          <p style={{ margin: "0 0 32px", color: "rgba(255,255,255,0.88)", fontSize: "clamp(15px, 2.5vw, 17px)", lineHeight: 1.6 }}>
             Temukan jawaban dan panduan lengkap untuk pengalaman menyewa peralatan outdoor yang mudah dan aman
           </p>
           {/* Search */}
@@ -510,8 +510,8 @@ export default function GuidePage() {
       </div>
 
       {/* Stats */}
-      <div style={{ maxWidth: 960, margin: "-28px auto 0", padding: "0 24px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+      <div style={{ maxWidth: 960, margin: "-28px auto 0", padding: "0 clamp(16px, 4vw, 24px)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
           {[
             { icon: BookOpen, label: "Panduan Aktif", value: "6+" },
             { icon: Users, label: "Pengguna Puas", value: "1.000+" },
@@ -530,7 +530,7 @@ export default function GuidePage() {
         </div>
       </div>
 
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "40px 24px 60px" }}>
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "clamp(24px, 5vw, 40px) clamp(16px, 4vw, 24px) clamp(40px, 8vw, 60px)" }}>
         {/* Category Filter */}
         <div style={{ marginBottom: 36 }}>
           <h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 700, color: "#111827" }}>Kategori Panduan</h2>
@@ -584,7 +584,7 @@ export default function GuidePage() {
               </div>
               <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#111827" }}>Panduan Unggulan</h2>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
               {featured.map((g: Guide) => <GuideCard key={g.id} guide={g} onOpen={setSelectedGuide} featured />)}
             </div>
           </div>
@@ -601,7 +601,7 @@ export default function GuidePage() {
               </h2>
               <span style={{ fontSize: 13, color: "#9ca3af" }}>{all.length} panduan</span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
               {all.map((g: Guide) => <GuideCard key={g.id} guide={g} onOpen={setSelectedGuide} featured={false} />)}
             </div>
           </div>
@@ -610,7 +610,7 @@ export default function GuidePage() {
         {/* Help Banner */}
         <div style={{
           marginTop: 56, background: "linear-gradient(135deg, #059669 0%, #0284c7 100%)",
-          borderRadius: 20, padding: "48px 40px", textAlign: "center",
+          borderRadius: 20, padding: "clamp(32px, 6vw, 48px) clamp(20px, 4vw, 40px)", textAlign: "center",
         }}>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 8,
@@ -619,10 +619,10 @@ export default function GuidePage() {
             <HelpCircle size={14} color="#fff" />
             <span style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>Butuh Bantuan Tambahan?</span>
           </div>
-          <h2 style={{ margin: "0 0 12px", color: "#fff", fontSize: 28, fontWeight: 800 }}>
+          <h2 style={{ margin: "0 0 12px", color: "#fff", fontSize: "clamp(22px, 4vw, 28px)", fontWeight: 800 }}>
             Tim Support Siap Membantu
           </h2>
-          <p style={{ margin: "0 0 28px", color: "rgba(255,255,255,0.85)", fontSize: 15, lineHeight: 1.6 }}>
+          <p style={{ margin: "0 0 28px", color: "rgba(255,255,255,0.85)", fontSize: "clamp(14px, 2vw, 15px)", lineHeight: 1.6 }}>
             Jika Anda tidak menemukan jawaban yang dicari, tim support kami siap membantu 24/7
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center" }}>
