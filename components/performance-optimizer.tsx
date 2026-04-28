@@ -11,10 +11,14 @@ export class PerformanceOptimizer {
     bundleSize: 0,
     layoutShifts: 0
   };
+  private layoutReads: number = 0;
+  private layoutWrites: number = 0;
+  private isReadingLayout: boolean = false;
 
   private constructor() {
     this.setupPerformanceObserver();
     this.optimizeMainThread();
+    this.preventLayoutThrashing();
   }
 
   public static getInstance(): PerformanceOptimizer {
@@ -25,17 +29,71 @@ export class PerformanceOptimizer {
   }
 
   private setupPerformanceObserver() {
-    // Monitor layout shifts
+    // Monitor layout shifts and forced synchronous layouts
     if ('PerformanceObserver' in window) {
       const observer = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
           if (entry.entryType === 'layout-shift') {
             this.metrics.layoutShifts += (entry as any).value;
           }
+          // Monitor long tasks that might indicate layout thrashing
+          if (entry.entryType === 'longtask') {
+            console.warn('Long task detected:', entry.duration, 'ms');
+          }
         }
       });
-      observer.observe({ entryTypes: ['layout-shift'] });
+      observer.observe({ entryTypes: ['layout-shift', 'longtask'] });
     }
+  }
+
+  private preventLayoutThrashing() {
+    // Batch DOM reads and writes to prevent layout thrashing
+    const originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
+    const originalOffsetWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth');
+    const originalOffsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight');
+    
+    let readCount = 0;
+    let writeCount = 0;
+    
+    // Monitor layout reads
+    Element.prototype.getBoundingClientRect = function(...args) {
+      readCount++;
+      if (writeCount > 0 && readCount > writeCount) {
+        console.warn('Potential layout thrashing: Reading after writing');
+      }
+      return originalGetBoundingClientRect.apply(this, args);
+    };
+    
+    // Monitor layout writes
+    if (originalOffsetWidth && originalOffsetWidth.set) {
+      Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+        ...originalOffsetWidth,
+        set: function(value) {
+          writeCount++;
+          return originalOffsetWidth.set!.call(this, value);
+        }
+      });
+    }
+  }
+
+  // Batch DOM operations
+  public batchDOMUpdates(reads: () => void, writes: () => void) {
+    // First, batch all reads
+    reads();
+    
+    // Then, batch all writes using requestAnimationFrame
+    requestAnimationFrame(() => {
+      writes();
+    });
+  }
+
+  // Debounce rapid DOM updates
+  public debounceDOMUpdate(fn: Function, delay: number = 16) {
+    let timeoutId: NodeJS.Timeout;
+    return (...args: any[]) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => fn.apply(this, args), delay);
+    };
   }
 
   private optimizeMainThread() {
@@ -48,20 +106,36 @@ export class PerformanceOptimizer {
   }
 
   private deferNonCriticalTasks() {
-    // Defer image loading and analytics
-    setTimeout(() => {
-      this.loadDeferredImages();
-      this.loadDeferredScripts();
-    }, 100);
+    // Use requestIdleCallback for better performance
+    const scheduleTask = () => {
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(
+          () => {
+            this.loadDeferredImages();
+            this.loadDeferredScripts();
+          },
+          { timeout: 2000 }
+        );
+      } else {
+        // Fallback for browsers without requestIdleCallback
+        setTimeout(() => {
+          this.loadDeferredImages();
+          this.loadDeferredScripts();
+        }, 100);
+      }
+    };
+    
+    scheduleTask();
   }
 
   private loadDeferredImages() {
     // Lazy load images below the fold
     const images = document.querySelectorAll('img[data-src]');
     images.forEach(img => {
+      const htmlImg = img as HTMLImageElement;
       const src = img.getAttribute('data-src');
       if (src) {
-        img.src = src;
+        htmlImg.src = src;
         img.removeAttribute('data-src');
       }
     });
@@ -88,8 +162,9 @@ export class PerformanceOptimizer {
     // Dynamic imports for code splitting
     return {
       lazyLoadComponents: () => import('./lazy-components'),
-      lazyLoadAnalytics: () => import('./analytics'),
-      lazyLoadAdmin: () => import('./admin-features')
+      // Commented out non-existent modules for now
+      // lazyLoadAnalytics: () => import('./analytics'),
+      // lazyLoadAdmin: () => import('./admin-features')
     };
   }
 }

@@ -5,8 +5,11 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import { motion, Variants } from "framer-motion";
+import { useEffect, useState } from "react";
 
 export function HeroSection() {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  
   const textVariants: Variants = {
     hidden: { opacity: 0, y: 30 },
     visible: { 
@@ -15,6 +18,13 @@ export function HeroSection() {
       transition: { duration: 0.8, ease: [0.25, 1, 0.5, 1] as any } 
     },
   };
+
+  // Preload critical image
+  useEffect(() => {
+    const img = new window.Image();
+    img.src = "/images/bannerImage.png";
+    img.onload = () => setImageLoaded(true);
+  }, []);
 
   return (
     <section className="relative min-h-full md:min-h-screen flex items-center overflow-hidden bg-[#F2EDE4] pt-24 pb-12 lg:py-0">
@@ -103,10 +113,13 @@ export function HeroSection() {
                 alt="Outdoor Gear"
                 width={800}
                 height={600}
-                className="w-[90%] sm:w-[70%] md:w-[60%] lg:w-full h-auto object-contain"
+                className={`w-[90%] sm:w-[70%] md:w-[60%] lg:w-full h-auto object-contain transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
                 priority={true}
                 fetchPriority="high"
                 sizes="(max-width: 768px) 70vw, (max-width: 1024px) 60vw, 55vw"
+                onLoad={() => setImageLoaded(true)}
+                placeholder="blur"
+                blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
               />
             </motion.div>
           </motion.div>
