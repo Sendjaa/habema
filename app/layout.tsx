@@ -7,6 +7,7 @@ import { Toaster } from 'sonner'
 import { PerformanceMonitor } from '@/components/performance-monitor'
 import { CssLoader } from '@/components/css-loader'
 import ErrorBoundary from '@/components/error-boundary'
+import { bundleOptimizer, cssOptimizer } from '@/components/performance-optimizer'
 import './globals.css'
 
 // ── Fonts ──────────────────────────────────────────────────────
@@ -137,23 +138,9 @@ export default function RootLayout({
         <link rel="preconnect" href="https://i.pinimg.com" />
         <link rel="preconnect" href="https://vercel.app" crossOrigin="anonymous" />
         
-        {/* Critical CSS - inlined for fastest render */}
+        {/* Critical CSS - minimized for fastest render */}
         <style dangerouslySetInnerHTML={{
-          __html: `
-            * { box-sizing: border-box; }
-            body { margin: 0; background: #F5EFE7; font-family: var(--font-body); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-            .bg-background { background-color: #F5EFE7; }
-            .text-foreground { color: #2D5016; }
-            .font-body { font-family: var(--font-body); }
-            .antialiased { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-            .min-h-screen { min-height: 100vh; }
-            .loading-spinner { width: 40px; height: 40px; border: 4px solid #E8DFCF; border-top: 4px solid #2D5016; border-radius: 50%; animation: spin 1s linear infinite; }
-            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            .navbar-container { position: sticky; top: 0; z-index: 50; background: rgba(245, 239, 231, 0.95); backdrop-filter: blur(10px); }
-            .hero-gradient { background: linear-gradient(135deg, #2D5016 0%, #3E6B1F 100%); }
-            .no-js { display: none; }
-            .js-loaded { opacity: 1; transition: opacity 0.3s ease; }
-          `
+          __html: `*{box-sizing:border-box}body{margin:0;background:#F5EFE7;font-family:var(--font-body);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.bg-background{background-color:#F5EFE7}.text-foreground{color:#2D5016}.font-body{font-family:var(--font-body)}.antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.min-h-screen{min-height:100vh}.loading-spinner{width:40px;height:40px;border:4px solid #E8DFCF;border-top:4px solid #2D5016;border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.navbar-container{position:sticky;top:0;z-index:50;background:rgba(245,239,231,.95);backdrop-filter:blur(10px)}.hero-gradient{background:linear-gradient(135deg,#2D5016 0%,#3E6B1F 100%)}.no-js{display:none}.js-loaded{opacity:1;transition:opacity .3s ease}`
         }} />
         
                 
@@ -162,13 +149,33 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="//www.googletagmanager.com" />
       </head>
       <body className="font-body antialiased bg-background text-foreground min-h-screen">
-        {/* CSS loader for non-blocking styles */}
+        {/* Critical CSS loader for non-blocking render */}
         <CssLoader />
         
-        {/* Performance monitoring */}
-        <PerformanceMonitor />
+        {/* Defer non-critical components */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Defer performance monitoring
+              setTimeout(() => {
+                const perfScript = document.createElement('script');
+                perfScript.src = '/components/performance-monitor.js';
+                perfScript.async = true;
+                document.body.appendChild(perfScript);
+              }, 100);
+              
+              // Defer analytics
+              setTimeout(() => {
+                const analyticsScript = document.createElement('script');
+                analyticsScript.src = '/_next/static/chunks/analytics.js';
+                analyticsScript.async = true;
+                document.body.appendChild(analyticsScript);
+              }, 500);
+            `
+          }}
+        />
         
-        {/* Toast notifications */}
+        {/* Toast notifications - critical path */}
         <Toaster
           position="top-center"
           richColors

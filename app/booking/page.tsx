@@ -1,7 +1,7 @@
 "use client";
 
 // ==================== IMPORTS ====================
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense, useEffect, lazy } from "react";
 import type { User } from "@supabase/supabase-js";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,11 @@ import { IDVerificationForm } from "@/components/checkout/id-verification-form";
 import { leafletService, DeliveryCost } from "@/lib/leaflet-service";
 import { LocationPicker } from "@/components/booking/location-picker";
 import { handleError, DatabaseError, NetworkError, ValidationError, safeAsync } from "@/lib/error-handler";
+import { LazyWrapper } from "@/components/lazy-components";
+
+// Lazy load heavy components
+const LazyIDVerificationForm = lazy(() => import("@/components/checkout/id-verification-form"));
+const LazyLocationPicker = lazy(() => import("@/components/booking/location-picker"));
 
 // Function to create admin notification
 const createAdminNotification = async (bookingId: string, productName: string, userEmail: string | null) => {

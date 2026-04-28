@@ -41,6 +41,12 @@ const nextConfig = {
       inlineCss: true,
       removeUnusedCss: true,
     },
+    // Reduce main thread blocking
+    serverComponentsExternalPackages: ['@supabase/supabase-js'],
+    // Optimize bundle splitting
+    optimizeServerReact: true,
+    // Minimize JavaScript execution
+    swcMinify: true,
   },
   // CSS optimization
   compiler: {
