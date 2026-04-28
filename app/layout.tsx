@@ -8,6 +8,7 @@ import { PerformanceMonitor } from '@/components/performance-monitor'
 import { CssLoader } from '@/components/css-loader'
 import ErrorBoundary from '@/components/error-boundary'
 import { bundleOptimizer, cssOptimizer } from '@/components/performance-optimizer'
+import { OptimizedImage, preloadCriticalImages } from '@/components/optimized-image'
 import './globals.css'
 
 // ── Fonts ──────────────────────────────────────────────────────
