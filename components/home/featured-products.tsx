@@ -7,8 +7,21 @@ import { supabase } from "@/lib/supabaseClient"
 import React from 'react'
 import { motion } from 'framer-motion'
 
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price_per_night: number;
+  image_url: string;
+  equipment_categories: {
+    name: string;
+  };
+  rental_count: number;
+  average_rating: number;
+}
+
 export function FeaturedProducts() {
-  const [featured, setFeatured] = React.useState<any[]>([])
+  const [featured, setFeatured] = React.useState<Product[]>([])
   const [loading, setLoading] = React.useState(true)
 
   const fetchMostRentedProducts = async () => {
@@ -18,12 +31,14 @@ export function FeaturedProducts() {
         .from('equipment')
         .select(`*, equipment_categories ( name )`)
         .order('created_at', { ascending: false }) 
-        .limit(4)
+        .limit(15)
 
       if (error) throw error
+      
       setFeatured(data || [])
     } catch (error) {
       console.error('Error fetching popular products:', error)
+      setFeatured([])
     } finally {
       setLoading(false)
     }
@@ -70,8 +85,8 @@ export function FeaturedProducts() {
           </Link>
         </div>
 
-        {/* Grid - FIXED: 2 columns on mobile, 4 on desktop */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
+        {/* Grid - 5 columns on desktop, 2 on mobile */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-2">
           {Array.isArray(featured) && featured.length > 0 ? (
             featured.map((product, index) => {
             const price = Number(product.price_per_night || 0);
@@ -85,57 +100,55 @@ export function FeaturedProducts() {
                 viewport={{ once: true }}
               >
                 <Link href={`/product/${product.id}`} className="group block relative h-full">
-                  <div className="relative z-10 bg-white rounded-[1.5rem] md:rounded-[2rem] p-2 md:p-4 border border-forest/5 shadow-sm group-hover:shadow-xl transition-all duration-500 h-full flex flex-col">
+                  <div className="group flex flex-col h-full rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-all overflow-hidden cursor-pointer">
                     
-                    {/* Image Area */}
-                    <div className="relative aspect-square md:aspect-[4/5] rounded-[1.2rem] md:rounded-[1.5rem] overflow-hidden bg-slate-100">
+                    {/* Image Section */}
+                    <div className="relative aspect-square bg-slate-100 overflow-hidden rounded-t-xl">
                       {product.image_url ? (
                         <Image
                           src={product.image_url}
                           alt={product.name}
                           fill
-                          className="object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+                          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw"
+                          className="object-cover transition-transform duration-300 group-hover:scale-105"
+                          priority={false}
+                          placeholder="blur"
+                          blurDataURL="data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='40' height='40' fill='%23e2e8f'/%3E%3C/svg%3E"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-forest/5 text-forest/20 text-[10px] font-black italic">NO IMAGE</div>
+                        <div className="flex h-full w-full flex-col items-center justify-center bg-slate-200 text-slate-400">
+                          <div className="mb-2 w-10 h-10 opacity-20 rounded-full bg-slate-300"></div>
+                          <span className="text-[10px] font-bold uppercase tracking-widest opacity-30">
+                            No Image Available
+                          </span>
+                        </div>
                       )}
-                      
-                      {/* Rating Badge - Hidden small on mobile to save space */}
-                      <div className="absolute top-2 left-2 md:top-4 md:left-4">
-                        <span className="backdrop-blur-md bg-white/90 text-forest text-[8px] md:text-[9px] font-black px-2 md:px-3 py-1 rounded-lg uppercase flex items-center gap-1 shadow-sm">
-                          <Star size={8} fill="#D4AF37" className="text-gold" /> 4.9
-                        </span>
-                      </div>
                     </div>
 
-                    {/* Content */}
-                    <div className="mt-3 md:mt-6 px-1 md:px-2 pb-1 md:pb-2 flex flex-col flex-grow justify-between space-y-2 md:space-y-4">
-                      <div>
-                        <h3 className="font-extrabold text-forest text-sm md:text-lg line-clamp-1 group-hover:text-gold transition-colors">
-                          {product.name}
-                        </h3>
-                        <p className="hidden md:block text-[9px] text-forest/40 uppercase font-bold tracking-tighter mt-1">High-Demand</p>
+                    {/* Content Section */}
+                    <div className="p-2.5 flex flex-col flex-grow">
+                      {/* Nama Produk */}
+                      <h3 className="text-[12px] font-medium text-slate-700 line-clamp-2 mb-1 min-h-[32px] group-hover:text-[#1B4332] transition-colors">
+                        {product.name}
+                      </h3>
+
+                      {/* Harga */}
+                      <div className="mb-1.5">
+                        <span className="text-sm font-bold text-[#FF6B35]">
+                          Rp{price.toLocaleString("id-ID")}
+                        </span>
+                        <span className="text-[9px] text-slate-400 ml-1">/hari</span>
                       </div>
-                      
-                      <div className="flex items-center md:items-end justify-between gap-1">
-                        <div className="space-y-0 md:space-y-0.5">
-                          <p className="hidden md:block text-[8px] text-muted-foreground uppercase font-bold tracking-widest">Harga Sewa</p>
-                          <p className="text-forest text-sm md:text-xl font-black flex items-start">
-                            <span className="text-[8px] md:text-[10px] mt-1 font-bold">Rp</span>
-                            {price.toLocaleString('id-ID')}
-                            <span className="hidden md:inline text-[10px] mt-1.5 font-medium text-forest/40 ml-1">/hari</span>
-                          </p>
-                        </div>
-                        
-                        <div className="w-7 h-7 md:w-10 md:h-10 rounded-full bg-forest/5 flex items-center justify-center group-hover:bg-gold transition-colors shrink-0">
-                          <ArrowRight className="w-3.5 h-3.5 md:w-5 md:h-5 text-forest" />
-                        </div>
+
+                      {/* Rating & Stats (Footer Card) */}
+                      <div className="mt-auto pt-1.5 flex items-center gap-1 text-[9px] text-slate-500 font-medium border-t border-slate-50">
+                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                        <span>{product.average_rating || 4.9}</span>
+                        <span className="text-slate-300">|</span>
+                        <span>Tersewa {product.rental_count || 0}x</span>
                       </div>
                     </div>
                   </div>
-
-                  {/* Decorative Background Card - Smaller offset on mobile */}
-                  <div className="absolute inset-0 bg-gold/20 rounded-[1.5rem] md:rounded-[2rem] translate-x-0 translate-y-0 group-hover:translate-x-1.5 group-hover:translate-y-1.5 md:group-hover:translate-x-3 md:group-hover:translate-y-3 transition-transform duration-500 -z-10" />
                 </Link>
               </motion.div>
             );

@@ -10,22 +10,31 @@ import React from 'react'
 
 export function FeaturedBundles() {
   const fetchFeaturedBundles = async () => {
-    const { data, error } = await supabase
-      .from('bundles')
-      .select('*')
-      // .eq('is_featured', true)
-
-    if (error) {
+    try {
+      const response = await fetch('/api/bundles')
+      const result = await response.json()
+      
+      if (!response.ok || !result.success) {
+        console.error('Error fetching featured bundles:', result.error || 'Unknown error')
+        return []
+      }
+      
+      // Return only the first 3 bundles for featured section
+      return result.data.slice(0, 3) || []
+    } catch (error) {
       console.error('Error fetching featured bundles:', error)
       return []
     }
-    return data || []
   }
 
   const [bundles, setBundles] = React.useState<any[]>([])
+  const [loading, setLoading] = React.useState(true)
 
   React.useEffect(() => {
-    fetchFeaturedBundles().then(setBundles)
+    fetchFeaturedBundles().then((data) => {
+      setBundles(data)
+      setLoading(false)
+    })
   }, [])
 
   return (
@@ -43,24 +52,33 @@ export function FeaturedBundles() {
 
         {/* Bundles Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {Array.isArray(bundles) && bundles.length > 0 ? (
+          {loading ? (
+            <div className="col-span-full text-center py-12">
+              <p className="text-muted-foreground">
+                Memuat data paket...
+              </p>
+            </div>
+          ) : Array.isArray(bundles) && bundles.length > 0 ? (
             bundles.map((bundle) => {
-              const savings = (bundle.originalPrice || 0) - (bundle.bundlePrice || 0)
-              const savingsPercent = bundle.originalPrice ? Math.round((savings / bundle.originalPrice) * 100) : 0
+              // Calculate savings from API data
+              const bundlePrice = bundle.price ? parseInt(bundle.price.replace(/[^\d]/g, '')) : 0
+              const originalPrice = bundle.priceOld ? parseInt(bundle.priceOld.replace(/[^\d]/g, '')) : 0
+              const savings = originalPrice > 0 ? originalPrice - bundlePrice : 0
+              const savingsPercent = originalPrice > 0 ? Math.round((savings / originalPrice) * 100) : 0
 
             return (
               <Card
                 key={bundle.id}
                 className={`overflow-hidden border-2 transition-all hover:shadow-xl hover:-translate-y-1 ${
-                  bundle.category === 'experienced'
+                  bundle.category === 'Open Trip'
                     ? 'border-gold bg-white'
                     : 'border-border bg-white'
                 }`}
               >
                 {/* Ribbon */}
-                {bundle.category === 'experienced' && (
+                {bundle.badge && (
                   <div className="absolute top-0 right-0 bg-gold text-forest px-4 py-1 text-xs font-bold rounded-bl-lg z-10">
-                    ⭐ POPULER
+                    {bundle.badge}
                   </div>
                 )}
 
@@ -70,67 +88,59 @@ export function FeaturedBundles() {
                     <div className="flex items-start justify-between">
                       <div>
                         <h3 className="text-2xl font-bold text-forest mb-2">
-                          {bundle.name}
+                          {bundle.label}
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          {bundle.description}
+                          {bundle.desc}
                         </p>
                       </div>
-                      <span className="text-4xl">{bundle.icon}</span>
-                    </div>
-                  </div>
-
-                  {/* Items */}
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase">
-                      Berisi:
-                    </p>
-                    <div className="space-y-1">
-                      {Array.isArray(bundle.items) ? bundle.items.map((item: { quantity: number }, idx: number) => (
-                        <div key={idx} className="text-sm text-foreground flex items-center gap-2">
-                          <span className="text-gold">•</span>
-                          {item.quantity}x item
-                        </div>
-                      )) : []}
+                      <span className="text-4xl">🏕️</span>
                     </div>
                   </div>
 
                   {/* Pricing */}
                   <div className="space-y-2 pt-4 border-t border-border">
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-sm text-muted-foreground">Harga Normal:</span>
-                      <span className="line-through text-muted-foreground">
-                        Rp{(bundle.originalPrice || 0).toLocaleString('id-ID')}
-                      </span>
-                    </div>
+                    {bundle.priceOld && (
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-sm text-muted-foreground">Harga Normal:</span>
+                        <span className="line-through text-muted-foreground">
+                          Rp{bundle.priceOld}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-baseline justify-between">
                       <span className="text-sm font-semibold text-forest">Harga Paket:</span>
                       <span className="text-2xl font-bold text-gold">
-                        Rp{(bundle.bundlePrice || 0).toLocaleString('id-ID')}
+                        Rp{bundle.price}{bundle.unit}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-gold" />
-                      <span className="text-sm font-semibold text-gold">
-                        Hemat Rp{(savings || 0).toLocaleString('id-ID')} ({savingsPercent}%)
-                      </span>
-                    </div>
+                    {savings > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-gold" />
+                        <span className="text-sm font-semibold text-gold">
+                          Hemat Rp{savings.toLocaleString('id-ID')} ({savingsPercent}%)
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Difficulty Badge */}
+                  {/* Category Badge */}
                   <div className="pt-2">
                     <Badge
                       className={`${
-                        bundle.category === 'beginner'
+                        bundle.category === 'Camping Keluarga'
                           ? 'bg-green-100 text-green-800'
-                          : bundle.category === 'experienced'
+                          : bundle.category === 'Open Trip'
                           ? 'bg-blue-100 text-blue-800'
+                          : bundle.category === 'Private Camp'
+                          ? 'bg-purple-100 text-purple-800'
                           : 'bg-red-100 text-red-800'
                       }`}
                     >
-                      {bundle.category === 'beginner' && '🌱 Pemula'}
-                      {bundle.category === 'experienced' && '⛺ Berpengalaman'}
-                      {bundle.category === 'professional' && '🏔️ Profesional'}
+                      {bundle.category === 'Camping Keluarga' && '🌱 Keluarga'}
+                      {bundle.category === 'Open Trip' && '⛺ Open Trip'}
+                      {bundle.category === 'Private Camp' && '🏕️ Private Camp'}
+                      {bundle.category === 'Campervan' && '🚐 Campervan'}
                     </Badge>
                   </div>
 
@@ -147,11 +157,11 @@ export function FeaturedBundles() {
                 </div>
               </Card>
             )
-          })
+            })
           ) : (
             <div className="col-span-full text-center py-12">
               <p className="text-muted-foreground">
-                Memuat data paket...
+                Tidak ada paket tersedia saat ini
               </p>
             </div>
           )}
