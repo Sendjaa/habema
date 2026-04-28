@@ -77,33 +77,57 @@ export type Database = {
           name: string
           description: string
           price_per_day: number
+          price_per_night: number
           category_id: string
           image_url: string | null
           is_available: boolean
           created_at: string
           updated_at: string
+          specifications: Record<string, any> | null
+          weight_kg: number | null
+          dimensions: string | null
+          capacity: string | null
+          material: string | null
+          weather_rating: string | null
+          brand: string | null
         }
         Insert: {
           id?: string
           name: string
           description: string
           price_per_day: number
+          price_per_night: number
           category_id: string
           image_url?: string | null
           is_available?: boolean
           created_at?: string
           updated_at?: string
+          specifications?: Record<string, any> | null
+          weight_kg?: number | null
+          dimensions?: string | null
+          capacity?: string | null
+          material?: string | null
+          weather_rating?: string | null
+          brand?: string | null
         }
         Update: {
           id?: string
           name?: string
           description?: string
           price_per_day?: number
+          price_per_night?: number
           category_id?: string
           image_url?: string | null
           is_available?: boolean
           created_at?: string
           updated_at?: string
+          specifications?: Record<string, any> | null
+          weight_kg?: number | null
+          dimensions?: string | null
+          capacity?: string | null
+          material?: string | null
+          weather_rating?: string | null
+          brand?: string | null
         }
       }
       equipment_categories: {

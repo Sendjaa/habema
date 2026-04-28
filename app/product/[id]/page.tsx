@@ -130,7 +130,7 @@ export default function ProductDetailPage({
       if (error) {
         console.error("Error fetching product:", error);
       } else {
-        setProduct({ ...data, specs: data.specifications || {} });
+        setProduct({ ...(data as any), specs: (data as any).specifications || {} });
       }
       setLoading(false);
     };

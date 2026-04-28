@@ -5,6 +5,11 @@ import { CatalogFilters } from "@/components/catalog/catalog-filters";
 import { CatalogGrid } from "@/components/catalog/catalog-grid";
 import { supabase } from "@/lib/supabaseClient";
 import { Equipment } from "@/lib/types";
+
+interface EquipmentCategory {
+  id: number;
+  name: string;
+}
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -41,7 +46,7 @@ export default function CatalogPage() {
       try {
         const { data: catData, error: catError } = await supabase
           .from("equipment_categories")
-          .select("id, name");
+          .select("id, name") as { data: EquipmentCategory[] | null; error: any };
 
         if (catError) {
           console.error("Gagal ambil kategori:", catError.message);
