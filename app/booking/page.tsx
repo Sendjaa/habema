@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { IDVerificationForm } from "@/components/checkout/id-verification-form";
 import { leafletService, DeliveryCost } from "@/lib/leaflet-service";
 import { LocationPicker } from "@/components/booking/location-picker";
+import { handleError, DatabaseError, NetworkError, ValidationError, safeAsync } from "@/lib/error-handler";
 
 // Function to create admin notification
 const createAdminNotification = async (bookingId: string, productName: string, userEmail: string | null) => {
@@ -248,8 +249,9 @@ function BookingContent() {
           .single();
 
         if (bookingError) {
-          console.error('Error saving anonymous booking:', bookingError);
-          throw bookingError;
+          const error = handleError(bookingError);
+          toast.error(error.userMessage);
+          return;
         }
 
         console.log('Anonymous booking saved to database:', newBooking);
@@ -268,8 +270,9 @@ function BookingContent() {
           .insert([itemData]);
 
         if (itemError) {
-          console.error('Error saving booking items:', itemError);
-          throw itemError;
+          const error = handleError(itemError);
+          toast.error(error.userMessage);
+          return;
         }
 
         // Create notification for admin about anonymous booking
@@ -808,19 +811,8 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                     
                     <button
                       type="button"
-                      onClick={() => {
-                        if (!user) {
-                          toast.error("Login diperlukan untuk menggunakan layanan pengantaran");
-                          return;
-                        }
-                        setDeliveryOption('delivery');
-                      }}
-                      disabled={!user}
-                      className={`p-4 rounded-xl border-2 transition-all ${
-                        deliveryOption === 'delivery'
-                          ? 'border-emerald-600 bg-emerald-50 text-emerald-900'
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                      } ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      disabled={true}
+                      className="p-4 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed opacity-60"
                     >
                       <div className="text-center">
                         <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-current/10 flex items-center justify-center">
@@ -829,9 +821,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                           </svg>
                         </div>
                         <div className="text-sm font-medium">Diantar</div>
-                        <div className="text-xs opacity-75">
-                          {!user ? 'Login diperlukan' : isCalculatingDelivery ? 'Menghitung...' : deliveryCost ? leafletService.formatCost(deliveryCost.cost) : 'Biaya tambahan'}
-                        </div>
+                        <div className="text-xs opacity-75">Fitur Mendatang</div>
                       </div>
                     </button>
                   </div>

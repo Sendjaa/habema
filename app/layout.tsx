@@ -6,6 +6,7 @@ import { LayoutWrapper } from '@/components/layout-wrapper'
 import { Toaster } from 'sonner'
 import { PerformanceMonitor } from '@/components/performance-monitor'
 import { CssLoader } from '@/components/css-loader'
+import ErrorBoundary from '@/components/error-boundary'
 import './globals.css'
 
 // ── Fonts ──────────────────────────────────────────────────────
@@ -184,7 +185,9 @@ export default function RootLayout({
         />
 
         {/* Main layout (Navbar/Footer logic inside) */}
-        <LayoutWrapper>{children}</LayoutWrapper>
+        <ErrorBoundary>
+          <LayoutWrapper>{children}</LayoutWrapper>
+        </ErrorBoundary>
 
         {/* Analytics & performance — production only */}
         {process.env.NODE_ENV === 'production' && (
