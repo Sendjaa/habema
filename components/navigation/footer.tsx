@@ -74,7 +74,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/guide" className="hover:text-gold transition-colors">
+                <Link href="/help" className="hover:text-gold transition-colors">
                   Panduan Pemilihan
                 </Link>
               </li>

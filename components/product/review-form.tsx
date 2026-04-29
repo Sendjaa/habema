@@ -42,7 +42,32 @@ export function ReviewForm({ equipmentId, onReviewSubmitted }: ReviewFormProps) 
         return;
       }
 
-      const { error } = await (supabase as any)
+      // Check if user exists in users table
+      const { data: userRecord, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+
+      if (userError || !userRecord) {
+        // Create user record if it doesn't exist
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert({
+            id: user.id,
+            email: user.email || '',
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          });
+
+        if (insertError) {
+          console.error('Error creating user record:', insertError);
+          toast.error('Gagal membuat user record. Silakan coba lagi.');
+          return;
+        }
+      }
+
+      // Now insert the review
+      const { error } = await supabase
         .from("reviews")
         .insert({
           equipment_id: equipmentId,
@@ -51,7 +76,10 @@ export function ReviewForm({ equipmentId, onReviewSubmitted }: ReviewFormProps) 
           comment: comment.trim(),
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Review insertion error:', error);
+        throw error;
+      }
 
       toast.success("Review berhasil dikirim!");
       setRating(0);

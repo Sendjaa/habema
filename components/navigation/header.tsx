@@ -39,6 +39,7 @@ export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [navbarBottom, setNavbarBottom] = useState(0);
   const [searchValue, setSearchValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
@@ -81,12 +82,60 @@ export function Header() {
   }, [isMenuOpen]);
 
   useEffect(() => {
-    const handleScroll = () => {
+    const updateNavbarPosition = () => {
       setIsScrolled(window.scrollY > 10);
+      
+      // Calculate navbar bottom position
+      const headerElement = document.querySelector('header');
+      if (headerElement) {
+        const rect = headerElement.getBoundingClientRect();
+        setNavbarBottom(rect.bottom);
+      }
     };
+
+    const handleScroll = () => {
+      updateNavbarPosition();
+    };
+    
+    // Initial calculation
+    updateNavbarPosition();
+    
+    // Update on scroll
     window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener("resize", updateNavbarPosition);
+    
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", updateNavbarPosition);
+    };
   }, []);
+
+  // Disable scroll when search modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => { document.body.style.overflow = "unset"; };
+  }, [isOpen]);
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -120,8 +169,8 @@ export function Header() {
           `/api/products?search=${encodeURIComponent(searchValue)}`,
         );
         if (response.ok) {
-          const data = await response.json();
-          setProducts(data);
+          const result = await response.json();
+          setProducts(result.data || []);
         }
       } catch (error) {
         console.error("Search error:", error);
@@ -149,7 +198,7 @@ export function Header() {
       }`}
     >
       {/* Top Bar */}
-      <div className="hidden sm:block bg-[#1B4332] text-emerald-50/70 text-[11px] py-2 font-medium tracking-wide">
+      {/* <div className="hidden sm:block bg-[#1B4332] text-emerald-50/70 text-[11px] py-2 font-medium tracking-wide">
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="flex gap-8">
             <span className="flex items-center gap-2">
@@ -167,7 +216,7 @@ export function Header() {
             <Link href="/track" className="hover:text-white transition-colors">Lacak Pesanan</Link>
           </div>
         </div>
-      </div>
+      </div> */}
 
       <nav className="max-w-7xl mx-auto px-4 lg:px-8">
         <div className="flex justify-between items-center h-16 md:h-20 gap-4">
@@ -206,31 +255,190 @@ export function Header() {
             <AnimatePresence>
               {isOpen && (
                 <>
+                  {/* Overlay untuk klik di luar */}
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="fixed inset-0 bg-black/20 z-[40]"
                     onClick={() => setIsOpen(false)}
-                    style={{ top: navbarHeight }}
-                    className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-[40]"
                   />
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.15 }}
-                    style={{ top: "auto", marginTop: "12px" }}
-                    className="absolute left-0 w-full bg-[#F2EDE4] z-[50] shadow-xl border border-gray-100 rounded-xl overflow-hidden"
+                    style={{ top: "100%" }}
+                    className="absolute left-0 right-0 bg-[#F2EDE4] z-[50] shadow-xl border border-gray-100 rounded-xl overflow-hidden mt-2"
                   >
-                    {/* Content Search Results (Sama seperti sebelumnya) */}
+                    {/* Content Search Results */}
                     <div className="grid grid-cols-12 max-h-[70vh] overflow-y-auto">
-                       {/* ... isi konten search kamu (Middle Results, Right Expert Choice, dll) ... */}
+                      {/* Left: Search Results */}
+                      <div className="col-span-8 border-r border-gray-200 bg-white">
+                        <div className="p-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-bold text-gray-900">Hasil Pencarian</h3>
+                            <div className="flex items-center gap-2">
+                              {isLoading && <div className="text-xs text-gray-500">Mencari...</div>}
+                              <button
+                                onClick={() => setIsOpen(false)}
+                                className="p-1 rounded-md hover:bg-gray-100 transition-colors"
+                              >
+                                <X className="w-4 h-4 text-gray-500 hover:text-gray-700" />
+                              </button>
+                            </div>
+                          </div>
+                          
+                          {searchValue.length < 2 ? (
+                            <div className="text-center py-8 text-gray-400">
+                              <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">Ketik minimal 2 karakter untuk mencari</p>
+                            </div>
+                          ) : products.length === 0 && !isLoading ? (
+                            <div className="text-center py-8 text-gray-400">
+                              <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">Tidak ada hasil untuk "{searchValue}"</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {products.map((product) => {
+                                // Check if search matches product name or category
+                                const searchLower = searchValue.toLowerCase();
+                                const nameMatch = product.name?.toLowerCase().includes(searchLower);
+                                const categoryMatch = product.equipment_categories?.name?.toLowerCase().includes(searchLower);
+                                
+                                return (
+                                  <Link
+                                    key={product.id}
+                                    href={`/product/${product.id}`}
+                                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                                    onClick={() => {
+                                      setIsOpen(false);
+                                      setSearchValue("");
+                                    }}
+                                  >
+                                    <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                                      {product.image_url ? (
+                                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <div className="w-full h-full bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center">
+                                          <Mountain className="w-6 h-6 text-emerald-600" />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <h4 className="text-sm font-semibold text-gray-900 truncate">{product.name}</h4>
+                                        {nameMatch && (
+                                          <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-medium rounded-full">
+                                            Nama
+                                          </span>
+                                        )}
+                                        {categoryMatch && (
+                                          <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-medium rounded-full">
+                                            Kategori
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-gray-500 flex items-center gap-1">
+                                        <Leaf className="w-3 h-3" />
+                                        {product.equipment_categories?.name || 'Tidak ada kategori'}
+                                      </p>
+                                      <p className="text-sm font-bold text-emerald-600">
+                                        Rp{Number(product.price_per_night || 0).toLocaleString('id-ID')}/hari
+                                      </p>
+                                    </div>
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Right: Expert Choice */}
+                      <div className="col-span-4 bg-gray-50">
+                        <div className="p-4">
+                          <h3 className="text-sm font-bold text-gray-900 mb-4">Pilihan Expert</h3>
+                          
+                          {featuredRecommendation ? (
+                            <Link
+                              href={`/product/${featuredRecommendation.id}`}
+                              className="block"
+                              onClick={() => {
+                                setIsOpen(false);
+                                setSearchValue("");
+                              }}
+                            >
+                              <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                <div className="h-24 bg-gradient-to-br from-emerald-100 to-emerald-200 relative">
+                                  {featuredRecommendation.image_url && (
+                                    <img 
+                                      src={featuredRecommendation.image_url} 
+                                      alt={featuredRecommendation.name} 
+                                      className="w-full h-full object-cover"
+                                    />
+                                  )}
+                                  <div className="absolute top-2 left-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-bold">
+                                    HOT
+                                  </div>
+                                </div>
+                                <div className="p-3">
+                                  <h4 className="text-xs font-bold text-gray-900 truncate mb-1">{featuredRecommendation.name}</h4>
+                                  <p className="text-xs text-gray-500 mb-2">{featuredRecommendation.equipment_categories?.name}</p>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold text-emerald-600">
+                                      Rp{Number(featuredRecommendation.price_per_night || 0).toLocaleString('id-ID')}
+                                    </span>
+                                    <div className="flex items-center text-xs text-amber-500">
+                                      <Star className="w-3 h-3 fill-current mr-1" />
+                                      4.8
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </Link>
+                          ) : (
+                            <div className="text-center py-8 text-gray-400">
+                              <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-xs">Tidak ada rekomendasi</p>
+                            </div>
+                          )}
+                          
+                          {/* Categories */}
+                          <div className="mt-6">
+                            <h4 className="text-xs font-bold text-gray-900 mb-3">Kategori Populer</h4>
+                            <div className="space-y-2">
+                              {categories.slice(0, 4).map((category) => (
+                                <Link
+                                  key={category.id}
+                                  href={`/catalog?category=${category.id}`}
+                                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-white transition-colors"
+                                  onClick={() => {
+                                    setIsOpen(false);
+                                    setSearchValue("");
+                                  }}
+                                >
+                                  <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                                    <Leaf className="w-4 h-4 text-emerald-600" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium text-gray-900 truncate">{category.name}</p>
+                                    <p className="text-xs text-gray-500">{category.description}</p>
+                                  </div>
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </motion.div>
                 </>
-              )}
-            </AnimatePresence>
-          </div>
+            )}
+          </AnimatePresence>
+        </div>
 
           {/* 3. Navigation & Actions */}
           <div className="flex items-center gap-1">
@@ -327,10 +535,10 @@ export function Header() {
                   </Link>
                 )}
 
-  <MobileNavLink href="/catalog" label="Katalog Gear" onClick={closeMenu} />
-  <MobileNavLink href="/bundles" label="Paket Bundling" onClick={closeMenu} />
-  <MobileNavLink href="/guide" label="Panduan Sewa" onClick={closeMenu} />
-</div>
+                <MobileNavLink href="/catalog" label="Katalog Gear" onClick={closeMenu} />
+                <MobileNavLink href="/bundles" label="Paket Bundling" onClick={closeMenu} />
+                <MobileNavLink href="/guide" label="Panduan Sewa" onClick={closeMenu} />
+              </div>
 
               <div className="mt-auto pt-6 border-t border-gray-100">
                 <div className="flex items-center gap-3 px-4 py-3 mb-4 bg-gray-50 rounded-lg">
