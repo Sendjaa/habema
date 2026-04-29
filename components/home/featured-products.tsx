@@ -6,6 +6,7 @@ import { ArrowRight, Sparkles, Flame, Star } from 'lucide-react'
 import { supabase } from "@/lib/supabaseClient"
 import React from 'react'
 import { motion } from 'framer-motion'
+import { useOptimizedFetch } from '@/lib/optimized-fetch'
 
 interface Product {
   id: string;
@@ -21,12 +22,15 @@ interface Product {
 }
 
 export function FeaturedProducts() {
-  const [featured, setFeatured] = React.useState<Product[]>([])
-  const [loading, setLoading] = React.useState(true)
+  const { data: featured, loading, error, refetch } = useOptimizedFetch<Product[]>('/api/products/featured', {
+    cacheTime: 10 * 60 * 1000, // 10 minutes cache
+    retryCount: 2,
+    dedupe: true
+  })
 
-  const fetchMostRentedProducts = async () => {
+  // Fallback to Supabase if API fails
+  const fetchFromSupabase = async () => {
     try {
-      setLoading(true)
       const { data, error } = await supabase
         .from('equipment')
         .select(`*, equipment_categories ( name )`)
@@ -34,19 +38,20 @@ export function FeaturedProducts() {
         .limit(15)
 
       if (error) throw error
-      
-      setFeatured(data || [])
-    } catch (error) {
-      console.error('Error fetching popular products:', error)
-      setFeatured([])
-    } finally {
-      setLoading(false)
+      return data || []
+    } catch (supabaseError) {
+      console.error('Supabase fallback failed:', supabaseError)
+      return []
     }
   }
 
   React.useEffect(() => {
-    fetchMostRentedProducts()
-  }, [])
+    if (error && !loading) {
+      fetchFromSupabase().then(setFeatured)
+    }
+  }, [error, loading])
+
+  const products = featured || []
 
   if (loading) return (
     <div className="py-24 flex flex-col items-center justify-center gap-4 text-forest/40 animate-pulse">
@@ -87,8 +92,8 @@ export function FeaturedProducts() {
 
         {/* Grid - 5 columns on desktop, 2 on mobile */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-2">
-          {Array.isArray(featured) && featured.length > 0 ? (
-            featured.map((product, index) => {
+          {Array.isArray(products) && products.length > 0 ? (
+            products.map((product, index) => {
             const price = Number(product.price_per_night || 0);
 
             return (

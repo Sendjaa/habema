@@ -8,6 +8,7 @@ import { ArrowRight, Zap } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import React from 'react'
 import { useState, useEffect, useRef } from "react";
+import { useOptimizedFetch, api } from '@/lib/optimized-fetch'
 
 /* ─── HOOKS ──────────────────────────────────────── */
 function useInView(threshold = 0.12) {
@@ -181,32 +182,60 @@ function FeaturedBundlesCard({ pkg, index }: { pkg: Package; index: number }) {
 }
 
 export function FeaturedBundles() {
-  const [bundles, setBundles] = React.useState<any[]>([])
-  const [loading, setLoading] = React.useState(true)
+  const { data: bundlesData, loading, error, refetch } = useOptimizedFetch<any[]>('/api/bundles', {
+    cacheTime: 15 * 60 * 1000, // 15 minutes cache
+    retryCount: 2,
+    dedupe: true
+  })
 
-  const fetchFeaturedBundles = async () => {
-    try {
-      const response = await fetch('/api/bundles')
-      const result = await response.json()
-      
-      if (!response.ok || !result.success) {
-        console.error('Error fetching featured bundles:', result.error || 'Unknown error')
-        return []
-      }
-      
-      // Return only the first 3 bundles for featured section
-      return result.data.slice(0, 3) || []
-    } catch (error) {
-      console.error('Error fetching featured bundles:', error)
-      return []
+  // Fallback data if API fails
+  const fallbackBundles = [
+    {
+      id: 'fallback-1',
+      category: 'Pendakian',
+      label: 'Paket Basic',
+      badge: 'Populer',
+      price: '250.000',
+      unit: '/hari',
+      desc: 'Perlengkapan dasar untuk pendakian singkat',
+      image: '/images/bundles/basic.jpg',
+      include: ['Tenda', 'Sleeping Bag', 'Carrier'],
+      accent: '#1B4332',
+      accentLight: '#E8F5E8'
+    },
+    {
+      id: 'fallback-2',
+      category: 'Camping',
+      label: 'Paket Premium',
+      badge: 'Best Value',
+      price: '450.000',
+      unit: '/hari',
+      desc: 'Perlengkapan lengkap untuk camping nyaman',
+      image: '/images/bundles/premium.jpg',
+      include: ['Tenda', 'Sleeping Bag', 'Carrier', 'Matras', 'Cooking Set'],
+      accent: '#FF6B35',
+      accentLight: '#FFE8DC'
+    },
+    {
+      id: 'fallback-3',
+      category: 'Adventure',
+      label: 'Paket Pro',
+      badge: 'Ultimate',
+      price: '650.000',
+      unit: '/hari',
+      desc: 'Perlengkapan profesional untuk petualangan ekstrem',
+      image: '/images/bundles/pro.jpg',
+      include: ['Tenda Premium', 'Sleeping Bag Premium', 'Carrier Pro', 'Matras', 'Cooking Set Pro', 'Headlamp'],
+      accent: '#2D5016',
+      accentLight: '#F0F8E8'
     }
-  }
+  ]
 
+  const bundles = bundlesData?.slice(0, 3) || (error ? fallbackBundles : [])
+
+  // Prefetch bundles data when component mounts
   React.useEffect(() => {
-    fetchFeaturedBundles().then((data) => {
-      setBundles(data)
-      setLoading(false)
-    })
+    api.prefetch('/api/bundles')
   }, [])
 
   return (

@@ -4,11 +4,8 @@ import { Fraunces, DM_Sans } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { LayoutWrapper } from '@/components/layout-wrapper'
 import { Toaster } from 'sonner'
-import { PerformanceMonitor } from '@/components/performance-monitor'
 import { CssLoader } from '@/components/css-loader'
 import ErrorBoundary from '@/components/error-boundary'
-import { bundleOptimizer, cssOptimizer } from '@/components/performance-optimizer'
-import { OptimizedImage, preloadCriticalImages } from '@/components/optimized-image'
 import './globals.css'
 
 // ── Fonts ──────────────────────────────────────────────────────
