@@ -182,11 +182,14 @@ function FeaturedBundlesCard({ pkg, index }: { pkg: Package; index: number }) {
 }
 
 export function FeaturedBundles() {
-  const { data: bundlesData, loading, error, refetch } = useOptimizedFetch<any[]>('/api/bundles', {
+  const { data: bundlesResponse, loading, error, refetch } = useOptimizedFetch<{ success: boolean; data: any[] }>('/api/bundles', {
     cacheTime: 15 * 60 * 1000, // 15 minutes cache
     retryCount: 2,
     dedupe: true
   })
+
+  // Extract actual bundles data from response
+  const bundlesData = bundlesResponse?.success ? bundlesResponse.data : null
 
   // Fallback data if API fails
   const fallbackBundles = [
@@ -231,7 +234,7 @@ export function FeaturedBundles() {
     }
   ]
 
-  const bundles = bundlesData?.slice(0, 3) || (error ? fallbackBundles : [])
+  const bundles = (Array.isArray(bundlesData) ? bundlesData.slice(0, 3) : []) || (error ? fallbackBundles : [])
 
   // Prefetch bundles data when component mounts
   React.useEffect(() => {

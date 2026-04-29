@@ -22,11 +22,14 @@ interface Product {
 }
 
 export function FeaturedProducts() {
-  const { data: featured, loading, error, refetch } = useOptimizedFetch<Product[]>('/api/products/featured', {
+  const { data: featuredResponse, loading, error, refetch } = useOptimizedFetch<{ success: boolean; data: Product[] }>('/api/products/featured', {
     cacheTime: 10 * 60 * 1000, // 10 minutes cache
     retryCount: 2,
     dedupe: true
   })
+
+  // Extract actual products data from response
+  const featured = featuredResponse?.success ? featuredResponse.data : null
 
   // Fallback to Supabase if API fails
   const fetchFromSupabase = async () => {
@@ -45,13 +48,15 @@ export function FeaturedProducts() {
     }
   }
 
+  const [fallbackData, setFallbackData] = React.useState<Product[]>([])
+
   React.useEffect(() => {
     if (error && !loading) {
-      fetchFromSupabase().then(setFeatured)
+      fetchFromSupabase().then(setFallbackData)
     }
   }, [error, loading])
 
-  const products = featured || []
+  const products = (Array.isArray(featured) ? featured : []) || (error ? fallbackData : [])
 
   if (loading) return (
     <div className="py-24 flex flex-col items-center justify-center gap-4 text-forest/40 animate-pulse">
