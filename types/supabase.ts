@@ -14,6 +14,24 @@ export type Database = {
           delivery_address: string | null
           phone: string | null
           email: string | null
+          rental_days: number
+          subtotal: number
+          total_cost: number
+          deposit_amount: number
+          delivery_option: "pickup" | "delivery"
+          delivery_cost: number
+          delivery_distance: number
+          delivery_duration: string | null
+          delivery_location_type: string | null
+          delivery_gps_lat: number | null
+          delivery_gps_lng: number | null
+          delivery_time_preference: string | null
+          delivery_instructions: string | null
+          delivery_accessibility_notes: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          emergency_contact_relationship: string | null
+          customer_note: string | null
         }
         Insert: {
           id?: string
@@ -27,6 +45,24 @@ export type Database = {
           delivery_address?: string | null
           phone?: string | null
           email?: string | null
+          rental_days: number
+          subtotal: number
+          total_cost: number
+          deposit_amount: number
+          delivery_option: "pickup" | "delivery"
+          delivery_cost?: number
+          delivery_distance?: number
+          delivery_duration?: string | null
+          delivery_location_type?: string | null
+          delivery_gps_lat?: number | null
+          delivery_gps_lng?: number | null
+          delivery_time_preference?: string | null
+          delivery_instructions?: string | null
+          delivery_accessibility_notes?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
+          customer_note?: string | null
         }
         Update: {
           id?: string
@@ -40,6 +76,24 @@ export type Database = {
           delivery_address?: string | null
           phone?: string | null
           email?: string | null
+          rental_days?: number
+          subtotal?: number
+          total_cost?: number
+          deposit_amount?: number
+          delivery_option?: "pickup" | "delivery"
+          delivery_cost?: number
+          delivery_distance?: number
+          delivery_duration?: string | null
+          delivery_location_type?: string | null
+          delivery_gps_lat?: number | null
+          delivery_gps_lng?: number | null
+          delivery_time_preference?: string | null
+          delivery_instructions?: string | null
+          delivery_accessibility_notes?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
+          customer_note?: string | null
         }
       }
       booking_items: {
@@ -48,8 +102,8 @@ export type Database = {
           booking_id: string
           equipment_id: string
           quantity: number
-          price_per_day: number
-          total_price: number
+          unit_price: number
+          subtotal: number
           created_at: string
         }
         Insert: {
@@ -57,8 +111,8 @@ export type Database = {
           booking_id: string
           equipment_id: string
           quantity: number
-          price_per_day: number
-          total_price: number
+          unit_price: number
+          subtotal: number
           created_at?: string
         }
         Update: {
@@ -66,8 +120,8 @@ export type Database = {
           booking_id?: string
           equipment_id?: string
           quantity?: number
-          price_per_day?: number
-          total_price?: number
+          unit_price?: number
+          subtotal?: number
           created_at?: string
         }
       }

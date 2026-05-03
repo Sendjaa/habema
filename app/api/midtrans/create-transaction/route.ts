@@ -19,20 +19,35 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { items, customerDetails, totalPrice } = body
 
-    // Check if Midtrans is configured - CRITICAL: No fallback in production
+    // Check if Midtrans is configured - Add fallback for development
     if (!clientKey || !serverKey) {
       console.error('CRITICAL: Midtrans credentials not configured!')
       console.error('Missing environment variables:', {
         clientKey: !!clientKey,
         serverKey: !!serverKey,
-        isProduction
+        isProduction,
+        envFile: '.env.local exists?'
       })
+      
+      // For development, provide a mock response
+      if (!isProduction) {
+        console.log('Development mode: Providing mock Midtrans response')
+        return NextResponse.json({
+          success: true,
+          orderId: generateOrderId(),
+          token: 'mock-token-' + Date.now(),
+          redirect_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/payment/finish`,
+          mock: true,
+          message: 'Development mode - using mock payment'
+        })
+      }
       
       return NextResponse.json(
         { 
           error: 'Payment system not properly configured. Please contact administrator.',
           details: 'Midtrans credentials missing',
-          isProduction
+          isProduction,
+          setupRequired: 'Please configure NEXT_PUBLIC_MIDTRANS_CLIENT_KEY and MIDTRANS_SERVER_KEY in .env.local'
         },
         { status: 500 }
       )

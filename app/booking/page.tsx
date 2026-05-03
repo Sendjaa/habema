@@ -10,15 +10,11 @@ import { DateRangePicker } from "@/components/booking/date-range-picker";
 import { calculateDaysBetween } from "@/lib/booking-utils";
 import { CheckCircle, ShieldCheck, Info, Loader2, MapPin, Calculator, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
-import { IDVerificationForm } from "@/components/checkout/id-verification-form";
+import type { Database } from "@/types/supabase";
+import { insertRecord, insertRecordWithoutReturn } from "@/lib/supabase-helpers";
 import { leafletService, DeliveryCost } from "@/lib/leaflet-service";
-import { LocationPicker } from "@/components/booking/location-picker";
 import { handleError, DatabaseError, NetworkError, ValidationError, safeAsync } from "@/lib/error-handler";
-import { LazyWrapper } from "@/components/lazy-components";
-
-// Lazy load heavy components
-const LazyIDVerificationForm = lazy(() => import("@/components/checkout/id-verification-form"));
-const LazyLocationPicker = lazy(() => import("@/components/booking/location-picker"));
+import { LazyWrapper, LazyIDVerificationForm, LazyLocationPicker } from "@/components/lazy-components";
 
 // Function to create admin notification
 const createAdminNotification = async (bookingId: string, productName: string, userEmail: string | null) => {
@@ -28,13 +24,11 @@ const createAdminNotification = async (bookingId: string, productName: string, u
       booking_id: bookingId,
       title: "Pesanan Baru",
       message: `Pesanan baru untuk ${productName}${userEmail ? ` dari ${userEmail}` : ' (Guest User)'}`,
-      notification_type: "new_booking",
+      type: "new_booking",
       is_read: false
     };
 
-    const { error } = await supabase
-      .from("notifications")
-      .insert([notificationData]);
+    const { error } = await insertRecordWithoutReturn('notifications', notificationData);
 
     if (error) {
       console.error("Error creating admin notification:", error);
@@ -189,10 +183,11 @@ function BookingContent() {
       } = await supabase.auth.getUser();
 
       if (!productId) throw new Error("ID Produk tidak ditemukan.");
-      const orderData = {
+      const orderData: Database['public']['Tables']['bookings']['Insert'] = {
         user_id: user?.id || null, // null for anonymous users
-        start_date: startDate?.toISOString(),
-        end_date: endDate?.toISOString(),
+        start_date: startDate?.toISOString() || '',
+        end_date: endDate?.toISOString() || '',
+        total_amount: Number(totalPrice),
         rental_days: Number(days),
         subtotal: Number(subtotal),
         total_cost: Number(totalPrice),
@@ -213,6 +208,8 @@ function BookingContent() {
         emergency_contact_phone: deliveryOption === 'delivery' && emergencyContact.phone ? emergencyContact.phone : null,
         emergency_contact_relationship: deliveryOption === 'delivery' && emergencyContact.relationship ? emergencyContact.relationship : null,
         customer_note: customerNote || null,
+        phone: user?.phone || null,
+        email: user?.email || null,
       };
 
       // For anonymous users, save to database with null user_id
@@ -221,9 +218,10 @@ function BookingContent() {
         
         // Create order data for anonymous user
         const anonymousOrderData = {
-          user_id: null, // Explicit null for anonymous users
+          user_id: null,
           start_date: startDate?.toISOString(),
           end_date: endDate?.toISOString(),
+          total_amount: Number(totalPrice),
           rental_days: Number(days),
           subtotal: Number(subtotal),
           total_cost: Number(totalPrice),
@@ -244,14 +242,12 @@ function BookingContent() {
           emergency_contact_phone: deliveryOption === 'delivery' && emergencyContact.phone ? emergencyContact.phone : null,
           emergency_contact_relationship: deliveryOption === 'delivery' && emergencyContact.relationship ? emergencyContact.relationship : null,
           customer_note: customerNote || null,
+          phone: null, // Add phone field if needed, or get from form
+          email: null, // Add email field if needed, or get from form
         };
 
         // Save anonymous booking to database
-        const { data: newBooking, error: bookingError } = await supabase
-          .from("bookings")
-          .insert([anonymousOrderData])
-          .select()
-          .single();
+        const { data: newBooking, error: bookingError } = await insertRecord('bookings', anonymousOrderData);
 
         if (bookingError) {
           const error = handleError(bookingError);
@@ -270,9 +266,7 @@ function BookingContent() {
           subtotal: Number(subtotal),
         };
 
-        const { error: itemError } = await supabase
-          .from("booking_items")
-          .insert([itemData]);
+        const { error: itemError } = await insertRecordWithoutReturn('booking_items', itemData);
 
         if (itemError) {
           const error = handleError(itemError);
@@ -282,16 +276,15 @@ function BookingContent() {
 
         // Create notification for admin about anonymous booking
         try {
-          await supabase
-            .from("notifications")
-            .insert({
-              user_id: null, // System notification (no specific user)
-              booking_id: newBooking.id,
-              title: "Booking Baru dari User Anonymous",
-              message: `User anonymous melakukan booking untuk ${product?.name}. ID: ${newBooking.id.slice(0, 8)}. Total: Rp${Number(totalPrice).toLocaleString("id-ID")}. Mohon segera diproses.`,
-              notification_type: "anonymous_booking",
-              is_read: false
-            });
+          const notificationData = {
+            user_id: null, // System notification (no specific user)
+            booking_id: newBooking.id,
+            title: "Booking Baru dari User Anonymous",
+            message: `User anonymous melakukan booking untuk ${product?.name}. ID: ${newBooking.id.slice(0, 8)}. Total: Rp${Number(totalPrice).toLocaleString("id-ID")}. Mohon segera diproses.`,
+            type: "anonymous_booking",
+            is_read: false
+          };
+          await insertRecordWithoutReturn('notifications', notificationData);
           console.log('Notification created for anonymous booking');
         } catch (notifError) {
           console.error('Error creating notification:', notifError);
@@ -364,7 +357,7 @@ Tipe: ${idData?.idType || '-'}
 Mohon konfirmasi pesanan saya ya!`;
 
           window.open(
-            `https://wa.me/6289509162484?text=${encodeURIComponent(waMessage)}`,
+            `https://wa.me/6283898749357?text=${encodeURIComponent(waMessage)}`,
             "_blank",
           );
         }
@@ -374,16 +367,12 @@ Mohon konfirmasi pesanan saya ya!`;
       }
 
       // For authenticated users, save to database
-      const { data: newBooking, error: bookingError } = await supabase
-        .from("bookings")
-        .insert([orderData])
-        .select()
-        .single();
+      const { data: newBooking, error: bookingError } = await insertRecord('bookings', orderData);
 
       if (bookingError) throw bookingError;
 
       // 4. Persiapkan data untuk Tabel Booking_Items 
-      const itemData = {
+      const itemData: Database['public']['Tables']['booking_items']['Insert'] = {
         booking_id: newBooking.id,
         equipment_id: productId,
         quantity: Number(quantity),
@@ -391,9 +380,7 @@ Mohon konfirmasi pesanan saya ya!`;
         subtotal: Number(subtotal),
       };
 
-      const { error: itemError } = await supabase
-        .from("booking_items")
-        .insert([itemData]);
+      const { error: itemError } = await insertRecordWithoutReturn('booking_items', itemData);
 
       if (itemError) throw itemError;
 

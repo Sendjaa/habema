@@ -106,23 +106,29 @@ export default function BookingDetailPage() {
           if (itemsError) {
             console.error("Items error:", itemsError);
             // Set booking without items if items fetch fails
-            setBooking({
-              ...bookingData,
-              booking_items: []
-            });
+            if (bookingData) {
+              setBooking({
+                ...bookingData as any,
+                booking_items: []
+              });
+            }
           } else {
-            setBooking({
-              ...bookingData,
-              booking_items: itemsData || []
-            });
+            if (bookingData) {
+              setBooking({
+                ...bookingData as any,
+                booking_items: itemsData || []
+              });
+            }
           }
         } catch (itemsError) {
           console.error("Error fetching items:", itemsError);
           // Set booking without items on error
-          setBooking({
-            ...bookingData,
-            booking_items: []
-          });
+          if (bookingData) {
+            setBooking({
+              ...bookingData as any,
+              booking_items: []
+            });
+          }
         }
 
       } catch (error) {

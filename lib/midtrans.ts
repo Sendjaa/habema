@@ -11,6 +11,14 @@ let snapApi: any = null
 
 async function initializeMidtrans() {
   try {
+    console.log('Initializing Midtrans with config:', {
+      isProduction,
+      hasServerKey: !!serverKey,
+      hasClientKey: !!clientKey,
+      serverKeyLength: serverKey?.length,
+      clientKeyLength: clientKey?.length
+    })
+
     const MidtransClient = await import('midtrans-client')
     
     // Create Core API instance for server-side
@@ -27,9 +35,15 @@ async function initializeMidtrans() {
       clientKey,
     })
     
+    console.log('Midtrans initialized successfully')
     return true
   } catch (error) {
     console.error('Failed to initialize Midtrans:', error)
+    console.error('Initialization error details:', {
+      errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      errorStack: error instanceof Error ? error.stack : undefined,
+      config: { isProduction, hasServerKey: !!serverKey, hasClientKey: !!clientKey }
+    })
     return false
   }
 }
@@ -70,6 +84,13 @@ export async function createMidtransTransaction(
   transactionData: MidtransTransactionRequest
 ) {
   try {
+    console.log('Creating Midtrans transaction with data:', {
+      orderId: transactionData.transaction_details.order_id,
+      amount: transactionData.transaction_details.gross_amount,
+      customerEmail: transactionData.customer_details.email,
+      itemCount: transactionData.item_details.length
+    })
+
     // Initialize Midtrans if not already done
     if (!snapApi) {
       const initialized = await initializeMidtrans()
@@ -79,6 +100,11 @@ export async function createMidtransTransaction(
     }
 
     const snapTransaction = await snapApi.createTransaction(transactionData)
+    console.log('Midtrans transaction created successfully:', {
+      token: snapTransaction.token ? 'Generated' : 'Missing',
+      redirectUrl: snapTransaction.redirect_url ? 'Generated' : 'Missing'
+    })
+    
     return {
       success: true,
       token: snapTransaction.token,
@@ -86,6 +112,14 @@ export async function createMidtransTransaction(
     }
   } catch (error) {
     console.error('Midtrans transaction error:', error)
+    console.error('Transaction error details:', {
+      errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      errorStack: error instanceof Error ? error.stack : undefined,
+      transactionData: {
+        orderId: transactionData.transaction_details.order_id,
+        amount: transactionData.transaction_details.gross_amount
+      }
+    })
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
