@@ -3,22 +3,9 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  images: {
-    unoptimized: true,
-    remotePatterns: [
-      {
-        protocol: 'https', // Gunakan 'protocol', bukan 'protocols'
-        hostname: 'i.pinimg.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'http', // Jika perlu http, buat objek terpisah
-        hostname: 'i.pinimg.com',
-        port: '',
-        pathname: '/**',
-      },
-    ],
+  // Fix workspace root warning
+  turbopack: {
+    root: process.cwd(),
   },
   // Add proxy configuration for authentication
   async rewrites() {
@@ -26,7 +13,7 @@ const nextConfig = {
       {
         source: '/api/auth/:path*',
         destination: '/api/auth/:path*',
-      },
+      },  
       {
         source: '/proxy/:path*',
         destination: '/proxy/:path*',
@@ -35,19 +22,16 @@ const nextConfig = {
   },
   // Performance optimizations
   experimental: {
-    optimizeCss: true,
     optimizePackageImports: ['lucide-react', 'sonner'],
     optimizeCss: {
       inlineCss: true,
       removeUnusedCss: true,
     },
-    // Reduce main thread blocking
-    serverComponentsExternalPackages: ['@supabase/supabase-js'],
     // Optimize bundle splitting
     optimizeServerReact: true,
-    // Minimize JavaScript execution
-    swcMinify: true,
   },
+  // Move deprecated experimental keys to top level
+  serverExternalPackages: ['@supabase/supabase-js'],
   // Image optimization
   images: {
     formats: ['image/webp', 'image/avif'],
