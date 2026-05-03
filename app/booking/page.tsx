@@ -17,26 +17,41 @@ import { handleError, DatabaseError, NetworkError, ValidationError, safeAsync } 
 import { LazyWrapper, LazyIDVerificationForm, LazyLocationPicker } from "@/components/lazy-components";
 
 // Function to create admin notification
-const createAdminNotification = async (bookingId: string, productName: string, userEmail: string | null) => {
+const createAdminNotification = async (bookingId: string, productName: string, userEmail: string | null, currentUser: User | null) => {
   try {
+    console.log('Creating admin notification for booking:', bookingId);
+    
+    // Use current user ID for notification to avoid null constraint
+    // For admin notifications, we'll send to the current user or system
+    const notificationUserId = currentUser?.id || userEmail;
+    
+    if (!notificationUserId) {
+      console.log('Skipping notification - no user ID available');
+      return;
+    }
+    
     const notificationData = {
-      user_id: null, // System notification for admin
+      user_id: notificationUserId,
       booking_id: bookingId,
       title: "Pesanan Baru",
       message: `Pesanan baru untuk ${productName}${userEmail ? ` dari ${userEmail}` : ' (Guest User)'}`,
-      type: "new_booking",
+      notification_type: "new_booking",
       is_read: false
     };
+
+    console.log('Notification data:', notificationData);
 
     const { error } = await insertRecordWithoutReturn('notifications', notificationData);
 
     if (error) {
       console.error("Error creating admin notification:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
     } else {
       console.log("Admin notification created successfully");
     }
   } catch (error) {
     console.error("Error in createAdminNotification:", error);
+    console.error("Caught error details:", error instanceof Error ? error.message : error);
   }
 };
 
@@ -44,14 +59,14 @@ const createAdminNotification = async (bookingId: string, productName: string, u
 const loadMidtransScript = () => {
   return new Promise((resolve) => {
     if (window.snap) {
-      
+
       resolve(window.snap)
       return
     }
 
     const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || ''
     console.log('Client-side Midtrans Client Key:', clientKey.substring(0, 10) + '...')
-    
+
     const script = document.createElement('script')
     script.src = 'https://app.midtrans.com/snap/snap.js'
     script.setAttribute('data-client-key', clientKey)
@@ -96,17 +111,17 @@ function BookingContent() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  
+
   // Pickup/Delivery options
   const [deliveryOption, setDeliveryOption] = useState<'pickup' | 'delivery'>('pickup');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [customerNote, setCustomerNote] = useState('');
-  
+
   // Delivery cost calculation
   const [deliveryCost, setDeliveryCost] = useState<DeliveryCost | null>(null);
   const [isCalculatingDelivery, setIsCalculatingDelivery] = useState(false);
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
-  
+
   // Special location and emergency contact
   const [specialLocationType, setSpecialLocationType] = useState<'standard' | 'camping' | 'outdoor' | 'remote' | 'emergency'>('standard');
   const [emergencyContact, setEmergencyContact] = useState({
@@ -121,7 +136,7 @@ function BookingContent() {
   const [deliveryInstructions, setDeliveryInstructions] = useState('');
   const [deliveryTime, setDeliveryTime] = useState<'morning' | 'afternoon' | 'evening' | 'flexible'>('flexible');
   const [accessibilityNotes, setAccessibilityNotes] = useState('');
-  
+
   // ==================== EFFECTS ====================
   useEffect(() => {
     const checkUser = async () => {
@@ -152,16 +167,74 @@ function BookingContent() {
     fetchProduct();
   }, [productId]);
 
+  // Load existing condition data from localStorage
+  useEffect(() => {
+    const loadExistingConditionData = () => {
+      try {
+        const savedConditionData = localStorage.getItem('rentalConditions');
+        if (savedConditionData) {
+          const parsedData = JSON.parse(savedConditionData);
+          setConditionData(parsedData);
+          console.log('Data syarat & kondisi sebelumnya telah dimuat:', parsedData);
+        }
+      } catch (error) {
+        console.log('Tidak ada data syarat & kondisi sebelumnya:', error);
+      }
+    };
+
+    loadExistingConditionData();
+  }, []);
+
+  // Load existing identity data if user is logged in
+  useEffect(() => {
+    const loadExistingIdentityData = async () => {
+      if (!user) return;
+
+      try {
+        const { data: identityData, error } = await supabase
+          .from('user_identity')
+          .select('*')
+          .eq('user_id', user.id)
+          .single()
+          .returns<Database['public']['Tables']['user_identity']['Row']>();
+
+        if (!error && identityData) {
+          // Data identitas sudah ada, set ke state
+          setIdData({
+            fullName: user.user_metadata?.full_name || '',
+            idNumber: identityData.id_number || '',
+            idType: identityData.id_type || '',
+            phone: user.phone || ''
+          });
+
+          // Jika tanggal dan condition sudah lengkap, langsung ke step pembayaran
+          if (startDate && endDate && conditionData) {
+            setStep(4);
+            toast.success('Data identitas Anda sebelumnya telah dimuat. Lanjut ke pembayaran.');
+          } else {
+            toast.success('Data identitas Anda sebelumnya telah dimuat.');
+          }
+
+          console.log('Data identitas sebelumnya telah dimuat:', identityData);
+        }
+      } catch (error) {
+        console.log('Tidak ada data identitas sebelumnya atau error:', error);
+      }
+    };
+
+    loadExistingIdentityData();
+  }, [user, startDate, endDate, conditionData]);
+
   // ==================== CALCULATIONS ====================
   const days =
     startDate && endDate ? calculateDaysBetween(startDate, endDate) : 0;
   const pricePerNight = product ? Number(product.price_per_night) : 0;
-  
+
   // Calculate subtotal from transaction items if available, otherwise use single product
   const subtotal = transaction?.items && transaction.items.length > 0
     ? transaction.items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0) * days
     : pricePerNight * quantity * days;
-  
+
   const deposit = Math.round(subtotal * 0.2);
   const tax = Math.round(subtotal * 0.1);
   const deliveryFee = deliveryOption === 'delivery' ? (deliveryCost?.cost || 0) : 0;
@@ -183,67 +256,37 @@ function BookingContent() {
       } = await supabase.auth.getUser();
 
       if (!productId) throw new Error("ID Produk tidak ditemukan.");
-      const orderData: Database['public']['Tables']['bookings']['Insert'] = {
+      const orderData = {
         user_id: user?.id || null, // null for anonymous users
         start_date: startDate?.toISOString() || '',
         end_date: endDate?.toISOString() || '',
-        total_amount: Number(totalPrice),
-        rental_days: Number(days),
-        subtotal: Number(subtotal),
-        total_cost: Number(totalPrice),
-        deposit_amount: Number(deposit),
         status: "pending",
         delivery_option: deliveryOption,
         delivery_address: deliveryOption === 'delivery' ? deliveryAddress : null,
-        delivery_cost: deliveryOption === 'delivery' ? deliveryFee : 0,
-        delivery_distance: deliveryOption === 'delivery' ? deliveryCost?.distance || 0 : 0,
-        delivery_duration: deliveryOption === 'delivery' ? deliveryCost?.duration || null : null,
-        delivery_location_type: deliveryOption === 'delivery' ? specialLocationType : null,
-        delivery_gps_lat: deliveryOption === 'delivery' && gpsCoordinates.latitude ? parseFloat(gpsCoordinates.latitude) : null,
-        delivery_gps_lng: deliveryOption === 'delivery' && gpsCoordinates.longitude ? parseFloat(gpsCoordinates.longitude) : null,
-        delivery_time_preference: deliveryOption === 'delivery' ? deliveryTime : null,
-        delivery_instructions: deliveryOption === 'delivery' ? deliveryInstructions : null,
-        delivery_accessibility_notes: deliveryOption === 'delivery' ? accessibilityNotes : null,
-        emergency_contact_name: deliveryOption === 'delivery' && emergencyContact.name ? emergencyContact.name : null,
-        emergency_contact_phone: deliveryOption === 'delivery' && emergencyContact.phone ? emergencyContact.phone : null,
-        emergency_contact_relationship: deliveryOption === 'delivery' && emergencyContact.relationship ? emergencyContact.relationship : null,
         customer_note: customerNote || null,
-        phone: user?.phone || null,
-        email: user?.email || null,
+        total_cost: totalPrice,
+        rental_days: days,
+        subtotal: subtotal,
+        deposit_amount: deposit,
       };
 
       // For anonymous users, save to database with null user_id
       if (!user) {
         console.log('Creating anonymous booking (database with null user_id)');
-        
+
         // Create order data for anonymous user
         const anonymousOrderData = {
           user_id: null,
-          start_date: startDate?.toISOString(),
-          end_date: endDate?.toISOString(),
-          total_amount: Number(totalPrice),
-          rental_days: Number(days),
-          subtotal: Number(subtotal),
-          total_cost: Number(totalPrice),
-          deposit_amount: Number(deposit),
+          start_date: startDate?.toISOString() || '',
+          end_date: endDate?.toISOString() || '',
           status: "pending",
           delivery_option: deliveryOption,
           delivery_address: deliveryOption === 'delivery' ? deliveryAddress : null,
-          delivery_cost: deliveryOption === 'delivery' ? deliveryFee : 0,
-          delivery_distance: deliveryOption === 'delivery' ? deliveryCost?.distance || 0 : 0,
-          delivery_duration: deliveryOption === 'delivery' ? deliveryCost?.duration || null : null,
-          delivery_location_type: deliveryOption === 'delivery' ? specialLocationType : null,
-          delivery_gps_lat: deliveryOption === 'delivery' && gpsCoordinates.latitude ? parseFloat(gpsCoordinates.latitude) : null,
-          delivery_gps_lng: deliveryOption === 'delivery' && gpsCoordinates.longitude ? parseFloat(gpsCoordinates.longitude) : null,
-          delivery_time_preference: deliveryOption === 'delivery' ? deliveryTime : null,
-          delivery_instructions: deliveryOption === 'delivery' ? deliveryInstructions : null,
-          delivery_accessibility_notes: deliveryOption === 'delivery' ? accessibilityNotes : null,
-          emergency_contact_name: deliveryOption === 'delivery' && emergencyContact.name ? emergencyContact.name : null,
-          emergency_contact_phone: deliveryOption === 'delivery' && emergencyContact.phone ? emergencyContact.phone : null,
-          emergency_contact_relationship: deliveryOption === 'delivery' && emergencyContact.relationship ? emergencyContact.relationship : null,
           customer_note: customerNote || null,
-          phone: null, // Add phone field if needed, or get from form
-          email: null, // Add email field if needed, or get from form
+          total_cost: totalPrice,
+          rental_days: days,
+          subtotal: subtotal,
+          deposit_amount: deposit,
         };
 
         // Save anonymous booking to database
@@ -274,22 +317,8 @@ function BookingContent() {
           return;
         }
 
-        // Create notification for admin about anonymous booking
-        try {
-          const notificationData = {
-            user_id: null, // System notification (no specific user)
-            booking_id: newBooking.id,
-            title: "Booking Baru dari User Anonymous",
-            message: `User anonymous melakukan booking untuk ${product?.name}. ID: ${newBooking.id.slice(0, 8)}. Total: Rp${Number(totalPrice).toLocaleString("id-ID")}. Mohon segera diproses.`,
-            type: "anonymous_booking",
-            is_read: false
-          };
-          await insertRecordWithoutReturn('notifications', notificationData);
-          console.log('Notification created for anonymous booking');
-        } catch (notifError) {
-          console.error('Error creating notification:', notifError);
-          // Continue even if notification fails
-        }
+        // Skip notification for anonymous users due to user_id constraint
+        console.log('Skipping notification for anonymous booking - no user_id available');
 
         // Log booking details for debugging
         console.log('=== ANONYMOUS BOOKING CREATED ===');
@@ -300,8 +329,8 @@ function BookingContent() {
         console.log('Duration:', days, 'days');
         console.log('Payment Method:', paymentMethod);
         console.log('=================================');
-        
-        
+
+
         // Update transaction data with booking info
         setTransactionData({
           items: [
@@ -385,7 +414,7 @@ Mohon konfirmasi pesanan saya ya!`;
       if (itemError) throw itemError;
 
       // 6. Create notification for admin
-      await createAdminNotification(newBooking.id, product.name, user?.email || null);
+      await createAdminNotification(newBooking.id, product.name, user?.email || null, user);
 
       // 5. Update Global State (Zustand)
       setTransactionData({
@@ -424,17 +453,17 @@ Total: Rp${Number(totalPrice).toLocaleString("id-ID")}
 Metode Pengambilan: ${deliveryOption === 'pickup' ? 'Ambil di Tempat' : 'Diantar'}${deliveryOption === 'delivery' ? `
 Alamat: ${deliveryAddress}
 Tipe Lokasi: ${specialLocationType === 'standard' ? 'Standar' :
-  specialLocationType === 'camping' ? 'Camping Area' :
-  specialLocationType === 'outdoor' ? 'Outdoor Event' :
-  specialLocationType === 'remote' ? 'Remote Area' :
-  specialLocationType === 'emergency' ? 'Emergency Delivery' : 'Special'}
+              specialLocationType === 'camping' ? 'Camping Area' :
+                specialLocationType === 'outdoor' ? 'Outdoor Event' :
+                  specialLocationType === 'remote' ? 'Remote Area' :
+                    specialLocationType === 'emergency' ? 'Emergency Delivery' : 'Special'}
 Biaya Pengantaran: ${leafletService.formatCost(deliveryFee)}
 Jarak: ${deliveryCost?.distance || 0} km
 Estimasi: ${deliveryCost?.duration || 'N/A'}
 Waktu: ${deliveryTime === 'flexible' ? 'Fleksibel' :
-  deliveryTime === 'morning' ? 'Pagi (08:00-12:00)' :
-  deliveryTime === 'afternoon' ? 'Siang (12:00-16:00)' :
-  deliveryTime === 'evening' ? 'Sore (16:00-18:00)' : 'N/A'}${gpsCoordinates.latitude && gpsCoordinates.longitude ? `
+              deliveryTime === 'morning' ? 'Pagi (08:00-12:00)' :
+                deliveryTime === 'afternoon' ? 'Siang (12:00-16:00)' :
+                  deliveryTime === 'evening' ? 'Sore (16:00-18:00)' : 'N/A'}${gpsCoordinates.latitude && gpsCoordinates.longitude ? `
 GPS: ${gpsCoordinates.latitude}, ${gpsCoordinates.longitude}` : ''}${emergencyContact.name ? `
 Kontak Darurat: ${emergencyContact.name} (${emergencyContact.relationship}) - ${emergencyContact.phone}` : ''}${deliveryInstructions ? `
 Instruksi: ${deliveryInstructions}` : ''}${accessibilityNotes ? `
@@ -485,7 +514,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
   // ==================== PAYMENT HANDLERS ====================
   const handleMidtransPayment = async (bookingId: string) => {
     setIsProcessingPayment(true);
-    
+
     try {
       // Validate required data before sending to Midtrans
       console.log('=== DEBUG: Data yang akan dikirim ke Midtrans ===');
@@ -498,45 +527,45 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
       console.log('Payment Method:', paymentMethod);
       console.log('Selected Bank:', selectedBank);
       console.log('Booking ID:', bookingId);
-      
+
       // Check for missing required fields
       if (!product || !product.id || !product.name || !product.price_per_night) {
         throw new Error('Data produk tidak lengkap');
       }
-      
+
       // Check if all steps are completed
       if (!startDate || !endDate) {
         throw new Error('Silakan pilih tanggal sewa terlebih dahulu');
       }
-      
+
       if (!conditionData) {
         throw new Error('Silakan lengkapi syarat dan kondisi terlebih dahulu');
       }
-      
+
       if (!idData) {
         throw new Error('Silakan lengkapi verifikasi identitas terlebih dahulu');
       }
-      
+
       if (!paymentMethod) {
         throw new Error('Silakan pilih metode pembayaran terlebih dahulu');
       }
-      
+
       if (paymentMethod === "Transfer Bank" && !selectedBank) {
         throw new Error('Silakan pilih bank terlebih dahulu');
       }
-      
+
       if (!days || days <= 0) {
         throw new Error('Durasi sewa tidak valid');
       }
-      
+
       if (!totalPrice || totalPrice <= 0) {
         throw new Error('Total harga tidak valid');
       }
-      
+
       if (!quantity || quantity <= 0) {
         throw new Error('Jumlah produk tidak valid');
       }
-      
+
       // Prepare transaction data for Midtrans
       const transactionData = {
         items: [{
@@ -548,8 +577,8 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
         }],
         duration: Number(days),
         days: Number(days),
-        payment: { 
-          method: paymentMethod, 
+        payment: {
+          method: paymentMethod,
           bank: selectedBank || undefined,
           bookingId: bookingId
         },
@@ -650,7 +679,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
     } catch (error: any) {
       console.error('Payment error:', error);
       setIsProcessingPayment(false);
-      
+
       // Show specific error message from validation or generic error
       const errorMessage = error?.message || 'Terjadi kesalahan saat memproses pembayaran.';
       toast.error(errorMessage);
@@ -728,29 +757,26 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                   { id: 4, name: 'Pembayaran', status: step >= 4 ? 'current' : 'upcoming' },
                 ].map((stepItem, index) => (
                   <div key={stepItem.id} className="flex items-start gap-3">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 transition-all ${
-                      stepItem.status === 'completed' 
-                        ? 'bg-emerald-600 text-white' 
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 transition-all ${stepItem.status === 'completed'
+                        ? 'bg-emerald-600 text-white'
                         : stepItem.status === 'current'
-                        ? 'bg-slate-900 text-white ring-2 ring-slate-900 ring-offset-2'
-                        : 'bg-slate-200 text-slate-400'
-                    }`}>
+                          ? 'bg-slate-900 text-white ring-2 ring-slate-900 ring-offset-2'
+                          : 'bg-slate-200 text-slate-400'
+                      }`}>
                       {stepItem.status === 'completed' ? '✓' : stepItem.id}
                     </div>
                     <div className="flex-1">
-                      <span className={`text-xs font-medium ${
-                        stepItem.status === 'current' 
-                          ? 'text-slate-900' 
+                      <span className={`text-xs font-medium ${stepItem.status === 'current'
+                          ? 'text-slate-900'
                           : stepItem.status === 'completed'
-                          ? 'text-emerald-600'
-                          : 'text-slate-400'
-                      }`}>
+                            ? 'text-emerald-600'
+                            : 'text-slate-400'
+                        }`}>
                         {stepItem.name}
                       </span>
                       {index < 3 && (
-                        <div className={`w-0.5 h-4 mt-1 ml-3 transition-all ${
-                          stepItem.status === 'completed' ? 'bg-emerald-600' : 'bg-slate-200'
-                        }`} />
+                        <div className={`w-0.5 h-4 mt-1 ml-3 transition-all ${stepItem.status === 'completed' ? 'bg-emerald-600' : 'bg-slate-200'
+                          }`} />
                       )}
                     </div>
                   </div>
@@ -775,20 +801,19 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                   selectedStartDate={startDate || undefined}
                   selectedEndDate={endDate || undefined}
                 />
-                
+
                 {/* Pickup/Delivery Options */}
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold text-slate-900">Metode Pengambilan</h3>
-                  
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button
                       type="button"
                       onClick={() => setDeliveryOption('pickup')}
-                      className={`p-4 rounded-xl border-2 transition-all ${
-                        deliveryOption === 'pickup'
+                      className={`p-4 rounded-xl border-2 transition-all ${deliveryOption === 'pickup'
                           ? 'border-emerald-600 bg-emerald-50 text-emerald-900'
                           : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                      }`}
+                        }`}
                     >
                       <div className="text-center">
                         <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-current/10 flex items-center justify-center">
@@ -800,7 +825,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                         <div className="text-xs opacity-75">Gratis</div>
                       </div>
                     </button>
-                    
+
                     <button
                       type="button"
                       disabled={true}
@@ -817,7 +842,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                       </div>
                     </button>
                   </div>
-                  
+
                   {/* Delivery Zone Info Banner */}
                   {/* {deliveryOption === 'delivery' && (
                     <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4">
@@ -830,39 +855,41 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                       </div>
                     </div>
                   )} */}
-                  
+
                   {/* Address Input for Delivery */}
                   {deliveryOption === 'delivery' && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-slate-700">
                         Pilih Lokasi Pengantaran *
                       </label>
-                      <LocationPicker
-                        onLocationChange={(location) => {
-                          setDeliveryAddress(location.fullAddress);
-                        }}
-                        onDeliveryCostChange={(deliveryData) => {
-                          // Update delivery cost state with full data from LocationPicker
-                          if (deliveryData && deliveryData.cost > 0) {
-                            setDeliveryCost({
-                              cost: deliveryData.cost,
-                              distance: deliveryData.distance || 0,
-                              duration: '',
-                              durationMinutes: 0,
-                              breakdown: deliveryData.breakdown || {
-                                baseCost: 15000,
-                                distanceCost: deliveryData.cost - 15000,
-                                volumeSurcharge: 0,
-                                vehicleType: 'motor'
-                              },
-                              locationType: 'standard'
-                            });
-                          }
-                        }}
-                      />
+                      <LazyWrapper>
+                        <LazyLocationPicker
+                          onLocationChange={(location) => {
+                            setDeliveryAddress(location.fullAddress);
+                          }}
+                          onDeliveryCostChange={(deliveryData) => {
+                            // Update delivery cost state with full data from LocationPicker
+                            if (deliveryData && deliveryData.cost > 0) {
+                              setDeliveryCost({
+                                cost: deliveryData.cost,
+                                distance: deliveryData.distance || 0,
+                                duration: '',
+                                durationMinutes: 0,
+                                breakdown: deliveryData.breakdown || {
+                                  baseCost: 15000,
+                                  distanceCost: deliveryData.cost - 15000,
+                                  volumeSurcharge: 0,
+                                  vehicleType: 'motor'
+                                },
+                                locationType: 'standard'
+                              });
+                            }
+                          }}
+                        />
+                      </LazyWrapper>
 
 
-                      
+
                       {/* Error Message */}
                       {deliveryError && (
                         <div className="bg-red-50 border border-red-200 rounded-xl p-3">
@@ -870,8 +897,8 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                             <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
                             <div>
                               <p className="text-xs text-red-800 font-medium">
-                                {deliveryError.includes('di luar jangkauan') || deliveryError.includes('area layanan') 
-                                  ? 'Lokasi di Luar Area Layanan' 
+                                {deliveryError.includes('di luar jangkauan') || deliveryError.includes('area layanan')
+                                  ? 'Lokasi di Luar Area Layanan'
                                   : 'Gagal menghitung biaya'}
                               </p>
                               <p className="text-xs text-red-600 mt-1">{deliveryError}</p>
@@ -884,7 +911,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                           </div>
                         </div>
                       )}
-                      
+
                       {/* Loading State */}
                       {isCalculatingDelivery && (
                         <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
@@ -894,7 +921,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                           </div>
                         </div>
                       )}
-                      
+
                       {/* Special Location Type */}
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-700">
@@ -1039,7 +1066,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                     </div>
                   )}
                 </div>
-                
+
                 {/* Customer Note */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">
@@ -1054,21 +1081,21 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                   />
                 </div>
               </div>
-              
-              {startDate && endDate && 
-                ((deliveryOption === 'pickup') || 
-                 (deliveryOption === 'delivery' && deliveryAddress.trim() && deliveryCost && !deliveryError && !isCalculatingDelivery &&
-                  // Additional validation for special locations
-                  (specialLocationType === 'standard' || 
-                   (emergencyContact.name.trim() && emergencyContact.phone.trim()))
-                 )) && (
-                <Button
-                  onClick={() => setStep(2)}
-                  className="w-full mt-6 bg-slate-900 h-12 rounded-xl font-bold"
-                >
-                  Lanjutkan
-                </Button>
-              )}
+
+              {startDate && endDate &&
+                ((deliveryOption === 'pickup') ||
+                  (deliveryOption === 'delivery' && deliveryAddress.trim() && deliveryCost && !deliveryError && !isCalculatingDelivery &&
+                    // Additional validation for special locations
+                    (specialLocationType === 'standard' ||
+                      (emergencyContact.name.trim() && emergencyContact.phone.trim()))
+                  )) && (
+                  <Button
+                    onClick={() => setStep(2)}
+                    className="w-full mt-6 bg-slate-900 h-12 rounded-xl font-bold"
+                  >
+                    Lanjutkan
+                  </Button>
+                )}
             </StepCard>
 
             {/* Step 2: Syarat & Kondisi */}
@@ -1084,6 +1111,8 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                 equipmentName={product.name}
                 onChecklistComplete={(data: ConditionChecklistData) => {
                   setConditionData(data);
+                  // Simpan condition data ke localStorage untuk digunakan di session berikutnya
+                  localStorage.setItem('rentalConditions', JSON.stringify(data));
                   setStep(3);
                 }}
               />
@@ -1098,12 +1127,16 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
               onEdit={() => setStep(3)}
               disabled={!conditionData}
             >
-              <IDVerificationForm
-                onVerificationComplete={(data: any) => {
-                  setIdData(data);
-                  setStep(4);
-                }}
-              />
+              <LazyWrapper>
+                <LazyIDVerificationForm
+                  onVerificationComplete={(data: any) => {
+                    setIdData(data);
+                    setStep(4);
+                  }}
+                  onEdit={() => setStep(3)}
+                  disabled={!conditionData}
+                />
+              </LazyWrapper>
             </StepCard>
 
             {/* Step 4: Metode Pembayaran */}
@@ -1145,19 +1178,17 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                     <div key={m.id} className="space-y-2">
                       <div
                         onClick={() => setPaymentMethod(m.name)}
-                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex justify-between items-center ${
-                          paymentMethod === m.name
+                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex justify-between items-center ${paymentMethod === m.name
                             ? "border-emerald-600 bg-emerald-50/50"
                             : "border-slate-100 bg-white hover:border-slate-200"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-3">
                           <div
-                            className={`text-xl p-2 rounded-lg ${
-                              paymentMethod === m.name
+                            className={`text-xl p-2 rounded-lg ${paymentMethod === m.name
                                 ? "bg-emerald-100"
                                 : "bg-slate-50"
-                            }`}
+                              }`}
                           >
                             {m.icon}
                           </div>
@@ -1189,11 +1220,10 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                               <button
                                 key={bank}
                                 onClick={() => setSelectedBank(bank)}
-                                className={`py-3 px-4 rounded-xl border-2 text-xs font-bold transition-all ${
-                                  selectedBank === bank
+                                className={`py-3 px-4 rounded-xl border-2 text-xs font-bold transition-all ${selectedBank === bank
                                     ? "border-emerald-500 bg-white text-emerald-700 shadow-sm"
                                     : "border-slate-100 bg-slate-50/50 text-slate-500"
-                                }`}
+                                  }`}
                               >
                                 {bank}
                               </button>
@@ -1227,13 +1257,12 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                     !paymentMethod ||
                     (paymentMethod === "Transfer Bank" && !selectedBank)
                   }
-                  className={`w-full h-14 mt-4 rounded-xl font-bold text-lg shadow-lg ${
-                    paymentMethod &&
-                    (paymentMethod !== "Transfer Bank" || selectedBank) &&
-                    !isProcessingPayment
+                  className={`w-full h-14 mt-4 rounded-xl font-bold text-lg shadow-lg ${paymentMethod &&
+                      (paymentMethod !== "Transfer Bank" || selectedBank) &&
+                      !isProcessingPayment
                       ? "bg-emerald-600 hover:bg-emerald-700 text-white"
                       : "bg-slate-200 text-slate-400"
-                  }`}
+                    }`}
                 >
                   {isProcessingPayment ? (
                     <>
@@ -1331,9 +1360,9 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                         {deliveryCost.locationType !== 'standard' && (
                           <span className="ml-2 text-xs px-2 py-1 bg-orange-200 text-orange-800 rounded-full">
                             {deliveryCost.locationType === 'camping' ? '🏕️ Camping' :
-                             deliveryCost.locationType === 'outdoor' ? '🎪 Outdoor Event' :
-                             deliveryCost.locationType === 'remote' ? '🏔️ Remote' :
-                             deliveryCost.locationType === 'emergency' ? '🚨 Emergency' : 'Special'}
+                              deliveryCost.locationType === 'outdoor' ? '🎪 Outdoor Event' :
+                                deliveryCost.locationType === 'remote' ? '🏔️ Remote' :
+                                  deliveryCost.locationType === 'emergency' ? '🚨 Emergency' : 'Special'}
                           </span>
                         )}
                       </span>
@@ -1360,9 +1389,9 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                           <span>Tambahan lokasi khusus:</span>
                           <span className="font-medium">
                             {deliveryCost.locationType === 'camping' ? '+25%' :
-                             deliveryCost.locationType === 'outdoor' ? '+20%' :
-                             deliveryCost.locationType === 'remote' ? '+35%' :
-                             deliveryCost.locationType === 'emergency' ? '+50%' : '+0%'}
+                              deliveryCost.locationType === 'outdoor' ? '+20%' :
+                                deliveryCost.locationType === 'remote' ? '+35%' :
+                                  deliveryCost.locationType === 'emergency' ? '+50%' : '+0%'}
                           </span>
                         </div>
                       )}

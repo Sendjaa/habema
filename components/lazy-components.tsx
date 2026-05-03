@@ -4,7 +4,7 @@ import { lazy, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 
 // Lazy loading wrapper component
-const LazyWrapper = ({ children, fallback }: { 
+export const LazyWrapper = ({ children, fallback }: { 
   children: React.ReactNode; 
   fallback?: React.ReactNode 
 }) => (

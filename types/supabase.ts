@@ -5,18 +5,15 @@ export type Database = {
         Row: {
           id: string
           user_id: string | null
-          total_amount: number
+          total_cost: number
           status: string
           created_at: string
           updated_at: string
           start_date: string
           end_date: string
           delivery_address: string | null
-          phone: string | null
-          email: string | null
           rental_days: number
           subtotal: number
-          total_cost: number
           deposit_amount: number
           delivery_option: "pickup" | "delivery"
           delivery_cost: number
@@ -36,18 +33,15 @@ export type Database = {
         Insert: {
           id?: string
           user_id?: string | null
-          total_amount: number
+          total_cost: number
           status?: string
           created_at?: string
           updated_at?: string
           start_date: string
           end_date: string
           delivery_address?: string | null
-          phone?: string | null
-          email?: string | null
           rental_days: number
           subtotal: number
-          total_cost: number
           deposit_amount: number
           delivery_option: "pickup" | "delivery"
           delivery_cost?: number
@@ -67,18 +61,15 @@ export type Database = {
         Update: {
           id?: string
           user_id?: string | null
-          total_amount?: number
+          total_cost?: number
           status?: string
           created_at?: string
           updated_at?: string
           start_date?: string
           end_date?: string
           delivery_address?: string | null
-          phone?: string | null
-          email?: string | null
           rental_days?: number
           subtotal?: number
-          total_cost?: number
           deposit_amount?: number
           delivery_option?: "pickup" | "delivery"
           delivery_cost?: number
