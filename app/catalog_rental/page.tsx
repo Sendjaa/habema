@@ -38,15 +38,18 @@ export default function CatalogPage() {
   const [sortBy, setSortBy] = useState<
     "name" | "price-low" | "price-high" | "rating"
   >("name");
- 
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
 
       try {
-        const { data: catData, error: catError } = await supabase
+        const { data: catData, error: catError } = (await supabase
           .from("equipment_categories")
-          .select("id, name") as { data: EquipmentCategory[] | null; error: any };
+          .select("id, name")) as {
+          data: EquipmentCategory[] | null;
+          error: any;
+        };
 
         if (catError) {
           console.error("Gagal ambil kategori:", catError.message);
@@ -132,59 +135,55 @@ export default function CatalogPage() {
 
   return (
     <div className="min-h-screen bg-[#F7F8FA]">
-      <main className="bg-[#FDFCFB] pt-2 pb-8">
-      <div className="max-w-7xl mx-auto px-6">
-        
-        {/* Top Navigation Row */}
-        <div className="flex items-center gap-6 mb-6">
-          {/* Back Button - Premium Forest Style */}
-          <button 
-            onClick={() => router.back()}
-            className="group flex items-center justify-center w-12 h-12 transition-all duration-300"
-          >
-            <ArrowLeft className="w-5 h-5 text-forest group-hover:-translate-x-1 transition-transform" />
-          </button>
+      <main className="bg-[#FDFCFB] pt-2 pb-8 border">
+        <div className="max-w-7xl mx-auto px-6 h-50">
+          {/* Top Navigation Row */}
+          <div className="flex items-center gap-6 mb-6">
+            {/* Breadcrumb - Clean & Modern */}
+            <div className="flex flex-col gap-1">
+              <Breadcrumb>
+                <BreadcrumbList className="text-[10px] uppercase font-bold tracking-[0.15em]">
+                  <BreadcrumbItem>
+                    <BreadcrumbLink
+                      href="/"
+                      className="flex items-center gap-1.5 hover:text-gold transition-colors"
+                    >
+                      <button
+                        onClick={() => router.back()}
+                        className="group flex items-center justify-center w-12 h-12 transition-all duration-300"
+                      >
+                        <ArrowLeft className="w-5 h-5 text-forest group-hover:-translate-x-1 transition-transform" />
+                      </button>
+                      Beranda
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
 
-          {/* Breadcrumb - Clean & Modern */}
-          <div className="flex flex-col gap-1">
-            <Breadcrumb>
-              <BreadcrumbList className="text-[10px] uppercase font-bold tracking-[0.15em]">
-                <BreadcrumbItem>
-                  <BreadcrumbLink 
-                    href="/" 
-                    className="flex items-center gap-1.5 hover:text-gold transition-colors"
-                  >
-                    Beranda
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                
-                <BreadcrumbSeparator className="text-forest/20" />
-                
-                <BreadcrumbItem>
-                  <BreadcrumbPage className="flex items-center gap-2 text-forest font-black italic">
-                    {/* Small Forest Decor */}
-                    <div className="w-1.5 h-1.5 rounded-full bg-gold shadow-[0_0_8px_rgba(212,175,55,0.6)]" />
-                    Katalog Peralatan
-                  </BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
+                  <BreadcrumbSeparator className="text-forest/20" />
+
+                  <BreadcrumbItem>
+                    <BreadcrumbPage className="flex items-center gap-2 text-forest font-black italic">
+                      {/* Small Forest Decor */}
+                      {/* <div className="w-1.5 h-1.5 rounded-full bg-gold shadow-[0_0_8px_rgba(212,175,55,0.6)]" /> */}
+                      Katalog Rental
+                    </BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
+          </div>
+
+          {/* Page Title Section */}
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-forest rounded-2xl text-gold hidden md:block">
+              <Trees size={32} />
+            </div>
+            <h1 className="text-5xl md:text-6xl font-black text-forest tracking-tighter uppercase leading-none">
+              Eksplorasi <span className="text-gold italic">Gear.</span>
+            </h1>
           </div>
         </div>
+      </main>
 
-        {/* Page Title Section */}
-        <div className="flex items-center gap-4">
-           <div className="p-3 bg-forest rounded-2xl text-gold hidden md:block">
-              <Trees size={32} />
-           </div>
-           <h1 className="text-5xl md:text-6xl font-black text-forest tracking-tighter uppercase italic leading-none">
-             Eksplorasi <span className="text-gold not-italic">Gear.</span>
-           </h1>
-        </div>
-
-      </div>
-    </main>
-      
       {/* Banner Header */}
 
       <div className="max-w-7xl mx-auto px-4 py-8">
