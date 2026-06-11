@@ -230,7 +230,7 @@ export function Header() {
           </Link>
 
           {/* 2. Desktop Search - FIX 2: Z-INDEX & Clickability */}
-          <div className="hidden md:flex flex-1 max-w-xl relative group px-4 z-[60]">
+          <div className="hidden md:flex flex-1 max-w-xl relative group px-4 z-60">
             <div
               className={`w-full h-11 flex items-center px-4 rounded-lg border cursor-text transition-all ${isOpen ? "bg-white border-emerald-600 shadow-sm" : "bg-gray-100 border-transparent hover:bg-gray-200/70"}`}
               onClick={() => setIsOpen(true)} // Pastikan div pembungkus juga trigger focus
@@ -261,7 +261,7 @@ export function Header() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.15 }}
-                    className="fixed inset-0 bg-black/20 z-[40]"
+                    className="fixed inset-0 bg-black/20 z-40"
                     onClick={() => setIsOpen(false)}
                   />
                   <motion.div
@@ -270,7 +270,7 @@ export function Header() {
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.15 }}
                     style={{ top: "100%" }}
-                    className="absolute left-0 right-0 bg-[#F2EDE4] z-[50] shadow-xl border border-gray-100 rounded-xl overflow-hidden mt-2"
+                    className="absolute left-0 right-0 bg-[#F2EDE4] z-50 shadow-xl border border-gray-100 rounded-xl overflow-hidden mt-2"
                   >
                     {/* Content Search Results */}
                     <div className="grid grid-cols-12 max-h-[70vh] overflow-y-auto">
@@ -318,11 +318,11 @@ export function Header() {
                                       setSearchValue("");
                                     }}
                                   >
-                                    <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                                    <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0">
                                       {product.image_url ? (
                                         <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
                                       ) : (
-                                        <div className="w-full h-full bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center">
+                                        <div className="w-full h-full bg-linear-to-br from-emerald-100 to-emerald-200 flex items-center justify-center">
                                           <Mountain className="w-6 h-6 text-emerald-600" />
                                         </div>
                                       )}
@@ -372,7 +372,7 @@ export function Header() {
                               }}
                             >
                               <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                                <div className="h-24 bg-gradient-to-br from-emerald-100 to-emerald-200 relative">
+                                <div className="h-24 bg-linear-to-br from-emerald-100 to-emerald-200 relative">
                                   {featuredRecommendation.image_url && (
                                     <img 
                                       src={featuredRecommendation.image_url} 
@@ -445,7 +445,7 @@ export function Header() {
             {/* Desktop Links */}
             <div className="hidden lg:flex items-center gap-1 mr-2">
                 <Link href="/catalog">
-                    <Button variant="ghost" className="font-semibold text-emerald-900/80 text-[14px]">Katalog</Button>
+                    <Button variant="ghost" className="font-semibold text-emerald-900/80 text-[14px]">layanan</Button>
                 </Link>
                 <Link href="/bundles">
                     <Button variant="ghost" className="font-bold text-orange-700 hover:text-orange-800 hover:bg-orange-50 text-[14px]">Paket Hemat</Button>
@@ -454,7 +454,7 @@ export function Header() {
 
             <Button variant="ghost" size="icon" className="relative text-emerald-900/70" asChild>
               <Link href="/cart">
-                <ShoppingCart className="w-[22px] h-[22px]" />
+                <ShoppingCart className="w-5.5 h-5.5" />
                 {isClient && totalItems > 0 && (
                   <span className="absolute top-1 right-1 w-4 h-4 bg-orange-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-[#F2EDE4]">
                     {totalItems}
@@ -480,7 +480,7 @@ export function Header() {
       {/* 5. Mobile Menu Overlay & Panel */}
       <AnimatePresence>
         {isMenuOpen && (
-          <div className="fixed inset-0 z-[100] lg:hidden">
+          <div className="fixed inset-0 z-100 lg:hidden">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -493,7 +493,7 @@ export function Header() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25 }}
-              className="absolute right-0 top-0 h-full w-[280px] bg-white shadow-2xl p-6 flex flex-col"
+              className="absolute right-0 top-0 h-full w-70 bg-white shadow-2xl p-6 flex flex-col"
             >
               <div className="flex justify-between items-center mb-10 pb-4 border-b">
                 <h2 className="text-xs font-bold text-emerald-900/40 uppercase tracking-widest">Navigasi</h2>

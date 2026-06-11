@@ -6,6 +6,7 @@ import { LayoutWrapper } from '@/components/layout-wrapper'
 import { Toaster } from 'sonner'
 import { CssLoader } from '@/components/css-loader'
 import ErrorBoundary from '@/components/error-boundary'
+import { GoogleOAuthProviderWrapper } from '@/components/providers/google_oauth_provider'
 import './globals.css'
 
 // ── Fonts ──────────────────────────────────────────────────────
@@ -110,6 +111,13 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+
+  // Validasi Google Client ID
+  if (!googleClientId) {
+    console.warn('⚠️ NEXT_PUBLIC_GOOGLE_CLIENT_ID tidak ditemukan di .env.local')
+  }
+
   return (
     <html
       lang="id"
@@ -141,7 +149,6 @@ export default function RootLayout({
           __html: `*{box-sizing:border-box}body{margin:0;background:#F5EFE7;font-family:var(--font-body);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.bg-background{background-color:#F5EFE7}.text-foreground{color:#2D5016}.font-body{font-family:var(--font-body)}.antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.min-h-screen{min-height:100vh}.loading-spinner{width:40px;height:40px;border:4px solid #E8DFCF;border-top:4px solid #2D5016;border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.navbar-container{position:sticky;top:0;z-index:50;background:rgba(245,239,231,.95);backdrop-filter:blur(10px)}.hero-gradient{background:linear-gradient(135deg,#2D5016 0%,#3E6B1F 100%)}.no-js{display:none}.js-loaded{opacity:1;transition:opacity .3s ease}`
         }} />
         
-                
         {/* DNS prefetch for non-critical resources */}
         <link rel="dns-prefetch" href="//fonts.googleapis.com" />
         <link rel="dns-prefetch" href="//www.googletagmanager.com" />
@@ -189,10 +196,13 @@ export default function RootLayout({
           }}
         />
 
-        {/* Main layout (Navbar/Footer logic inside) */}
-        <ErrorBoundary>
-          <LayoutWrapper>{children}</LayoutWrapper>
-        </ErrorBoundary>
+        {/* ── Google OAuth Provider ── */}
+        <GoogleOAuthProviderWrapper clientId={googleClientId || ''}>
+          {/* Main layout (Navbar/Footer logic inside) */}
+          <ErrorBoundary>
+            <LayoutWrapper>{children}</LayoutWrapper>
+          </ErrorBoundary>
+        </GoogleOAuthProviderWrapper>
 
         {/* Analytics & performance — production only */}
         {process.env.NODE_ENV === 'production' && (

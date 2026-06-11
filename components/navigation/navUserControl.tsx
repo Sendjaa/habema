@@ -83,7 +83,7 @@ function NavbarUserControlInner() {
         asChild
       >
         <Link href="/account">
-          <User className="w-[22px] h-[22px]" />
+          <User className="w-22px h-22px" />
         </Link>
       </Button>
     );

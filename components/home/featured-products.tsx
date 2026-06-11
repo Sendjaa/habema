@@ -136,9 +136,9 @@ export function FeaturedProducts() {
                     </div>
 
                     {/* Content Section */}
-                    <div className="p-2.5 flex flex-col flex-grow">
+                    <div className="p-2.5 flex flex-col grow">
                       {/* Nama Produk */}
-                      <h3 className="text-[12px] font-medium text-slate-700 line-clamp-2 mb-1 min-h-[32px] group-hover:text-[#1B4332] transition-colors">
+                      <h3 className="text-[12px] font-medium text-slate-700 line-clamp-2 mb-1 min-h-8 group-hover:text-[#1B4332] transition-colors">
                         {product.name}
                       </h3>
 
