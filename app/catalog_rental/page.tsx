@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import { CatalogFilters } from "@/components/catalog/catalog-filters";
 import { CatalogGrid } from "@/components/catalog/catalog-grid";
 import { supabase } from "@/lib/supabaseClient";
@@ -20,42 +20,43 @@ import { ArrowLeft, CalendarDays } from "lucide-react";
 import Image from "next/image";
 import { useParallax } from "@/hooks/use-parallax";
 
-interface EquipmentCategory {
-  id: number;
-  name: string;
-}
+function CatalogContent() {
+  interface EquipmentCategory {
+    id: number;
+    name: string;
+  }
 
-export default function CatalogPage() {
+  
   const useSearchParamsHook = useSearchParams();
   const pathname = usePathname();
   const router = useRouter(); // Menggunakan useRouter yang benar untuk App Router
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [dbCategories, setDbCategories] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(true);
-
+  
   const [selectedCategory, setSelectedCategory] = useState<string | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
   const [sortBy, setSortBy] = useState<"name" | "price-low" | "price-high" | "rating">("name");
-
+  
   // mengambil tanggal mulai dan selesai sewa dari query params
   const urlStartDate = useSearchParamsHook.get("startDate") || "";
   const urlEndDate = useSearchParamsHook.get("endDate") || "";
-
+  
   // jadikan state jika ingin menampilkan tanggal di filter
   const [startDate, setStartDate] = useState(urlStartDate);
   const [endDate, setEndDate] = useState(urlEndDate);
-
+  
   // parallax scroll value
   const scrollY = useParallax();
-
+  
   useEffect(() => {
     setStartDate(urlStartDate);
     setEndDate(urlEndDate);
-
+  
     const fetchData = async () => {
       setLoading(true);
-
+  
       try {
         const { data: catData, error: catError } = (await supabase
           .from("equipment_categories")
@@ -63,7 +64,7 @@ export default function CatalogPage() {
           data: EquipmentCategory[] | null;
           error: any;
         };
-
+  
         if (catError) {
           console.error("Gagal ambil kategori:", catError.message);
         } else if (catData) {
@@ -74,12 +75,12 @@ export default function CatalogPage() {
             })),
           );
         }
-
+  
         // 2. Fetch Equipment
         const { data: eqData, error: eqError } = await supabase
           .from("equipment")
           .select("*");
-
+  
         if (eqError) {
           console.error("Gagal ambil produk:", eqError.message);
         } else if (eqData) {
@@ -97,14 +98,14 @@ export default function CatalogPage() {
         setLoading(false);
       }
     };
-
+  
     fetchData();
   }, [urlStartDate, urlEndDate]);
-
+  
   // Logika Filter & Sortir yang sudah dioptimasi
   const filteredEquipment = useMemo(() => {
     let result = [...equipment];
-
+  
     // 1. Filter Search
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -114,18 +115,18 @@ export default function CatalogPage() {
           (item.description && item.description.toLowerCase().includes(query)),
       );
     }
-
+  
     // 2. Filter Kategori (Strict String Comparison)
     if (selectedCategory !== "all") {
       result = result.filter((item) => item.category_id === selectedCategory);
     }
-
+  
     // 3. Filter Harga
     result = result.filter(
       (item) =>
         item.dailyPrice >= priceRange[0] && item.dailyPrice <= priceRange[1],
     );
-
+  
     // 4. Sortir
     switch (sortBy) {
       case "price-low":
@@ -142,25 +143,26 @@ export default function CatalogPage() {
       default:
         result.sort((a, b) => a.name.localeCompare(b.name));
     }
-
+  
     return result;
   }, [equipment, selectedCategory, searchQuery, priceRange, sortBy]);
-
+  
   // mengubah tanggal dan klik update/cari katalog
   const handleUpdateFilter = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!startDate || !endDate) return alert("Tanggal Tidak boleh kosong!");
-
+  
     // memperbarui tanggal tanpa reload menggunakan instance hook yang benar
     const params = new URLSearchParams(useSearchParamsHook.toString());
     params.set("startDate", startDate);
     params.set("endDate", endDate);
-
+  
     router.push(`${pathname}?${params.toString()}`);
   };
 
-  return (
-    <main className="bg-white pb-24 md:pb-28 border-b border-gray-100 overflow-hidden">
+
+    return(
+      <main className="bg-white pb-24 md:pb-28 border-b border-gray-100 overflow-hidden">
       
       {/* ========================================================================= */}
       {/* 1. HERO BANNER SECTION WITH INTEGRATED FORM */}
@@ -337,5 +339,17 @@ export default function CatalogPage() {
         </div>
       </div>
     </main>
+    );
+}
+
+export default function CatalogPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#FDFCFB] flex items-center justify-center text-sm text-gray-500">
+        Memuat Katalog Habema...
+      </div>
+    }>
+      <CatalogContent />
+    </Suspense>
   );
 }
