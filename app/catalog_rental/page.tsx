@@ -5,11 +5,7 @@ import { CatalogFilters } from "@/components/catalog/catalog-filters";
 import { CatalogGrid } from "@/components/catalog/catalog-grid";
 import { supabase } from "@/lib/supabaseClient";
 import { Equipment } from "@/lib/types";
-
-interface EquipmentCategory {
-  id: number;
-  name: string;
-}
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -20,26 +16,43 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { ArrowLeft, Trees } from "lucide-react";
-import router from "next/router";
+import { ArrowLeft, CalendarDays } from "lucide-react";
+import Image from "next/image";
+import { useParallax } from "@/hooks/use-parallax";
+
+interface EquipmentCategory {
+  id: number;
+  name: string;
+}
 
 export default function CatalogPage() {
+  const useSearchParamsHook = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter(); // Menggunakan useRouter yang benar untuk App Router
   const [equipment, setEquipment] = useState<Equipment[]>([]);
-  const [dbCategories, setDbCategories] = useState<
-    { value: string; label: string }[]
-  >([]);
+  const [dbCategories, setDbCategories] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [selectedCategory, setSelectedCategory] = useState<string | "all">(
-    "all",
-  );
+  const [selectedCategory, setSelectedCategory] = useState<string | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]); // Range dinaikkan agar lebih fleksibel
-  const [sortBy, setSortBy] = useState<
-    "name" | "price-low" | "price-high" | "rating"
-  >("name");
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
+  const [sortBy, setSortBy] = useState<"name" | "price-low" | "price-high" | "rating">("name");
+
+  // mengambil tanggal mulai dan selesai sewa dari query params
+  const urlStartDate = useSearchParamsHook.get("startDate") || "";
+  const urlEndDate = useSearchParamsHook.get("endDate") || "";
+
+  // jadikan state jika ingin menampilkan tanggal di filter
+  const [startDate, setStartDate] = useState(urlStartDate);
+  const [endDate, setEndDate] = useState(urlEndDate);
+
+  // parallax scroll value
+  const scrollY = useParallax();
 
   useEffect(() => {
+    setStartDate(urlStartDate);
+    setEndDate(urlEndDate);
+
     const fetchData = async () => {
       setLoading(true);
 
@@ -86,7 +99,7 @@ export default function CatalogPage() {
     };
 
     fetchData();
-  }, []);
+  }, [urlStartDate, urlEndDate]);
 
   // Logika Filter & Sortir yang sudah dioptimasi
   const filteredEquipment = useMemo(() => {
@@ -133,60 +146,135 @@ export default function CatalogPage() {
     return result;
   }, [equipment, selectedCategory, searchQuery, priceRange, sortBy]);
 
+  // mengubah tanggal dan klik update/cari katalog
+  const handleUpdateFilter = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!startDate || !endDate) return alert("Tanggal Tidak boleh kosong!");
+
+    // memperbarui tanggal tanpa reload menggunakan instance hook yang benar
+    const params = new URLSearchParams(useSearchParamsHook.toString());
+    params.set("startDate", startDate);
+    params.set("endDate", endDate);
+
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
   return (
-    <div className="min-h-screen bg-[#F7F8FA]">
-      <main className="bg-[#FDFCFB] pt-2 pb-8 border">
-        <div className="max-w-7xl mx-auto px-6 h-50">
-          {/* Top Navigation Row */}
-          <div className="flex items-center gap-6 mb-6">
-            {/* Breadcrumb - Clean & Modern */}
-            <div className="flex flex-col gap-1">
-              <Breadcrumb>
-                <BreadcrumbList className="text-[10px] uppercase font-bold tracking-[0.15em]">
-                  <BreadcrumbItem>
-                    <BreadcrumbLink
-                      href="/"
-                      className="flex items-center gap-1.5 hover:text-gold transition-colors"
-                    >
-                      <button
-                        onClick={() => router.back()}
-                        className="group flex items-center justify-center w-12 h-12 transition-all duration-300"
-                      >
-                        <ArrowLeft className="w-5 h-5 text-forest group-hover:-translate-x-1 transition-transform" />
-                      </button>
-                      Beranda
-                    </BreadcrumbLink>
-                  </BreadcrumbItem>
+    <main className="bg-white pb-24 md:pb-28 border-b border-gray-100 overflow-hidden">
+      
+      {/* ========================================================================= */}
+      {/* 1. HERO BANNER SECTION WITH INTEGRATED FORM */}
+      {/* ========================================================================= */}
+      <div className="relative w-full h-80 md:h-100 mb-6 overflow-visible">
+        <div 
+          className="absolute inset-0 w-full h-full md:h-110 scale-100 pointer-events-none will-change-transform"
+          // style={{
+          //   transform: `translate3d(0, ${scrollY * 0.2}px, 0)`,
+          //   transition: "transform 0.2s ease-in-out",
+          // }}
+        >
+          <Image
+            src="/images/background_header_catalog_rental.png"
+            fill
+            priority
+            alt="Catalog Banner"
+            className="object-cover object-bottom-left"
+          />
+        </div>
+        <div className="absolute md:inset-0 md:bg-linear-to-t md:from-#FDFCFB/100 md:via-transparent md:to-#FDFCFB/200" />
+        
+         <div className="absolute md:top-6 top-1 md:left-[4] left-1 right-4 md:top-8 md:left-35 md:right-12 flex items-center gap-0 z-10">
+          <button
+            onClick={() => router.back()}
+            className="group flex items-center justify-center w-10 h-5"
+            aria-label="Kembali"
+          >
+            <ArrowLeft className="w-4 h-4 text-gray-900 group-hover:text-forest transition-colors" />
+          </button>
 
-                  <BreadcrumbSeparator className="text-forest/20" />
+          <Breadcrumb>
+            <BreadcrumbList className="text-[10px] md:text-xs font-bold tracking-0.1em text-gray-900">
+              <BreadcrumbItem>
+                <BreadcrumbLink
+                  href="/"
+                  className="hover:text-[#D4AF37] text-gray-900 transition-colors"
+                >
+                  Beranda  /
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              {/* <BreadcrumbSeparator className="text-white/40" /> */}
+              <BreadcrumbItem>
+                <BreadcrumbPage className="text-[#D4AF37] font-extrabold">
+                 Katalog Rental
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
 
-                  <BreadcrumbItem>
-                    <BreadcrumbPage className="flex items-center gap-2 text-forest font-black italic">
-                      {/* Small Forest Decor */}
-                      {/* <div className="w-1.5 h-1.5 rounded-full bg-gold shadow-[0_0_8px_rgba(212,175,55,0.6)]" /> */}
-                      Katalog Rental
-                    </BreadcrumbPage>
-                  </BreadcrumbItem>
-                </BreadcrumbList>
-              </Breadcrumb>
-            </div>
-          </div>
+        {/* Text Title Tengah Banner */}
+        <div className="absolute top-1/5 md:top-1/4 -translate-y-1/4 left-4 md:left-180 text-gray-900 z-10">
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight uppercase">
+            Eksplorasi <span className="text-gray-900 italic">Gear.</span>
+          </h1>
+          <p className="text-xs md:text-sm text-gray-900 mt-1 font-medium tracking-wide">
+            Pilih tanggal pendakian terbaik dan amankan perlengkapanmu.
+          </p>
+        </div>
 
-          {/* Page Title Section */}
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-forest rounded-2xl text-gold hidden md:block">
-              <Trees size={32} />
-            </div>
-            <h1 className="text-5xl md:text-6xl font-black text-forest tracking-tighter uppercase leading-none">
-              Eksplorasi <span className="text-gold italic">Gear.</span>
-            </h1>
+        <div className="absolute bottom-0 translate-y-60 lg:-translate-y-25 lg:translate-x-70 left-4 right-4 max-w-2xl mx-auto z-20">
+          <div className="bg-white border border-gray-100 p-4 md:p-6 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] backdrop-blur-sm">
+            <form
+              onSubmit={handleUpdateFilter}
+              className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 items-end gap-4"
+            >
+              {/* Input Tanggal Mulai */}
+              <div className="flex flex-col gap-1.5 relative">
+                <label className="text-xs md:font-bold text-gray-500 tracking-wider">
+                  Tanggal Mulai
+                </label>
+                <div className="relative">
+                  <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none hidden" />
+                  <input
+                    type="date"
+                    className="w-full pl-1 md:pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md md:rounded-xl text-xs md:text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 transition-all"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Input Tanggal Akhir */}
+              <div className="flex flex-col gap-1.5 relative">
+                <label className="text-xs md:font-bold text-gray-500 tracking-wider">
+                  Tanggal Akhir
+                </label>
+                <div className="relative">
+                  <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none hidden" />
+                  <input
+                    type="date"
+                    className="w-full pl-1 md:pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md md:rounded-xl text-xs md:text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 transition-all"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Tombol Action Submit */}
+              <div className="col-span-2 lg:col-span-1">
+                <button
+                  type="submit"
+                  className="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-semibold md:text-sm text-xs py-3 px-6 rounded-xl shadow-md shadow-emerald-800/10 hover:shadow-emerald-900/20 active:scale-[0.98] transition-all duration-200"
+                >
+                  Update Ketersediaan Gear
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </main>
+      </div>
 
-      {/* Banner Header */}
-
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 md:py-30 py-60">
         <div className="flex flex-col lg:flex-row gap-2">
           {/* Sidebar Filter */}
           <aside className="lg:w-64 shrink-0">
@@ -207,8 +295,6 @@ export default function CatalogPage() {
 
           {/* Main Grid */}
           <main className="flex-1">
-            {/* Toolbar Info */}
-
             {/* Content Area */}
             {loading ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -250,6 +336,6 @@ export default function CatalogPage() {
           </main>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

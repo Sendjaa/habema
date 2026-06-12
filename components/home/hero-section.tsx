@@ -5,11 +5,24 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Calendar, Compass, Tent, Users } from "lucide-react";
 import Image from "next/image";
 import { motion, Variants } from "framer-motion";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export function HeroSection() {
+  const router = useRouter();
   const [imageLoaded, setImageLoaded] = useState(false);
   const [bookingType, setBookingType] = useState<"rental" | "opentrip">("rental");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const handleSearchRental = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!startDate || !endDate) {
+      alert("Pilih tanggal mulai dan selesai sewa.");
+      router.push(`/catalog_rental?startDate=${startDate}&endDate=${endDate}`);
+    }
+  };
 
   const textVariants: Variants = {
     hidden: { opacity: 0, y: 30 },
@@ -108,11 +121,13 @@ export function HeroSection() {
                 {bookingType === "rental" ? (
                   <>
                     {/* INPUT SEWA MULAI */}
+                    <form onSubmit={handleSearchRental}>
                     <div className="group/input flex flex-col">
                       <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1 block pl-0.5">Mulai Sewa</span>
                       <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-[#1B4332] focus-within:bg-white transition-all">
-                        <Calendar className="w-4 h-4 text-stone-400 shrink-0" />
-                        <input type="date" className="w-full bg-transparent text-xs font-semibold text-emerald-900 focus:outline-none cursor-pointer" />
+                          <Calendar className="w-4 h-4 text-stone-400 shrink-0" />
+                          <input type="date" className="w-full bg-transparent text-xs font-semibold text-emerald-900 focus:outline-none cursor-pointer" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+
                       </div>
                     </div>
 
@@ -121,7 +136,7 @@ export function HeroSection() {
                       <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1 block pl-0.5">Selesai Sewa</span>
                       <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-[#1B4332] focus-within:bg-white transition-all">
                         <Calendar className="w-4 h-4 text-stone-400 shrink-0" />
-                        <input type="date" className="w-full bg-transparent text-xs font-semibold text-emerald-900 focus:outline-none cursor-pointer" />
+                        <input type="date" className="w-full bg-transparent text-xs font-semibold text-emerald-900 focus:outline-none cursor-pointer" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
                       </div>
                     </div>
 
@@ -137,6 +152,7 @@ export function HeroSection() {
                         </select>
                       </div>
                     </div>
+                    </form>
                   </>
                 ) : (
                   <>

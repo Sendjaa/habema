@@ -29,7 +29,7 @@ export function CatalogFilters({
   // Komponen Filter yang akan di-reuse
   const FilterContent = () => (
     <div className="space-y-4">
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+      <div className="bg-white rounded-md md:rounded-2xl border border-slate-200 overflow-hidden shadow-xs md:shadow-sm">
         <Accordion type="multiple" defaultValue={["cat", "price"]} className="w-full">
           {/* Section Kategori */}
           <AccordionItem value="cat" className="px-4 border-slate-100">
@@ -108,7 +108,7 @@ export function CatalogFilters({
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-11 w-11 rounded-xl bg-white border border-slate-200 shadow-sm text-slate-600 hover:text-[#1B4332]"
+            className=" h-8 w-8 md:h-11 md:w-11 rounded-md md:rounded-xl bg-white border border-slate-200 shadow-xs md:shadow-sm text-slate-600 hover:text-[#1B4332]"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -116,12 +116,12 @@ export function CatalogFilters({
 
         {/* Search Input Container */}
         <div className="relative group flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1B4332]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1B4332] hover:text-[#1B4332]" />
           <Input 
             placeholder="Cari alat camp..." 
             value={searchQuery} 
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10 pr-10 rounded-xl border-slate-200 focus-visible:ring-[#1B4332] bg-white h-11 shadow-sm w-full"
+            className="pl-10 pr-10 rounded-md md:rounded-xl lg:rounded-xl border-slate-200 focus-visible:ring-[#1B4332] placeholder:text-#1B4332 bg-white h-8 md:h-11 text-xs md:text-sm lg:text-sm shadow-sm w-full"
           />
           {searchQuery && (
             <button onClick={() => onSearchChange('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-full transition-colors">
@@ -134,7 +134,7 @@ export function CatalogFilters({
         <div className="md:hidden">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="h-11 w-11 rounded-xl bg-white border-slate-200 shadow-sm">
+              <Button variant="outline" size="icon" className="h-8 w-8 rounded-md bg-white border-slate-200 shadow-sm">
                 <SlidersHorizontal className="w-5 h-5 text-slate-600" />
               </Button>
             </SheetTrigger>

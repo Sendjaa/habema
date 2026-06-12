@@ -322,8 +322,8 @@ export function Header() {
         <div className="flex justify-between items-center h-16 md:h-20 gap-4">
           {/* 1. Logo */}
           <Link href="/" className="flex items-center gap-3 shrink-0 group">
-            <Image src="/images/logo-dark.png" alt="Habema Logo" width={80} height={40} />
-            <div className="flex flex-col">
+            <Image src="/images/logo-dark.png" alt="Habema Logo" width={80} height={40} className="img-fluid block" />
+            <div className="flex flex-col hidden sm:flex">
               <h1 className="text-xl font-bold text-[#1B4332] tracking-tight leading-none">HABEMA</h1>
               <span className="text-[10px] font-semibold text-emerald-800/60 uppercase tracking-widest mt-0.5">Outdoor Rental</span>
             </div>
