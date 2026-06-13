@@ -25,7 +25,6 @@ function CatalogContent() {
     id: number;
     name: string;
   }
-
   
   const useSearchParamsHook = useSearchParams();
   const pathname = usePathname();
@@ -169,7 +168,7 @@ function CatalogContent() {
       {/* ========================================================================= */}
       <div className="relative w-full h-80 md:h-100 mb-6 overflow-visible">
         <div 
-          className="absolute inset-0 w-full h-full md:h-110 scale-100 pointer-events-none will-change-transform"
+          className="absolute inset-0 w-full h-80 md:h-110 scale-100 pointer-events-none will-change-transform"
           // style={{
           //   transform: `translate3d(0, ${scrollY * 0.2}px, 0)`,
           //   transition: "transform 0.2s ease-in-out",
