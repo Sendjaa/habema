@@ -10,6 +10,8 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Eye, EyeOff, Shield } from "lucide-react";
 
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "";
+
 export default function AdminLogin() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -23,28 +25,18 @@ export default function AdminLogin() {
 
     try {
       // Validate admin email
-      if (email !== "bibitsayur23@gmail.com") {
+      if (ADMIN_EMAIL && email !== ADMIN_EMAIL) {
         toast.error("Email tidak diizinkan untuk akses admin");
         setIsLoading(false);
         return;
       }
 
-      // Validate password (temporary bypass for debugging)
+      // Validate password
       if (!password || password.length < 6) {
         toast.error("Password minimal 6 karakter");
         setIsLoading(false);
         return;
       }
-
-      // Temporary: Allow any password for bibitsayur23@gmail.com for debugging
-      if (email === "bibitsayur23@gmail.com" && password === "temp123") {
-        console.log("Using temporary bypass");
-        toast.success("Login berhasil (temporary access)!");
-        router.push("/admin");
-        return;
-      }
-
-      console.log("Attempting login with:", email);
 
       // Attempt login with Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -53,10 +45,8 @@ export default function AdminLogin() {
       });
 
       if (error) {
-        console.error("Login error:", error);
-        
         if (error.message.includes("Invalid login credentials")) {
-          toast.error("Password salah. Akun sudah ada, silakan coba password lain atau reset password.");
+          toast.error("Email atau password salah.");
         } else {
           toast.error("Login gagal: " + error.message);
         }
@@ -65,12 +55,10 @@ export default function AdminLogin() {
       }
 
       if (data.user) {
-        console.log("Login successful:", data.user.email);
         toast.success("Login berhasil!");
         router.push("/admin");
       }
     } catch (error: any) {
-      console.error("Login error:", error);
       toast.error(error.message || "Login gagal. Silakan coba lagi.");
     } finally {
       setIsLoading(false);
@@ -78,7 +66,7 @@ export default function AdminLogin() {
   };
 
   const handleResetPassword = async () => {
-    if (email !== "bibitsayur23@gmail.com") {
+    if (ADMIN_EMAIL && email !== ADMIN_EMAIL) {
       toast.error("Email tidak diizinkan untuk akses admin");
       return;
     }
@@ -86,81 +74,17 @@ export default function AdminLogin() {
     setIsLoading(true);
 
     try {
-      console.log("Sending password reset to:", email);
-
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/admin/login`,
       });
 
       if (error) {
-        console.error("Password reset error:", error);
         toast.error("Gagal mengirim reset password: " + error.message);
       } else {
         toast.success("Link reset password telah dikirim ke email Anda!");
       }
     } catch (error: any) {
-      console.error("Reset password error:", error);
       toast.error(error.message || "Gagal mengirim reset password");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCreateAdmin = async () => {
-    if (email !== "bibitsayur23@gmail.com") {
-      toast.error("Email tidak diizinkan untuk akses admin");
-      return;
-    }
-
-    if (!password || password.length < 6) {
-      toast.error("Password minimal 6 karakter");
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      console.log("Creating admin account:", email);
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/admin/login`,
-        },
-      });
-
-      if (error) {
-        console.error("Signup error:", error);
-        
-        if (error.message.includes("User already registered")) {
-          toast.error("Akun admin sudah ada. Silakan login dengan password yang benar.");
-        } else {
-          toast.error("Gagal membuat akun: " + error.message);
-        }
-        return;
-      }
-
-      if (data.user) {
-        console.log("Admin account created:", data.user.email);
-        toast.success("Akun admin berhasil dibuat! Silakan cek email untuk konfirmasi atau langsung login.");
-        
-        // Try to sign in immediately
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (!signInError && signInData.user) {
-          toast.success("Login berhasil!");
-          router.push("/admin");
-        } else {
-          toast.info("Akun dibuat, silakan login dengan password Anda.");
-        }
-      }
-    } catch (error: any) {
-      console.error("Create admin error:", error);
-      toast.error(error.message || "Gagal membuat akun admin");
     } finally {
       setIsLoading(false);
     }
@@ -187,7 +111,7 @@ export default function AdminLogin() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="bibitsayur23@gmail.com"
+              placeholder="email@admin.com"
               className="w-full"
               required
             />
@@ -225,36 +149,18 @@ export default function AdminLogin() {
             >
               {isLoading ? "Masuk..." : "Masuk"}
             </Button>
-            
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isLoading}
-                onClick={handleResetPassword}
-                className="border-slate-300 text-slate-700 hover:bg-slate-50 text-sm"
-              >
-                {isLoading ? "Mengirim..." : "Reset Password"}
-              </Button>
-              
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isLoading}
-                onClick={handleCreateAdmin}
-                className="border-slate-300 text-slate-700 hover:bg-slate-50 text-sm"
-              >
-                {isLoading ? "Membuat..." : "Buat Akun"}
-              </Button>
-            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isLoading}
+              onClick={handleResetPassword}
+              className="w-full border-slate-300 text-slate-700 hover:bg-slate-50 text-sm"
+            >
+              {isLoading ? "Mengirim..." : "Reset Password"}
+            </Button>
           </div>
         </form>
-
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-xs text-blue-800">
-            <strong>Info:</strong> Gunakan email <code>bibitsayur23@gmail.com</code>. Password minimal 6 karakter.
-          </p>
-        </div>
       </Card>
     </div>
   );

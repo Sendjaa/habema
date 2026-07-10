@@ -52,7 +52,7 @@ export function ReviewForm({ equipmentId, onReviewSubmitted }: ReviewFormProps) 
       if (userError || !userRecord) {
         // Create user record if it doesn't exist
         const { error: insertError } = await supabase
-          .from('users')
+          .from('users' as any)
           .insert({
             id: user.id,
             email: user.email || '',
@@ -68,7 +68,7 @@ export function ReviewForm({ equipmentId, onReviewSubmitted }: ReviewFormProps) 
 
       // Now insert the review
       const { error } = await supabase
-        .from("reviews")
+        .from("reviews" as any)
         .insert({
           equipment_id: equipmentId,
           user_id: user.id,

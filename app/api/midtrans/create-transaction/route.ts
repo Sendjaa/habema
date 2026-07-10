@@ -1,121 +1,182 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createMidtransTransaction, generateOrderId, formatItemsForMidtrans } from '@/lib/midtrans'
+import {
+  createMidtransTransaction,
+  generateOrderId,
+  isMidtransConfigured,
+} from '@/lib/midtrans'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
-// Debug environment variables
 const isProduction = process.env.MIDTRANS_PRODUCTION === 'true'
-const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY
-const serverKey = process.env.MIDTRANS_SERVER_KEY
+// Mock pembayaran HANYA boleh aktif di non-produksi dan dengan flag eksplisit.
+const allowMock = !isProduction && process.env.MIDTRANS_ALLOW_MOCK === 'true'
 
-console.log('Midtrans Config Debug:', {
-  isProduction,
-  hasClientKey: !!clientKey,
-  hasServerKey: !!serverKey,
-  clientKeyPrefix: clientKey ? clientKey.substring(0, 10) + '...' : 'none',
-  serverKeyPrefix: serverKey ? serverKey.substring(0, 10) + '...' : 'none'
-})
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { items, customerDetails, totalPrice } = body
+    const { bookingId, customerDetails } = body
 
-    // Check if Midtrans is configured - Add fallback for development
-    if (!clientKey || !serverKey) {
-      console.error('CRITICAL: Midtrans credentials not configured!')
-      console.error('Missing environment variables:', {
-        clientKey: !!clientKey,
-        serverKey: !!serverKey,
-        isProduction,
-        envFile: '.env.local exists?'
-      })
-      
-      // For development, provide a mock response
-      if (!isProduction) {
-        console.log('Development mode: Providing mock Midtrans response')
-        return NextResponse.json({
-          success: true,
-          orderId: generateOrderId(),
-          token: 'mock-token-' + Date.now(),
-          redirect_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/payment/finish`,
-          mock: true,
-          message: 'Development mode - using mock payment'
-        })
-      }
-      
+    if (!bookingId) {
       return NextResponse.json(
-        { 
-          error: 'Payment system not properly configured. Please contact administrator.',
-          details: 'Midtrans credentials missing',
-          isProduction,
-          setupRequired: 'Please configure NEXT_PUBLIC_MIDTRANS_CLIENT_KEY and MIDTRANS_SERVER_KEY in .env.local'
-        },
-        { status: 500 }
-      )
-    }
-
-    // Validate required fields
-    if (!items || !customerDetails || !totalPrice) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'bookingId wajib dikirim' },
         { status: 400 }
       )
     }
 
-    console.log('Creating transaction with data:', {
-      itemsCount: items.length,
-      totalPrice,
-      customerEmail: customerDetails.email
-    })
+    // 1) Muat booking dari DB (sumber kebenaran, bukan dari client)
+    const { data: booking, error: bookingError } = await supabaseAdmin
+      .from('bookings')
+      .select('id, rental_days, delivery_cost, delivery_option, status')
+      .eq('id', bookingId)
+      .single()
 
-    // Generate unique order ID
+    if (bookingError || !booking) {
+      return NextResponse.json(
+        { error: 'Booking tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+
+    // 2) Muat item booking
+    const { data: items, error: itemsError } = await supabaseAdmin
+      .from('booking_items')
+      .select('equipment_id, quantity')
+      .eq('booking_id', bookingId)
+
+    if (itemsError || !items || items.length === 0) {
+      return NextResponse.json(
+        { error: 'Item booking tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+
+    // 3) Ambil harga resmi dari tabel equipment
+    const equipmentIds = items.map((it) => it.equipment_id)
+    const { data: equipment, error: equipmentError } = await supabaseAdmin
+      .from('equipment')
+      .select('id, name, price_per_night, category_id')
+      .in('id', equipmentIds)
+
+    if (equipmentError || !equipment) {
+      return NextResponse.json(
+        { error: 'Gagal memuat data harga' },
+        { status: 500 }
+      )
+    }
+
+    const priceMap = new Map(
+      equipment.map((e) => [e.id, e])
+    )
+
+    const rentalDays = Number(booking.rental_days) || 1
+
+    // 4) Hitung ulang gross_amount sepenuhnya di server
+    const itemDetails: Array<{
+      id: string
+      name: string
+      price: number
+      quantity: number
+      category: string
+    }> = []
+
+    let subtotal = 0
+    for (const it of items) {
+      const eq = priceMap.get(it.equipment_id)
+      if (!eq) {
+        return NextResponse.json(
+          { error: 'Equipment tidak valid pada booking' },
+          { status: 400 }
+        )
+      }
+      const qty = Number(it.quantity) || 0
+      const unitPriceForRental = Number(eq.price_per_night) * rentalDays
+      subtotal += unitPriceForRental * qty
+      itemDetails.push({
+        id: String(eq.id),
+        name: eq.name,
+        price: Math.round(unitPriceForRental), // harga per unit untuk seluruh durasi
+        quantity: qty,
+        category: 'Equipment',
+      })
+    }
+
+    const deliveryCost =
+      booking.delivery_option === 'delivery'
+        ? Math.max(0, Number(booking.delivery_cost) || 0)
+        : 0
+
+    if (deliveryCost > 0) {
+      itemDetails.push({
+        id: 'delivery',
+        name: 'Biaya Pengantaran',
+        price: Math.round(deliveryCost),
+        quantity: 1,
+        category: 'Delivery',
+      })
+    }
+
+    const grossAmount = Math.round(subtotal + deliveryCost)
+
+    if (grossAmount <= 0) {
+      return NextResponse.json(
+        { error: 'Total pembayaran tidak valid' },
+        { status: 400 }
+      )
+    }
+
+    // 5) Buat order id dan simpan ke booking agar webhook bisa mencocokkan
     const orderId = generateOrderId()
-    console.log('Generated Order ID:', orderId)
+    const { error: updateError } = await supabaseAdmin
+      .from('bookings')
+      // @ts-expect-error kolom midtrans_order_id ditambahkan via migrasi SQL
+      .update({ midtrans_order_id: orderId, payment_status: 'pending' })
+      .eq('id', bookingId)
 
-    // Format items for Midtrans
-    const formattedItems = formatItemsForMidtrans(items)
-    console.log('Formatted items:', formattedItems)
+    if (updateError) {
+      return NextResponse.json(
+        { error: 'Gagal menyiapkan transaksi' },
+        { status: 500 }
+      )
+    }
 
-    // Create transaction data
+    // 6) Jika Midtrans tidak terkonfigurasi
+    if (!isMidtransConfigured()) {
+      if (allowMock) {
+        return NextResponse.json({
+          success: true,
+          orderId,
+          token: 'mock-token-' + orderId,
+          redirect_url: `${baseUrl}/payment/finish?order_id=${orderId}`,
+          mock: true,
+        })
+      }
+      return NextResponse.json(
+        { error: 'Payment system not configured.' },
+        { status: 500 }
+      )
+    }
+
     const transactionData = {
       transaction_details: {
         order_id: orderId,
-        gross_amount: totalPrice,
+        gross_amount: grossAmount,
       },
-      item_details: formattedItems,
+      item_details: itemDetails,
       customer_details: {
-        first_name: customerDetails.firstName || 'Customer',
-        last_name: customerDetails.lastName || '',
-        email: customerDetails.email || 'customer@example.com',
-        phone: customerDetails.phone || '',
+        first_name: customerDetails?.firstName || 'Customer',
+        last_name: customerDetails?.lastName || '',
+        email: customerDetails?.email || 'noemail@habema.local',
+        phone: customerDetails?.phone || '',
       },
-      enabled_payments: [
-        'credit_card',
-        'gopay',
-        'shopeepay',
-        'bank_transfer',
-        'echannel',
-        'bca_klikbca',
-        'bca_klikpay',
-        'bri_epay',
-        'cimb_clicks',
-        'danamon_online',
-        'other_va',
-      ],
       callbacks: {
-        finish: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/payment/finish`,
-        error: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/payment/error`,
-        pending: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/payment/pending`,
+        finish: `${baseUrl}/payment/finish`,
+        error: `${baseUrl}/payment/error`,
+        pending: `${baseUrl}/payment/pending`,
       },
     }
 
-    console.log('Transaction data prepared, calling Midtrans...')
-    console.log('Full transaction data:', JSON.stringify(transactionData, null, 2))
-
-    // Create transaction with Midtrans
     const result = await createMidtransTransaction(transactionData)
-    console.log('Midtrans result:', result)
-    console.log('Token generated:', result.token ? 'YES' : 'NO')
-    console.log('Redirect URL:', result.redirect_url)
 
     if (result.success) {
       return NextResponse.json({
@@ -124,37 +185,15 @@ export async function POST(request: NextRequest) {
         token: result.token,
         redirect_url: result.redirect_url,
       })
-    } else {
-      console.error('Midtrans transaction failed:', result.error)
-      
-      // CRITICAL: No fallback to mock mode - fail fast in production
-      return NextResponse.json(
-        { 
-          error: 'Payment processing failed. Please try again or contact support.',
-          details: result.error,
-          orderId,
-          isProduction
-        },
-        { status: 500 }
-      )
     }
-  } catch (error) {
-    console.error('API Error:', error)
-    
-    // Ensure we always return JSON
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-    
+
     return NextResponse.json(
-      { 
-        error: errorMessage,
-        details: process.env.NODE_ENV === 'development' ? String(error) : undefined
-      },
-      { 
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
+      { error: 'Payment processing failed. Please try again.' },
+      { status: 500 }
     )
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }

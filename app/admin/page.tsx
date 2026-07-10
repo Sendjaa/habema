@@ -14,6 +14,8 @@ import {
 import { NotificationsPanel } from '@/components/admin/notifications-panel'
 import { toast } from 'sonner'
 
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || ''
+
 // ── Types (sama seperti sebelumnya, tidak berubah) ─────────────
 interface DashboardStats {
   totalBookings: number; totalUsers: number; totalRevenue: number
@@ -93,7 +95,7 @@ export default function AdminDashboard() {
     try {
       const { data: { user }, error } = await supabase.auth.getUser()
       if (error || !user) { router.push('/admin/login'); return }
-      if (user.email !== 'bibitsayur23@gmail.com') {
+      if (!ADMIN_EMAIL || user.email !== ADMIN_EMAIL) {
         toast.error('Access denied. Admin only.')
         router.push('/admin/login'); return
       }

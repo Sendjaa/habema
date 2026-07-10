@@ -591,24 +591,15 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
       // Set transaction data to store for payment processing
       useCartStore.getState().setTransaction(transactionData);
 
-      // Prepare Midtrans payload
+      // Prepare Midtrans payload — harga dihitung ulang di server dari bookingId
       const midtransPayload = {
-        items: [{
-          id: product.id,
-          name: product.name,
-          price: Number(product.price_per_night),
-          quantity: quantity,
-          category: "equipment"
-        }],
+        bookingId: bookingId,
         customerDetails: {
           firstName: idData?.fullName || 'Customer',
           email: user?.email || 'customer@example.com',
           phone: idData?.phone || '+62800000000'
-        },
-        totalPrice: Number(totalPrice)
+        }
       };
-
-      console.log('Midtrans Payload:', midtransPayload);
 
       // Create Midtrans transaction
       const response = await fetch('/api/midtrans/create-transaction', {

@@ -6,25 +6,20 @@ import { ArrowRight, Calendar, Compass, Tent, Users } from "lucide-react";
 import Image from "next/image";
 import { motion, Variants } from "framer-motion";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 export function HeroSection() {
-  const router = useRouter();
   const [imageLoaded, setImageLoaded] = useState(false);
   const [bookingType, setBookingType] = useState<"rental" | "opentrip">(
     "rental",
   );
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [departDate, setDepartDate] = useState("");
 
-  const handleSearchRental = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (!startDate || !endDate) {
-      alert("Pilih tanggal mulai dan selesai sewa.");
-      router.push(`/catalog_rental?startDate=${startDate}&endDate=${endDate}`);
-    }
-  };
+  // Link katalog rental membawa tanggal yang dipilih (jika ada)
+  const rentalHref = startDate || endDate
+    ? `/catalog_rental?startDate=${startDate}&endDate=${endDate}`
+    : "/catalog_rental";
 
   const textVariants: Variants = {
     hidden: { opacity: 0, y: 30 },
@@ -81,10 +76,10 @@ export function HeroSection() {
             >
               Habema menyediakan perlengkapan pendakian premium dan trip
               terpandu untuk memastikan petualangan luar ruangan Anda aman,
-              nyaman, dan tak terlupakan.
+              nyaman, dan tak terlupak
+              an.
             </motion.p>
 
-            {/* ================= MODERN FLOATING CARD FORM ================= */}
             <motion.div
               className="mt-8 bg-white rounded-3xl p-5 border border-stone-200/60 shadow-[0_20px_50px_rgba(27,67,50,0.06)] max-w-xl w-full mx-auto lg:mx-0 relative group"
               variants={textVariants}
@@ -119,66 +114,59 @@ export function HeroSection() {
               </div>
 
               {/* Form Grid Area */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-stone-100 md:pt-4 pt-1 text-left">
+              {/* Setiap tab dirender dalam container ber-key sendiri agar React
+                  tidak memakai ulang DOM input antar-tab (penyebab error
+                  controlled/uncontrolled). */}
+              <div className="border-t border-stone-100 md:pt-4 pt-1 text-left w-full">
                 {bookingType === "rental" ? (
-                  <>
-                    {/* INPUT SEWA MULAI */}
-                    <form onSubmit={handleSearchRental}>
-                      <div className="group/input flex flex-col">
-                        <span className="text-xs md:text-[10px] feront-bolder text-stone-400 -wider mb-1 pl-0.5">
-                          Mulai Sewa
-                        </span>
-                        <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-[#1B4332] focus-within:bg-white transition-all">
-                          <Calendar className="w-4 h-4 text-stone-400 shrink-0" />
-                          <input
-                            type="date"
-                            className="w-full bg-transparent text-xs font-semibold text-emerald-900 focus:outline-none cursor-pointer"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                          />
-                        </div>
+                  <div
+                    key="rental-fields"
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end"
+                  >
+                    {/* INPUT: MULAI SEWA */}
+                    <div className="flex flex-col w-full">
+                      <span className="text-xs md:text-[10px] font-bold text-stone-400 tracking-wider mb-1 pl-0.5">
+                        Mulai Sewa
+                      </span>
+                      <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-emerald-800 focus-within:bg-white transition-all w-full">
+                        <Calendar className="w-4 h-4 text-stone-400 shrink-0" />
+                        <input
+                          type="date"
+                          className="w-full bg-transparent text-xs font-semibold text-stone-800 focus:outline-none cursor-pointer pr-1"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                        />
                       </div>
+                    </div>
 
-                      {/* INPUT SEWA SELESAI */}
-                      <div className="group/input flex flex-col">
-                        <span className="text-xs md:text-[10px]  font-bolder text-stone-400 tracking-wider mb-1 block pl-0.5">
-                          Selesai Sewa
-                        </span>
-                        <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-[#1B4332] focus-within:bg-white transition-all">
-                          <Calendar className="w-4 h-4 text-stone-400 shrink-0" />
-                          <input
-                            type="date"
-                            className="w-full bg-transparent text-xs font-semibold text-emerald-900 focus:outline-none cursor-pointer"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                          />
-                        </div>
+                    {/* INPUT: SELESAI SEWA */}
+                    <div className="flex flex-col w-full">
+                      <span className="text-xs md:text-[10px] font-bold text-stone-400 tracking-wider mb-1 block pl-0.5">
+                        Selesai Sewa
+                      </span>
+                      <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-emerald-800 focus-within:bg-white transition-all w-full">
+                        <Calendar className="w-4 h-4 text-stone-400 shrink-0" />
+                        <input
+                          type="date"
+                          className="w-full bg-transparent text-xs font-semibold text-stone-800 focus:outline-none cursor-pointer pr-1"
+                          value={endDate}
+                          min={startDate || undefined}
+                          onChange={(e) => setEndDate(e.target.value)}
+                        />
                       </div>
-
-                      {/* SELECT DURASI */}
-                      <div className="flex flex-col">
-                        <span className="text-xs md:text-[10px]  font-bolder text-stone-400 tracking-wider mb-1 block pl-0.5">
-                          Durasi
-                        </span>
-                        <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-[#1B4332] focus-within:bg-white transition-all">
-                          <select className="w-full bg-transparent text-xs font-semibold text-emerald-900 focus:outline-none cursor-pointer appearance-none">
-                            <option value="1">1 Hari Sewa</option>
-                            <option value="2">2 Hari Sewa</option>
-                            <option value="3">3 Hari Sewa</option>
-                            <option value="4">4+ Hari Sewa</option>
-                          </select>
-                        </div>
-                      </div>
-                    </form>
-                  </>
+                    </div>
+                  </div>
                 ) : (
-                  <>
+                  <div
+                    key="opentrip-fields"
+                    className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end"
+                  >
                     {/* SELECT DESTINASI */}
-                    <div className="flex flex-col">
-                      <span className="text-xs md:text-[10px]  font-bolder text-stone-400 tracking-wider mb-1 block pl-0.5">
+                    <div className="flex flex-col w-full">
+                      <span className="text-xs md:text-[10px] font-bold text-stone-400 tracking-wider mb-1 block pl-0.5">
                         Destinasi
                       </span>
-                      <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-[#1B4332] focus-within:bg-white transition-all">
+                      <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-[#1B4332] focus-within:bg-white transition-all w-full">
                         <Compass className="w-4 h-4 text-stone-400 shrink-0" />
                         <select className="w-full bg-transparent text-xs font-semibold text-emerald-900 focus:outline-none cursor-pointer appearance-none">
                           <option value="">Pilih Gunung</option>
@@ -191,25 +179,27 @@ export function HeroSection() {
                     </div>
 
                     {/* INPUT JADWAL BERANGKAT */}
-                    <div className="flex flex-col">
-                      <span className="text-xs md:text-[10px]  font-bolder text-stone-400 mb-1 block pl-0.5">
+                    <div className="flex flex-col w-full">
+                      <span className="text-xs md:text-[10px] font-bold text-stone-400 tracking-wider mb-1 block pl-0.5">
                         Keberangkatan
                       </span>
-                      <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-[#1B4332] focus-within:bg-white transition-all">
+                      <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-[#1B4332] focus-within:bg-white transition-all w-full">
                         <Calendar className="w-4 h-4 text-stone-400 shrink-0" />
                         <input
                           type="date"
                           className="w-full bg-transparent text-xs font-semibold text-emerald-900 focus:outline-none cursor-pointer"
+                          value={departDate}
+                          onChange={(e) => setDepartDate(e.target.value)}
                         />
                       </div>
                     </div>
 
                     {/* SELECT TOTAL PESERTA */}
-                    <div className="flex flex-col">
-                      <span className="text-xs md:text-[10px]  font-bolder text-stone-400 mb-1 block pl-0.5">
+                    <div className="flex flex-col w-full">
+                      <span className="text-xs md:text-[10px] font-bold text-stone-400 tracking-wider mb-1 block pl-0.5">
                         Kuota Peserta
                       </span>
-                      <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-[#1B4332] focus-within:bg-white transition-all">
+                      <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-[#1B4332] focus-within:bg-white transition-all w-full">
                         <Users className="w-4 h-4 text-stone-400 shrink-0" />
                         <select className="w-full bg-transparent text-xs font-semibold text-emerald-900 focus:outline-none cursor-pointer appearance-none">
                           <option value="1">1 Orang</option>
@@ -219,7 +209,7 @@ export function HeroSection() {
                         </select>
                       </div>
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
             </motion.div>
@@ -238,7 +228,7 @@ export function HeroSection() {
               >
                 <Link
                   href={
-                    bookingType === "rental" ? "/catalog_rental" : "/open-trip"
+                    bookingType === "rental" ? rentalHref : "/open-trip"
                   }
                 >
                   {bookingType === "rental"
@@ -252,7 +242,7 @@ export function HeroSection() {
 
           {/* RIGHT CONTENT - BANNER IMAGE */}
           <motion.div
-            className="order-1 lg:order-2 lg:absolute lg:-right-12 -right-0.5 lg:top-1/2 lg:-translate-y-1/2 w-screen lg:w-[48%] xl:w-[54%] z-10 flex flex-col justify-center lg:-mt-10 -mt-25 lg:h-screen my-auto" 
+            className="order-1 lg:order-2 lg:absolute lg:-right-12 -right-0.5 lg:top-1/2 lg:-translate-y-1/2 w-screen lg:w-[48%] xl:w-[54%] z-10 flex flex-col justify-center lg:-mt-10 -mt-25 lg:h-screen my-auto"
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}

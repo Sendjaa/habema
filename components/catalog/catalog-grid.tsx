@@ -22,7 +22,7 @@ export function CatalogGrid({ equipment }: { equipment: any[] }) {
   }, [equipment]);
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:p-2 ">
       {equipment.map((product) => {
         const inventory = inventoryStatus[product.id];
         const isAvailable = inventory && inventory.availableUnits > 0;
@@ -67,7 +67,7 @@ export function CatalogGrid({ equipment }: { equipment: any[] }) {
                 </h3>
 
                 {/* Harga */}
-                <div className="mb-1.5">
+                <div className="md:mb-1.5">
                   <span className="text-sm font-bold text-[#FF6B35]">
                     Rp{price.toLocaleString("id-ID")}
                   </span>
@@ -75,7 +75,7 @@ export function CatalogGrid({ equipment }: { equipment: any[] }) {
                 </div>
 
                 {/* Rating & Stats (Footer Card) */}
-                <div className="mt-auto pt-1.5 flex items-center gap-1 text-[9px] text-slate-500 font-medium border-t border-slate-50">
+                <div className="md:mt-auto pt-1.5 flex items-center gap-1 text-[9px] text-slate-500 font-medium border-t border-slate-50 border">
                   <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
                   <span>{product.average_rating || 4.9}</span>
                   <span className="text-slate-300">|</span>

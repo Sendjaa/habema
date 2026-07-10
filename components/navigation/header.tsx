@@ -24,7 +24,7 @@ import {
   Footprints,
   Trash2,
   History,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,20 +46,20 @@ const layananItems = [
     label: "Rental",
     href: "/rental",
     icon: Backpack,
-    description: "Sewa peralatan outdoor"
+    description: "Sewa peralatan outdoor",
   },
   {
     label: "Shop",
     href: "/shop",
     icon: Store,
-    description: "Belanja perlengkapan"
+    description: "Belanja perlengkapan",
   },
   {
     label: "Open Trip",
     href: "/opentrip",
     icon: Footprints,
-    description: "Paket petualangan kami"
-  }
+    description: "Paket petualangan kami",
+  },
 ];
 
 // Types
@@ -91,27 +91,34 @@ export function Header() {
   const [isLoading, setIsLoading] = useState(false);
   const [products, setProducts] = useState<SearchProduct[]>([]);
   const [categories, setCategories] = useState<SearchCategory[]>([]);
-  const [featuredRecommendation, setFeaturedRecommendation] = useState<SearchProduct | null>(null);
+  const [featuredRecommendation, setFeaturedRecommendation] =
+    useState<SearchProduct | null>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [expandedMobileMenu, setExpandedMobileMenu] = useState<string | null>(null);
+  const [expandedMobileMenu, setExpandedMobileMenu] = useState<string | null>(
+    null,
+  );
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const menuPanelRef = useRef<HTMLDivElement>(null);
   const cartItems = useCartStore((state) => state.items);
   const [isClient, setIsClient] = React.useState(false);
   const [user, setUser] = useState<any>(null);
-  
+
   React.useEffect(() => {
     setIsClient(true);
-    
+
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
     };
     getSession();
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+      },
+    );
     return () => {
       authListener.subscription.unsubscribe();
     };
@@ -144,16 +151,16 @@ export function Header() {
     } else {
       document.body.style.overflow = "unset";
     }
-    return () => { 
-      document.body.style.overflow = "unset"; 
+    return () => {
+      document.body.style.overflow = "unset";
     };
   }, [isMenuOpen]);
 
   useEffect(() => {
     const updateNavbarPosition = () => {
       setIsScrolled(window.scrollY > 10);
-      
-      const headerElement = document.querySelector('header');
+
+      const headerElement = document.querySelector("header");
       if (headerElement) {
         const rect = headerElement.getBoundingClientRect();
         setNavbarBottom(rect.bottom);
@@ -162,11 +169,11 @@ export function Header() {
     const handleScroll = () => {
       updateNavbarPosition();
     };
-    
+
     updateNavbarPosition();
     window.addEventListener("scroll", handleScroll);
     window.addEventListener("resize", updateNavbarPosition);
-    
+
     return () => {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", updateNavbarPosition);
@@ -180,23 +187,23 @@ export function Header() {
     } else {
       document.body.style.overflow = "unset";
     }
-    return () => { 
-      document.body.style.overflow = "unset"; 
+    return () => {
+      document.body.style.overflow = "unset";
     };
   }, [isOpen]);
 
   // Handle Escape key to close modal
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === "Escape" && isOpen) {
         setIsOpen(false);
       }
     };
     if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
+      document.addEventListener("keydown", handleEscape);
     }
     return () => {
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener("keydown", handleEscape);
     };
   }, [isOpen]);
 
@@ -244,8 +251,8 @@ export function Header() {
         const response = await fetch(
           `/api/products?search=${encodeURIComponent(searchValue)}&limit=12`,
           {
-            signal: AbortSignal.timeout(5000) // 5 second timeout
-          }
+            signal: AbortSignal.timeout(5000), // 5 second timeout
+          },
         );
 
         if (!response.ok) {
@@ -289,7 +296,7 @@ export function Header() {
     // Add to recent searches
     const updated = [
       query,
-      ...recentSearches.filter(s => s !== query).slice(0, 4)
+      ...recentSearches.filter((s) => s !== query).slice(0, 4),
     ];
     setRecentSearches(updated);
     if (isClient) {
@@ -322,22 +329,36 @@ export function Header() {
         <div className="flex justify-between items-center h-16 md:h-20 gap-4">
           {/* 1. Logo */}
           <Link href="/" className="flex items-center gap-3 shrink-0 group">
-            <Image src="/images/logo-dark.png" alt="Habema Logo" width={80} height={40} className="img-fluid block" />
+            <Image
+              src="/images/logo-dark.png"
+              alt="Habema Logo"
+              width={80}
+              height={40}
+              className="img-fluid block"
+            />
             <div className="flex flex-col hidden sm:flex">
-              <h1 className="text-xl font-bold text-[#1B4332] tracking-tight leading-none">HABEMA</h1>
-              <span className="text-[10px] font-semibold text-emerald-800/60 uppercase tracking-widest mt-0.5">Outdoor Rental</span>
+              <h1 className="text-xl font-bold text-[#1B4332] tracking-tight leading-none">
+                HABEMA
+              </h1>
+              <span className="text-[10px] font-semibold text-emerald-800/60 uppercase tracking-widest mt-0.5">
+                Outdoor Rental
+              </span>
             </div>
           </Link>
-          
+
           {/* 2. Desktop Search - Improved */}
           <div className="hidden md:flex flex-1 max-w-xl relative group px-4 z-60">
             <div
               className={`w-full h-11 flex items-center px-4 rounded-lg border cursor-text transition-all ${
-                isOpen ? "bg-white border-emerald-600 shadow-lg" : "bg-gray-100 border-transparent hover:bg-gray-200/70"
+                isOpen
+                  ? "bg-white border-emerald-600 shadow-lg"
+                  : "bg-gray-100 border-transparent hover:bg-gray-200/70"
               }`}
               onClick={() => setIsOpen(true)}
             >
-              <Search className={`w-5 h-5 mr-3 transition-colors flex-shrink-0 ${isOpen ? "text-emerald-600" : "text-gray-500"}`} />
+              <Search
+                className={`w-5 h-5 mr-3 transition-colors flex-shrink-0 ${isOpen ? "text-emerald-600" : "text-gray-500"}`}
+              />
               <input
                 type="text"
                 placeholder="Cari perlengkapan, kategori..."
@@ -346,7 +367,7 @@ export function Header() {
                 onFocus={() => setIsOpen(true)}
                 onChange={(e) => setSearchValue(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === "Enter") {
                     handleSearch(searchValue);
                   }
                 }}
@@ -363,7 +384,9 @@ export function Header() {
                   <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
                 </button>
               )}
-              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-200 rounded text-[10px] font-bold text-gray-500">/</div>
+              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-200 rounded text-[10px] font-bold text-gray-500">
+                /
+              </div>
             </div>
 
             <AnimatePresence>
@@ -391,7 +414,9 @@ export function Header() {
                     {/* Search Input Area */}
                     <div className="bg-white border-b border-gray-100 p-4 flex items-center justify-between flex-shrink-0">
                       <h3 className="text-sm font-bold text-gray-900">
-                        {searchValue ? `Hasil untuk "${searchValue}"` : "Saran Pencarian"}
+                        {searchValue
+                          ? `Hasil untuk "${searchValue}"`
+                          : "Saran Pencarian"}
                       </h3>
                       <button
                         onClick={() => setIsOpen(false)}
@@ -419,63 +444,73 @@ export function Header() {
                           <div className="inline-block">
                             <div className="w-8 h-8 border-3 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
                           </div>
-                          <p className="text-sm text-gray-500 mt-3">Mencari produk...</p>
+                          <p className="text-sm text-gray-500 mt-3">
+                            Mencari produk...
+                          </p>
                         </div>
                       )}
 
                       {/* Results Grid */}
-                      {!isLoading && searchValue.length >= 2 && products.length > 0 && (
-                        <div className="grid grid-cols-2 gap-3 p-4">
-                          {products.map((product) => (
-                            <Link
-                              key={product.id}
-                              href={`/product/${product.id}`}
-                              className="group cursor-pointer"
-                              onClick={() => {
-                                handleSearch(searchValue);
-                              }}
-                            >
-                              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-all">
-                                {/* Image */}
-                                <div className="aspect-square bg-gray-100 overflow-hidden">
-                                  {product.image_url ? (
-                                    <img
-                                      src={product.image_url}
-                                      alt={product.name}
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-100 to-emerald-200">
-                                      <Mountain className="w-8 h-8 text-emerald-600" />
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* Info */}
-                                <div className="p-3">
-                                  <h4 className="text-xs font-bold text-gray-900 truncate mb-1">
-                                    {product.name}
-                                  </h4>
-                                  <p className="text-xs text-gray-500 truncate mb-2">
-                                    {product.equipment_categories?.name || "Gear"}
-                                  </p>
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-sm font-bold text-emerald-600">
-                                      Rp{Number(product.price_per_night || product.price || 0).toLocaleString('id-ID')}
-                                    </span>
-                                    {product.rating && (
-                                      <div className="flex items-center text-xs text-amber-500">
-                                        <Star className="w-3 h-3 fill-current" />
-                                        {product.rating.toFixed(1)}
+                      {!isLoading &&
+                        searchValue.length >= 2 &&
+                        products.length > 0 && (
+                          <div className="grid grid-cols-2 gap-3 p-4">
+                            {products.map((product) => (
+                              <Link
+                                key={product.id}
+                                href={`/product/${product.id}`}
+                                className="group cursor-pointer"
+                                onClick={() => {
+                                  handleSearch(searchValue);
+                                }}
+                              >
+                                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-all">
+                                  {/* Image */}
+                                  <div className="aspect-square bg-gray-100 overflow-hidden">
+                                    {product.image_url ? (
+                                      <img
+                                        src={product.image_url}
+                                        alt={product.name}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-100 to-emerald-200">
+                                        <Mountain className="w-8 h-8 text-emerald-600" />
                                       </div>
                                     )}
                                   </div>
+
+                                  {/* Info */}
+                                  <div className="p-3">
+                                    <h4 className="text-xs font-bold text-gray-900 truncate mb-1">
+                                      {product.name}
+                                    </h4>
+                                    <p className="text-xs text-gray-500 truncate mb-2">
+                                      {product.equipment_categories?.name ||
+                                        "Gear"}
+                                    </p>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-sm font-bold text-emerald-600">
+                                        Rp
+                                        {Number(
+                                          product.price_per_night ||
+                                            product.price ||
+                                            0,
+                                        ).toLocaleString("id-ID")}
+                                      </span>
+                                      {product.rating && (
+                                        <div className="flex items-center text-xs text-amber-500">
+                                          <Star className="w-3 h-3 fill-current" />
+                                          {product.rating.toFixed(1)}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            </Link>
-                          ))}
-                        </div>
-                      )}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
 
                       {/* Empty State */}
                       {searchValue.length < 2 && !isLoading && (
@@ -512,7 +547,9 @@ export function Header() {
 
                           {/* Popular Categories */}
                           <div>
-                            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Kategori Populer</h4>
+                            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">
+                              Kategori Populer
+                            </h4>
                             <div className="space-y-2">
                               {categories.slice(0, 5).map((category) => (
                                 <button
@@ -524,9 +561,13 @@ export function Header() {
                                     <Leaf className="w-4 h-4 text-emerald-600" />
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 truncate">{category.name}</p>
+                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                      {category.name}
+                                    </p>
                                     {category.description && (
-                                      <p className="text-xs text-gray-500 truncate">{category.description}</p>
+                                      <p className="text-xs text-gray-500 truncate">
+                                        {category.description}
+                                      </p>
                                     )}
                                   </div>
                                 </button>
@@ -537,7 +578,9 @@ export function Header() {
                           {/* Featured Product */}
                           {featuredRecommendation && (
                             <div className="mt-6 pt-6 border-t border-gray-200">
-                              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Rekomendasi</h4>
+                              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">
+                                Rekomendasi
+                              </h4>
                               <Link
                                 href={`/product/${featuredRecommendation.id}`}
                                 className="block"
@@ -564,10 +607,17 @@ export function Header() {
                                       {featuredRecommendation.name}
                                     </h5>
                                     <p className="text-xs text-gray-500 mb-2">
-                                      {featuredRecommendation.equipment_categories?.name}
+                                      {
+                                        featuredRecommendation
+                                          .equipment_categories?.name
+                                      }
                                     </p>
                                     <span className="text-sm font-bold text-emerald-600">
-                                      Rp{Number(featuredRecommendation.price_per_night || 0).toLocaleString('id-ID')}
+                                      Rp
+                                      {Number(
+                                        featuredRecommendation.price_per_night ||
+                                          0,
+                                      ).toLocaleString("id-ID")}
                                     </span>
                                   </div>
                                 </div>
@@ -594,7 +644,7 @@ export function Header() {
               )}
             </AnimatePresence>
           </div>
-          
+
           {/* 3. Navigation & Actions */}
           <div className="flex items-center gap-1">
             {/* Desktop Links */}
@@ -602,21 +652,34 @@ export function Header() {
               {/* Dropdown Layanan */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="font-semibold text-emerald-900/80 text-[14px] flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    className="font-semibold text-emerald-900/80 text-[14px] flex items-center gap-1"
+                  >
                     Layanan
                     <ChevronDown className="w-4 h-4 opacity-70" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-48 bg-white border border-gray-200 shadow-lg">
+                <DropdownMenuContent
+                  align="start"
+                  className="w-48 bg-white border border-gray-200 shadow-lg"
+                >
                   {layananItems.map((item) => {
                     const Icon = item.icon;
                     return (
                       <DropdownMenuItem key={item.href} asChild>
-                        <Link href={item.href} className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-emerald-50">
+                        <Link
+                          href={item.href}
+                          className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-emerald-50"
+                        >
                           <Icon className="w-4 h-4 text-emerald-600" />
                           <div className="flex flex-col">
-                            <span className="text-sm font-semibold text-emerald-900">{item.label}</span>
-                            <span className="text-xs text-gray-500">{item.description}</span>
+                            <span className="text-sm font-semibold text-emerald-900">
+                              {item.label}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {item.description}
+                            </span>
                           </div>
                         </Link>
                       </DropdownMenuItem>
@@ -624,13 +687,23 @@ export function Header() {
                   })}
                 </DropdownMenuContent>
               </DropdownMenu>
-              
+
               <Link href="/bundles">
-                <Button variant="ghost" className="font-bold text-orange-700 hover:text-orange-800 hover:bg-orange-50 text-[14px]">Paket Hemat</Button>
+                <Button
+                  variant="ghost"
+                  className="font-bold text-orange-700 hover:text-orange-800 hover:bg-orange-50 text-[14px]"
+                >
+                  Paket Hemat
+                </Button>
               </Link>
             </div>
-            
-            <Button variant="ghost" size="icon" className="relative text-emerald-900/70" asChild>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative text-emerald-900/70"
+              asChild
+            >
               <Link href="/cart">
                 <ShoppingCart className="w-5.5 h-5.5" />
                 {isClient && totalItems > 0 && (
@@ -640,26 +713,32 @@ export function Header() {
                 )}
               </Link>
             </Button>
-            
+
             {/* User Control */}
             <NavbarUserControl />
-            
+
             <Button
               variant="ghost"
               size="icon"
               className="lg:hidden ml-1 text-emerald-900"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </Button>
           </div>
         </div>
       </nav>
-      
+
       {/* Mobile Menu - RESPONSIVE FIX */}
       <AnimatePresence>
         {isMenuOpen && (
-          <div className="fixed inset-0 z-40 lg:hidden">
+          /* Menggunakan h-screen dan inset-0 untuk memastikan overlay menutup seluruh layar */
+          <div className="fixed inset-0 z-50 lg:hidden h-screen overflow-hidden">
+            {/* Backdrop Overlay */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -667,26 +746,35 @@ export function Header() {
               className="absolute inset-0 bg-emerald-950/40 backdrop-blur-[2px]"
               onClick={closeMenu}
             />
-            {/* Mobile Menu Panel - Full Height & Scrollable */}
+
+            {/* Mobile Menu Panel - Diperbaiki menggunakan h-full dan w-[280px] */}
             <motion.div
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25 }}
-              className="absolute right-0 top-0 bottom-0 w-70 bg-white shadow-2xl flex flex-col overflow-hidden"
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="absolute right-0 top-0 bottom-0 w-[280px] h-full bg-white shadow-2xl flex flex-col z-10"
             >
-              {/* Header - Fixed */}
+              {/* Header - Fixed & Flex Shrink 0 */}
               <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 flex-shrink-0">
-                <h2 className="text-xs font-bold text-emerald-900/40 uppercase tracking-widest">Navigasi</h2>
-                <Button variant="ghost" size="icon" onClick={closeMenu} className="h-8 w-8">
+                <h2 className="text-xs font-bold text-emerald-900/40 uppercase tracking-widest">
+                  Navigasi
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={closeMenu}
+                  className="h-8 w-8"
+                >
                   <X className="w-5 h-5" />
                 </Button>
               </div>
-              
-              {/* Scrollable Content Area */}
-              <div 
+
+              {/* Scrollable Content Area - Ditambahkan -webkit-overflow-scrolling untuk iOS smooth scroll */}
+              <div
                 ref={menuPanelRef}
-                className="flex-1 overflow-y-auto"
+                className="flex-1 overflow-y-auto min-h-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                style={{ WebkitOverflowScrolling: "touch" }}
               >
                 <div className="px-6 py-4 space-y-1">
                   {/* User Account Section */}
@@ -695,20 +783,24 @@ export function Header() {
                       href={user ? "/account" : "/login"}
                       onClick={closeMenu}
                       className={`flex items-center justify-between px-4 py-4 rounded-md text-[15px] font-bold mb-2 transition-all ${
-                        user 
-                          ? "text-emerald-700 bg-emerald-50" 
+                        user
+                          ? "text-emerald-700 bg-emerald-50"
                           : "text-orange-700 bg-orange-50 border border-orange-100"
                       }`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         {user ? (
                           <>
                             <div className="w-6 h-6 rounded-full bg-emerald-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                               <User className="w-4 h-4 text-emerald-700" />
                             </div>
-                            <div className="flex flex-col">
-                              <span className="leading-none">{user.email?.split('@')[0] || "Akun Saya"}</span>
-                              <span className="text-[10px] font-medium text-emerald-600/60 mt-1">Lihat Profil</span>
+                            <div className="flex flex-col min-w-0">
+                              <span className="leading-none truncate">
+                                {user.email?.split("@")[0] || "Akun Saya"}
+                              </span>
+                              <span className="text-[10px] font-medium text-emerald-600/60 mt-1">
+                                Lihat Profil
+                              </span>
                             </div>
                           </>
                         ) : (
@@ -718,14 +810,18 @@ export function Header() {
                           </>
                         )}
                       </div>
-                      <ChevronDown className="w-4 h-4 -rotate-90 opacity-40 flex-shrink-0" />
+                      <ChevronDown className="w-4 h-4 -rotate-90 opacity-40 flex-shrink-0 ml-2" />
                     </Link>
                   )}
-                  
+
                   {/* Dropdown Layanan */}
                   <div className="border-l-2 border-transparent">
                     <button
-                      onClick={() => setExpandedMobileMenu(expandedMobileMenu === "layanan" ? null : "layanan")}
+                      onClick={() =>
+                        setExpandedMobileMenu(
+                          expandedMobileMenu === "layanan" ? null : "layanan",
+                        )
+                      }
                       className="w-full flex items-center justify-between px-4 py-4 rounded-md text-[15px] font-semibold text-emerald-900/80 hover:bg-emerald-50 transition-colors"
                     >
                       <span>Layanan</span>
@@ -735,16 +831,17 @@ export function Header() {
                         }`}
                       />
                     </button>
-                    
-                    <AnimatePresence>
+
+                    <AnimatePresence initial={false}>
                       {expandedMobileMenu === "layanan" && (
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: "auto" }}
                           exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
                           className="overflow-hidden"
                         >
-                          <div className="pl-4 space-y-1">
+                          <div className="pl-4 space-y-1 py-1">
                             {layananItems.map((item) => {
                               const Icon = item.icon;
                               return (
@@ -752,12 +849,16 @@ export function Header() {
                                   key={item.href}
                                   href={item.href}
                                   onClick={closeMenu}
-                                  className="flex items-center gap-3 px-4 py-3 rounded-md text-[14px] font-medium text-emerald-900/70 hover:bg-emerald-50 transition-colors border-l-2 border-emerald-600"
+                                  className="flex items-start gap-3 px-4 py-3 rounded-md text-[14px] font-medium text-emerald-900/70 hover:bg-emerald-50 transition-colors border-l-2 border-emerald-600"
                                 >
-                                  <Icon className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                                  <div className="flex flex-col">
-                                    <span>{item.label}</span>
-                                    <span className="text-xs text-gray-500">{item.description}</span>
+                                  <Icon className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="truncate">
+                                      {item.label}
+                                    </span>
+                                    <span className="text-xs text-gray-500 line-clamp-1">
+                                      {item.description}
+                                    </span>
                                   </div>
                                 </Link>
                               );
@@ -767,26 +868,38 @@ export function Header() {
                       )}
                     </AnimatePresence>
                   </div>
-                  
+
                   {/* Other Links */}
-                  <MobileNavLink href="/bundles" label="Paket Hemat" onClick={closeMenu} />
-                  <MobileNavLink href="/guide" label="Panduan Sewa" onClick={closeMenu} />
+                  <MobileNavLink
+                    href="/bundles"
+                    label="Paket Hemat"
+                    onClick={closeMenu}
+                  />
+                  <MobileNavLink
+                    href="/guide"
+                    label="Panduan Sewa"
+                    onClick={closeMenu}
+                  />
                 </div>
               </div>
-              
-              {/* Footer - Fixed */}
-              <div className="px-6 py-4 border-t border-gray-100 flex-shrink-0 space-y-4">
+
+              {/* Footer - Fixed & Flex Shrink 0 */}
+              <div className="px-6 py-4 border-t border-gray-100 flex-shrink-0 space-y-4 bg-white">
                 <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-lg">
                   <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                     <ShieldCheck className="w-5 h-5 text-emerald-600" />
                   </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase">Status Member</p>
-                    <p className="text-xs font-bold text-emerald-900">Verified Adventurer</p>
+                  <div className="flex flex-col min-w-0">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      Status Member
+                    </p>
+                    <p className="text-xs font-bold text-emerald-900 truncate">
+                      Verified Adventurer
+                    </p>
                   </div>
                 </div>
-                <Link href="/rental" onClick={closeMenu}>
-                  <Button className="w-full bg-[#1B4332] text-white font-bold h-12 shadow-lg shadow-emerald-900/20">
+                <Link href="/rental" onClick={closeMenu} className="block">
+                  <Button className="w-full bg-[#1B4332] hover:bg-[#133024] text-white font-bold h-12 shadow-lg shadow-emerald-900/20 transition-colors">
                     Sewa Sekarang
                   </Button>
                 </Link>
@@ -795,12 +908,19 @@ export function Header() {
           </div>
         )}
       </AnimatePresence>
-      
     </header>
   );
 }
 
-function MobileNavLink({ href, label, onClick }: { href: string; label: string; onClick: () => void }) {
+function MobileNavLink({
+  href,
+  label,
+  onClick,
+}: {
+  href: string;
+  label: string;
+  onClick: () => void;
+}) {
   return (
     <Link
       href={href}

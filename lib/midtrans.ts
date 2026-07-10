@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import crypto from 'crypto'
 
 // Midtrans Configuration
 const isProduction = process.env.MIDTRANS_PRODUCTION === 'true'
@@ -11,14 +11,6 @@ let snapApi: any = null
 
 async function initializeMidtrans() {
   try {
-    console.log('Initializing Midtrans with config:', {
-      isProduction,
-      hasServerKey: !!serverKey,
-      hasClientKey: !!clientKey,
-      serverKeyLength: serverKey?.length,
-      clientKeyLength: clientKey?.length
-    })
-
     const MidtransClient = await import('midtrans-client')
     
     // Create Core API instance for server-side
@@ -35,18 +27,36 @@ async function initializeMidtrans() {
       clientKey,
     })
     
-    console.log('Midtrans initialized successfully')
     return true
   } catch (error) {
-    console.error('Failed to initialize Midtrans:', error)
-    console.error('Initialization error details:', {
-      errorMessage: error instanceof Error ? error.message : 'Unknown error',
-      errorStack: error instanceof Error ? error.stack : undefined,
-      config: { isProduction, hasServerKey: !!serverKey, hasClientKey: !!clientKey }
-    })
+    console.error('Failed to initialize Midtrans library')
     return false
   }
 }
+
+/**
+ * Verifikasi signature_key dari notifikasi Midtrans.
+ * signature_key = sha512(order_id + status_code + gross_amount + ServerKey)
+ */
+export function verifyMidtransSignature(params: {
+  order_id: string
+  status_code: string
+  gross_amount: string
+  signature_key: string
+}): boolean {
+  if (!serverKey) return false
+  const expected = crypto
+    .createHash('sha512')
+    .update(params.order_id + params.status_code + params.gross_amount + serverKey)
+    .digest('hex')
+  // Bandingkan dengan timing-safe compare
+  const a = Buffer.from(expected)
+  const b = Buffer.from(params.signature_key || '')
+  if (a.length !== b.length) return false
+  return crypto.timingSafeEqual(a, b)
+}
+
+export const isMidtransConfigured = (): boolean => !!clientKey && !!serverKey
 
 export interface MidtransTransactionDetails {
   order_id: string
@@ -84,13 +94,6 @@ export async function createMidtransTransaction(
   transactionData: MidtransTransactionRequest
 ) {
   try {
-    console.log('Creating Midtrans transaction with data:', {
-      orderId: transactionData.transaction_details.order_id,
-      amount: transactionData.transaction_details.gross_amount,
-      customerEmail: transactionData.customer_details.email,
-      itemCount: transactionData.item_details.length
-    })
-
     // Initialize Midtrans if not already done
     if (!snapApi) {
       const initialized = await initializeMidtrans()
@@ -100,26 +103,14 @@ export async function createMidtransTransaction(
     }
 
     const snapTransaction = await snapApi.createTransaction(transactionData)
-    console.log('Midtrans transaction created successfully:', {
-      token: snapTransaction.token ? 'Generated' : 'Missing',
-      redirectUrl: snapTransaction.redirect_url ? 'Generated' : 'Missing'
-    })
-    
+
     return {
       success: true,
       token: snapTransaction.token,
       redirect_url: snapTransaction.redirect_url,
     }
   } catch (error) {
-    console.error('Midtrans transaction error:', error)
-    console.error('Transaction error details:', {
-      errorMessage: error instanceof Error ? error.message : 'Unknown error',
-      errorStack: error instanceof Error ? error.stack : undefined,
-      transactionData: {
-        orderId: transactionData.transaction_details.order_id,
-        amount: transactionData.transaction_details.gross_amount
-      }
-    })
+    console.error('Midtrans transaction error:', error instanceof Error ? error.message : 'Unknown error')
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

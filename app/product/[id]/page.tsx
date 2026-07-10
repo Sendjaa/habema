@@ -32,6 +32,13 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/store";
 import { toast } from "sonner";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
 
 export default function ProductDetailPage({
   params,
@@ -63,9 +70,9 @@ export default function ProductDetailPage({
   const [helpfulCount, setHelpfulCount] = useState([12, 8, 5, 2, 1]);
   const [isLiked, setIsLiked] = useState([false, false, false, false, false]);
   const addToCart = useCartStore((state) => state.addToCart);
-  const unsplashLoader = ({src, width, quality, }: any ) => {
+  const unsplashLoader = ({ src, width, quality }: any) => {
     return `${src}?auto=format&fit=crop&w=${width}&q=${quality || 75}`;
-  }
+  };
 
   const handleHelpfulClick = (index: number) => {
     const newLikedStatus = [...isLiked];
@@ -90,7 +97,9 @@ export default function ProductDetailPage({
     setSubmittingReply(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       if (!user) {
         toast.error("Anda harus login untuk membalas review");
@@ -99,31 +108,34 @@ export default function ProductDetailPage({
 
       // Check if user exists in users table
       const { data: userRecord, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', user.id)
+        .from("users")
+        .select("id")
+        .eq("id", user.id)
         .single();
 
       if (userError || !userRecord) {
         // Create user record if it doesn't exist
         const { error: insertError } = await (supabase as any)
-          .from('users')
+          .from("users")
           .insert({
             id: user.id,
-            email: user.email || '',
-            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+            email: user.email || "",
+            full_name:
+              user.user_metadata?.full_name ||
+              user.email?.split("@")[0] ||
+              "User",
           });
 
         if (insertError) {
-          console.error('Error creating user record:', insertError);
-          toast.error('Gagal membuat user record. Silakan coba lagi.');
+          console.error("Error creating user record:", insertError);
+          toast.error("Gagal membuat user record. Silakan coba lagi.");
           return;
         }
       }
 
       // Find the original review to get the author's name
-      const originalReview = reviews.find(r => r.id === reviewId);
-      const authorName = originalReview?.users?.full_name || 'User';
+      const originalReview = reviews.find((r) => r.id === reviewId);
+      const authorName = originalReview?.users?.full_name || "User";
 
       // Insert reply (using reviews table with special prefix in comment)
       const replyData = {
@@ -134,7 +146,7 @@ export default function ProductDetailPage({
         created_at: new Date().toISOString(), // Add created_at if required
       };
 
-      console.log('Inserting reply data:', replyData);
+      console.log("Inserting reply data:", replyData);
 
       const { data, error } = await (supabase as any)
         .from("reviews")
@@ -142,24 +154,26 @@ export default function ProductDetailPage({
         .select();
 
       if (error) {
-        console.error('Reply insertion error:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
-        throw new Error(`Gagal menyimpan balasan: ${error.message || 'Unknown error'}`);
+        console.error("Reply insertion error:", error);
+        console.error("Error details:", JSON.stringify(error, null, 2));
+        throw new Error(
+          `Gagal menyimpan balasan: ${error.message || "Unknown error"}`,
+        );
       }
 
-      console.log('Reply inserted successfully:', data);
+      console.log("Reply inserted successfully:", data);
 
       toast.success("Balasan berhasil dikirim!");
       setReplyText("");
       setReplyingTo(null);
-      
+
       // Refresh reviews
       const { data: refreshedReviews } = await supabase
         .from("reviews")
         .select("*, users(full_name)")
         .eq("equipment_id", id)
         .order("created_at", { ascending: false });
-      
+
       setReviews(refreshedReviews || []);
     } catch (error: any) {
       console.error("Error submitting reply:", error);
@@ -191,7 +205,9 @@ export default function ProductDetailPage({
       distribution[r.rating as keyof typeof distribution]++;
     });
 
-    const satisfaction = Math.round((distribution[5] + distribution[4]) / total * 100);
+    const satisfaction = Math.round(
+      ((distribution[5] + distribution[4]) / total) * 100,
+    );
 
     return { average, total, distribution, satisfaction };
   }, [reviews]);
@@ -221,7 +237,10 @@ export default function ProductDetailPage({
       if (error) {
         console.error("Error fetching product:", error);
       } else {
-        setProduct({ ...(data as any), specs: (data as any).specifications || {} });
+        setProduct({
+          ...(data as any),
+          specs: (data as any).specifications || {},
+        });
       }
       setLoading(false);
     };
@@ -300,7 +319,7 @@ export default function ProductDetailPage({
   const pricePerNight = Number(product.price_per_night || 0);
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] pb-24 md:pb-16">
+    <div className="min-h-screen bg-[#F0F2F5] pb-15 md:pb-16">
       <nav className="bg-white hidden border-b border-slate-200 py-3 px-4 md:px-6">
         <div className="max-w-7xl mx-auto flex items-center gap-2 text-[10px] md:text-xs font-medium text-slate-500 capitalize">
           <Link
@@ -321,37 +340,47 @@ export default function ProductDetailPage({
       </nav>
 
       {/* Mobile Top Nav */}
-      <div className="md:hidden bg-white p-4 flex items-center justify-between sticky top-0 z-50 shadow-sm border-b">
+      <div className="hidden md:flex bg-white items-center p-2 sticky top-0 md:z-0 shadow-sm border-b ps-35">
         <button
-          onClick={() => router.push("/catalog")}
-          className="text-slate-600 font-bold p-1 hover:bg-slate-50 rounded-full transition-colors"
+          onClick={() => router.back()}
+          className="group flex items-center justify-center w-10 h-5"
+          aria-label="Kembali"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4 text-gray-900 group-hover:text-forest transition-colors" />
         </button>
-        <h1 className="..."> {product.name} </h1>
-        <div className="flex gap-4">
-          {/* Share Button - Desktop & Mobile */}
-          <button 
-            onClick={() => setShowShare(true)}
-            className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors"
-            title="Bagikan produk"
-          >
-            <Share2 className="w-5 h-5 text-slate-600" />
-          </button>
-          
-          {/* Cart Button - Uncomment if needed */}
-          {/* <button 
-            onClick={() => setShowCart(true)}
-            className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors"
-            title="Tambah ke keranjang"
-          >
-            <ShoppingCart className="w-5 h-5 text-slate-600" />
-          </button> */}
-        </div>
+
+        <Breadcrumb>
+          <BreadcrumbList className="text-[10px] md:text-xs font-bold tracking-0.1em text-gray-900">
+            <BreadcrumbItem>
+              <BreadcrumbLink
+                href="/"
+                className="hover:text-[#D4AF37] text-gray-900 transition-colors"
+              >
+                Beranda /
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            {/* <BreadcrumbSeparator className="text-white/40" /> */}
+            <BreadcrumbItem>
+               <BreadcrumbLink
+                href="/"
+                className="hover:text-[#D4AF37] text-gray-900 transition-colors"
+              >
+                Rental /
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbItem>
+              <BreadcrumbLink>
+                <BreadcrumbPage className="text-[#D4AF37] font-extrabold">
+                  {product.name}
+                </BreadcrumbPage>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
       </div>
 
       {/* MOBILE BOTTOM NAVIGATION */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-1">
         {/* OVERLAY GELAP (Klik luar untuk menutup) */}
         {showSelection && (
           <div
@@ -379,7 +408,7 @@ export default function ProductDetailPage({
                     alt={product.name}
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw"
-                    className="object-cover"
+                    className="object-contain"
                     priority={true}
                     placeholder="blur"
                     blurDataURL="data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='40' height='40' fill='%23e2e8f'/%3E%3C/svg%3E"
@@ -445,14 +474,14 @@ export default function ProductDetailPage({
             {!showSelection ? (
               <Button
                 onClick={() => setShowSelection(true)}
-                className="flex-[2] bg-[#1B4332] hover:bg-[#143326] font-bold h-12 rounded-lg text-white"
+                className="flex-2 bg-[#1B4332] hover:bg-[#143326] font-bold h-12 rounded-lg text-white"
               >
                 Sewa Sekarang
               </Button>
             ) : (
               <Button
                 asChild
-                className="flex-[2] bg-[#1B4332] hover:bg-[#143326] font-bold h-12 rounded-lg text-white shadow-lg"
+                className="flex-2 bg-[#1B4332] hover:bg-[#143326] font-bold h-12 rounded-lg text-white shadow-lg"
               >
                 <Link href={`/booking?id=${id}&quantity=${quantity}`}>
                   Konfirmasi Sewa
@@ -467,12 +496,12 @@ export default function ProductDetailPage({
           <>
             {/* OVERLAY GELAP */}
             <div
-              className="fixed inset-0 z-[50] bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+              className="fixed inset-0 z-1 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
               onClick={() => setShowShare(false)}
             />
 
             {/* PANEL SHARE - Desktop Center */}
-            <div className="fixed inset-0 z-[60] flex items-center justify-center hidden md:flex">
+            <div className="fixed inset-0 z-1 items-center justify-center hidden md:flex">
               <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 animate-in zoom-in-95 duration-300">
                 <div className="p-6 space-y-6">
                   <div className="flex items-center justify-between">
@@ -498,57 +527,57 @@ export default function ProductDetailPage({
                       icon="WhatsApp"
                       label="WhatsApp"
                       color="bg-green-500"
-                      productUrl={product?.id ? `/product/${product.id}` : ''}
-                      productName={product?.name || 'Produk'}
+                      productUrl={product?.id ? `/product/${product.id}` : ""}
+                      productName={product?.name || "Produk"}
                     />
                     <ShareOption
                       icon="Instagram"
                       label="Instagram"
                       color="bg-pink-600"
-                      productUrl={product?.id ? `/product/${product.id}` : ''}
-                      productName={product?.name || 'Produk'}
+                      productUrl={product?.id ? `/product/${product.id}` : ""}
+                      productName={product?.name || "Produk"}
                     />
                     <ShareOption
                       icon="Facebook"
                       label="Facebook"
                       color="bg-blue-600"
-                      productUrl={product?.id ? `/product/${product.id}` : ''}
-                      productName={product?.name || 'Produk'}
+                      productUrl={product?.id ? `/product/${product.id}` : ""}
+                      productName={product?.name || "Produk"}
                     />
                     <ShareOption
                       icon="Messenger"
                       label="Messenger"
                       color="bg-blue-500"
-                      productUrl={product?.id ? `/product/${product.id}` : ''}
-                      productName={product?.name || 'Produk'}
+                      productUrl={product?.id ? `/product/${product.id}` : ""}
+                      productName={product?.name || "Produk"}
                     />
                     <ShareOption
                       icon="Telegram"
                       label="Telegram"
                       color="bg-sky-500"
-                      productUrl={product?.id ? `/product/${product.id}` : ''}
-                      productName={product?.name || 'Produk'}
+                      productUrl={product?.id ? `/product/${product.id}` : ""}
+                      productName={product?.name || "Produk"}
                     />
-                    <ShareOption 
-                      icon="Line" 
-                      label="Line" 
-                      color="bg-green-400" 
-                      productUrl={product?.id ? `/product/${product.id}` : ''}
-                      productName={product?.name || 'Produk'}
+                    <ShareOption
+                      icon="Line"
+                      label="Line"
+                      color="bg-green-400"
+                      productUrl={product?.id ? `/product/${product.id}` : ""}
+                      productName={product?.name || "Produk"}
                     />
                     <ShareOption
                       icon="Copy"
                       label="Salin Link"
                       color="bg-slate-500"
-                      productUrl={product?.id ? `/product/${product.id}` : ''}
-                      productName={product?.name || 'Produk'}
+                      productUrl={product?.id ? `/product/${product.id}` : ""}
+                      productName={product?.name || "Produk"}
                     />
                     <ShareOption
                       icon="More"
                       label="Lainnya"
                       color="bg-slate-800"
-                      productUrl={product?.id ? `/product/${product.id}` : ''}
-                      productName={product?.name || 'Produk'}
+                      productUrl={product?.id ? `/product/${product.id}` : ""}
+                      productName={product?.name || "Produk"}
                     />
                   </div>
                 </div>
@@ -556,7 +585,7 @@ export default function ProductDetailPage({
             </div>
 
             {/* PANEL SHARE - Mobile Bottom */}
-            <div className="md:hidden fixed bottom-0 left-0 right-0 z-[60]">
+            <div className="md:hidden fixed bottom-0 left-0 right-0 z-1">
               <div className="relative bg-white border-t rounded-t-2xl shadow-[0_-10px_15px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom duration-300">
                 <div className="p-6 space-y-6">
                   <div className="flex items-center justify-between">
@@ -582,57 +611,57 @@ export default function ProductDetailPage({
                       icon="WhatsApp"
                       label="WhatsApp"
                       color="bg-green-500"
-                      productUrl={product?.id ? `/product/${product.id}` : ''}
-                      productName={product?.name || 'Produk'}
+                      productUrl={product?.id ? `/product/${product.id}` : ""}
+                      productName={product?.name || "Produk"}
                     />
                     <ShareOption
                       icon="Instagram"
                       label="Instagram"
                       color="bg-pink-600"
-                      productUrl={product?.id ? `/product/${product.id}` : ''}
-                      productName={product?.name || 'Produk'}
+                      productUrl={product?.id ? `/product/${product.id}` : ""}
+                      productName={product?.name || "Produk"}
                     />
                     <ShareOption
                       icon="Facebook"
                       label="Facebook"
                       color="bg-blue-600"
-                      productUrl={product?.id ? `/product/${product.id}` : ''}
-                      productName={product?.name || 'Produk'}
+                      productUrl={product?.id ? `/product/${product.id}` : ""}
+                      productName={product?.name || "Produk"}
                     />
                     <ShareOption
                       icon="Messenger"
                       label="Messenger"
                       color="bg-blue-500"
-                      productUrl={product?.id ? `/product/${product.id}` : ''}
-                      productName={product?.name || 'Produk'}
+                      productUrl={product?.id ? `/product/${product.id}` : ""}
+                      productName={product?.name || "Produk"}
                     />
                     <ShareOption
                       icon="Telegram"
                       label="Telegram"
                       color="bg-sky-500"
-                      productUrl={product?.id ? `/product/${product.id}` : ''}
-                      productName={product?.name || 'Produk'}
+                      productUrl={product?.id ? `/product/${product.id}` : ""}
+                      productName={product?.name || "Produk"}
                     />
-                    <ShareOption 
-                      icon="Line" 
-                      label="Line" 
-                      color="bg-green-400" 
-                      productUrl={product?.id ? `/product/${product.id}` : ''}
-                      productName={product?.name || 'Produk'}
+                    <ShareOption
+                      icon="Line"
+                      label="Line"
+                      color="bg-green-400"
+                      productUrl={product?.id ? `/product/${product.id}` : ""}
+                      productName={product?.name || "Produk"}
                     />
                     <ShareOption
                       icon="Copy"
                       label="Salin Link"
                       color="bg-slate-500"
-                      productUrl={product?.id ? `/product/${product.id}` : ''}
-                      productName={product?.name || 'Produk'}
+                      productUrl={product?.id ? `/product/${product.id}` : ""}
+                      productName={product?.name || "Produk"}
                     />
                     <ShareOption
                       icon="More"
                       label="Lainnya"
                       color="bg-slate-800"
-                      productUrl={product?.id ? `/product/${product.id}` : ''}
-                      productName={product?.name || 'Produk'}
+                      productUrl={product?.id ? `/product/${product.id}` : ""}
+                      productName={product?.name || "Produk"}
                     />
                   </div>
                 </div>
@@ -641,7 +670,7 @@ export default function ProductDetailPage({
           </>
         )}
         {/* ketika click keranjang ada pop up dimasukkan ke keranjang! */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-[60]">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-1">
           {/* OVERLAY GELAP */}
           {showCart && (
             <div
@@ -720,16 +749,21 @@ export default function ProductDetailPage({
                   </span>
                   <span className="text-slate-400 text-sm">/ hari</span>
                 </div>
-                              </div>
+              </div>
               <h1 className="text-xl font-bold text-slate-800 capitalize leading-tight">
                 {product.name}
               </h1>
               <div className="flex items-center gap-3 text-sm">
                 <div className="flex items-center text-amber-500 font-bold">
-                  <Star className="w-4 h-4 fill-current mr-1" /> {calculateRatingFromReviews(reviews).average.toFixed(1)}
+                  <Star className="w-4 h-4 fill-current mr-1" />{" "}
+                  {calculateRatingFromReviews(reviews).average.toFixed(1)}
                 </div>
                 <span className="text-slate-300">|</span>
-                <span className="text-slate-500">{reviews.length > 0 ? `${reviews.length} Review` : `Tersewa ${product.rental_count || '50'}+ kali`}</span>
+                <span className="text-slate-500">
+                  {reviews.length > 0
+                    ? `${reviews.length} Review`
+                    : `Tersewa ${product.rental_count || "50"}+ kali`}
+                </span>
               </div>
             </div>
 
@@ -841,13 +875,13 @@ export default function ProductDetailPage({
                     Wishlist
                   </span>
                 </button>
-                <button 
+                <button
                   className="flex flex-col items-center gap-1 group cursor-pointer"
                   onClick={() => {
-                    console.log('Share button clicked - desktop sidebar');
-                    console.log('Current showShare state:', showShare);
+                    console.log("Share button clicked - desktop sidebar");
+                    console.log("Current showShare state:", showShare);
                     setShowShare(true);
-                    console.log('Set showShare to true');
+                    console.log("Set showShare to true");
                   }}
                   type="button"
                 >
@@ -856,7 +890,7 @@ export default function ProductDetailPage({
                     Bagikan
                   </span>
                 </button>
-                              </div>
+              </div>
             </Card>
           </div>
         </div>
@@ -893,14 +927,19 @@ export default function ProductDetailPage({
                 ))}
               </div>
               <p className="text-xs text-slate-500 font-medium">
-                {ratingStats.satisfaction}% penyewa puas dengan alat ini ({ratingStats.total} review)
+                {ratingStats.satisfaction}% penyewa puas dengan alat ini (
+                {ratingStats.total} review)
               </p>
             </div>
 
             <div className="flex-1 space-y-2">
               {[5, 4, 3, 2, 1].map((star) => {
-                const count = ratingStats.distribution[star as keyof typeof ratingStats.distribution];
-                const percentage = ratingStats.total > 0 ? (count / ratingStats.total) * 100 : 0;
+                const count =
+                  ratingStats.distribution[
+                    star as keyof typeof ratingStats.distribution
+                  ];
+                const percentage =
+                  ratingStats.total > 0 ? (count / ratingStats.total) * 100 : 0;
                 return (
                   <div key={star} className="flex items-center gap-3 text-xs">
                     <div className="flex items-center gap-1 w-6">
@@ -913,7 +952,9 @@ export default function ProductDetailPage({
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
-                    <span className="text-slate-400 w-8 text-right">{count}</span>
+                    <span className="text-slate-400 w-8 text-right">
+                      {count}
+                    </span>
                   </div>
                 );
               })}
@@ -954,141 +995,155 @@ export default function ProductDetailPage({
                         </div>
                         <div>
                           <p className="text-sm font-bold text-slate-800">
-                          {review.users?.full_name || "User"}
-                        </p>
-                        <div className="flex gap-0.5 my-0.5">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`w-3 h-3 ${i < review.rating ? "fill-amber-400 text-amber-400" : "fill-slate-200 text-slate-200"}`}
-                            />
-                          ))}
+                            {review.users?.full_name || "User"}
+                          </p>
+                          <div className="flex gap-0.5 my-0.5">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-3 h-3 ${i < review.rating ? "fill-amber-400 text-amber-400" : "fill-slate-200 text-slate-200"}`}
+                              />
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-slate-400">
+                            {new Date(review.created_at).toLocaleDateString(
+                              "id-ID",
+                              {
+                                day: "numeric",
+                                month: "long",
+                                year: "numeric",
+                              },
+                            )}
+                          </p>
                         </div>
-                        <p className="text-[10px] text-slate-400">
-                          {new Date(review.created_at).toLocaleDateString("id-ID", {
-                            day: "numeric",
-                            month: "long",
-                            year: "numeric",
-                          })}
-                        </p>
                       </div>
                     </div>
-                  </div>
 
-                  <p className="text-sm text-slate-600 leading-relaxed">
-                    {review.comment}
-                  </p>
+                    <p className="text-sm text-slate-600 leading-relaxed">
+                      {review.comment}
+                    </p>
 
-                  {/* Reply Form */}
-                  {replyingTo === review.id && (
-                    <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                      <div className="space-y-2">
-                        <textarea
-                          value={replyText}
-                          onChange={(e) => setReplyText(e.target.value)}
-                          placeholder="Tulis balasan Anda..."
-                          className="w-full p-2 text-sm border border-slate-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                          rows={3}
-                          disabled={submittingReply}
-                        />
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setReplyingTo(null);
-                              setReplyText("");
-                            }}
+                    {/* Reply Form */}
+                    {replyingTo === review.id && (
+                      <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div className="space-y-2">
+                          <textarea
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            placeholder="Tulis balasan Anda..."
+                            className="w-full p-2 text-sm border border-slate-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                            rows={3}
                             disabled={submittingReply}
-                          >
-                            Batal
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleReplySubmit(review.id)}
-                            disabled={submittingReply || replyText.trim().length < 5}
-                            className="bg-emerald-600 hover:bg-emerald-700"
-                          >
-                            {submittingReply ? "Mengirim..." : "Kirim Balasan"}
-                          </Button>
+                          />
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setReplyingTo(null);
+                                setReplyText("");
+                              }}
+                              disabled={submittingReply}
+                            >
+                              Batal
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleReplySubmit(review.id)}
+                              disabled={
+                                submittingReply || replyText.trim().length < 5
+                              }
+                              className="bg-emerald-600 hover:bg-emerald-700"
+                            >
+                              {submittingReply
+                                ? "Mengirim..."
+                                : "Kirim Balasan"}
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Display Replies */}
-                  {(() => {
-                    const replies = getRepliesForReview(review.id, reviews);
-                    if (replies.length > 0) {
-                      return (
-                        <div className="mt-3 space-y-2">
-                          {replies.map((reply) => (
-                            <div key={reply.id} className="ml-8 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                              <div className="flex items-center gap-2 mb-2">
-                                <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
-                                  <span className="text-xs font-bold text-emerald-600">
-                                    {(reply.users?.full_name || 'User')[0].toUpperCase()}
-                                  </span>
+                    {/* Display Replies */}
+                    {(() => {
+                      const replies = getRepliesForReview(review.id, reviews);
+                      if (replies.length > 0) {
+                        return (
+                          <div className="mt-3 space-y-2">
+                            {replies.map((reply) => (
+                              <div
+                                key={reply.id}
+                                className="ml-8 p-3 bg-slate-50 rounded-lg border border-slate-200"
+                              >
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
+                                    <span className="text-xs font-bold text-emerald-600">
+                                      {(reply.users?.full_name ||
+                                        "User")[0].toUpperCase()}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-semibold text-slate-700">
+                                      {reply.users?.full_name || "User"}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400">
+                                      {new Date(
+                                        reply.created_at,
+                                      ).toLocaleDateString("id-ID", {
+                                        day: "numeric",
+                                        month: "long",
+                                        year: "numeric",
+                                      })}
+                                    </p>
+                                  </div>
                                 </div>
-                                <div>
-                                  <p className="text-xs font-semibold text-slate-700">
-                                    {reply.users?.full_name || 'User'}
-                                  </p>
-                                  <p className="text-[10px] text-slate-400">
-                                    {new Date(reply.created_at).toLocaleDateString('id-ID', {
-                                      day: 'numeric',
-                                      month: 'long',
-                                      year: 'numeric',
-                                    })}
-                                  </p>
-                                </div>
+                                <p className="text-sm text-slate-600 leading-relaxed">
+                                  {reply.comment.replace(/^@\w+:\s*/, "")}{" "}
+                                  {/* Remove @mention prefix */}
+                                </p>
                               </div>
-                              <p className="text-sm text-slate-600 leading-relaxed">
-                                {reply.comment.replace(/^@\w+:\s*/, '')} {/* Remove @mention prefix */}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
+                            ))}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
 
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-[10px] text-slate-400 hover:text-slate-600"
-                      onClick={() => setReplyingTo(review.id)}
-                    >
-                      <MessageSquare className="w-3 h-3 mr-1" />
-                      Balas
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-[10px] text-slate-400 hover:text-slate-600"
-                    >
-                      <MessageCircle className="w-3 h-3 mr-1" />
-                      Lapor
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[10px] text-slate-400 hover:text-slate-600"
+                        onClick={() => setReplyingTo(review.id)}
+                      >
+                        <MessageSquare className="w-3 h-3 mr-1" />
+                        Balas
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[10px] text-slate-400 hover:text-slate-600"
+                      >
+                        <MessageCircle className="w-3 h-3 mr-1" />
+                        Lapor
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))
+                ))
               ) : (
                 <div className="text-center py-8">
                   <p className="text-sm text-slate-500">
-                    {activeFilter === "Bintang 4" 
-                      ? "Belum ada ulasan bintang 4 untuk produk ini" 
+                    {activeFilter === "Bintang 4"
+                      ? "Belum ada ulasan bintang 4 untuk produk ini"
                       : activeFilter === "Bintang 5"
-                      ? "Belum ada ulasan bintang 5 untuk produk ini"
-                      : activeFilter === "Dengan Foto"
-                      ? "Belum ada ulasan dengan foto untuk produk ini"
-                      : "Belum ada ulasan untuk produk ini"}
+                        ? "Belum ada ulasan bintang 5 untuk produk ini"
+                        : activeFilter === "Dengan Foto"
+                          ? "Belum ada ulasan dengan foto untuk produk ini"
+                          : "Belum ada ulasan untuk produk ini"}
                   </p>
                 </div>
-              )}
-            )()}
+              );
+            })()}
           </div>
 
           {/* ADD REVIEW BUTTON */}
@@ -1173,17 +1228,26 @@ function ShareOption({
 }) {
   const handleShare = async (e: React.MouseEvent<HTMLButtonElement>) => {
     const shareText = `Lihat produk ini: ${productName}`;
-    const fullUrl = typeof window !== 'undefined' ? window.location.origin + productUrl : productUrl;
+    const fullUrl =
+      typeof window !== "undefined"
+        ? window.location.origin + productUrl
+        : productUrl;
 
     switch (icon) {
       case "WhatsApp":
-        window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + fullUrl)}`, '_blank');
+        window.open(
+          `https://wa.me/?text=${encodeURIComponent(shareText + " " + fullUrl)}`,
+          "_blank",
+        );
         break;
-      
+
       case "Facebook":
-        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`, '_blank');
+        window.open(
+          `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`,
+          "_blank",
+        );
         break;
-      
+
       case "Instagram":
         // Instagram doesn't support direct URL sharing, so we copy to clipboard
         if (navigator.share) {
@@ -1201,23 +1265,32 @@ function ShareOption({
           copyToClipboard(fullUrl, e.currentTarget);
         }
         break;
-      
+
       case "Messenger":
-        window.open(`https://www.facebook.com/dialog/send?link=${encodeURIComponent(fullUrl)}&app_id=YOUR_APP_ID`, '_blank');
+        window.open(
+          `https://www.facebook.com/dialog/send?link=${encodeURIComponent(fullUrl)}&app_id=YOUR_APP_ID`,
+          "_blank",
+        );
         break;
-      
+
       case "Telegram":
-        window.open(`https://t.me/share/url?url=${encodeURIComponent(fullUrl)}&text=${encodeURIComponent(shareText)}`, '_blank');
+        window.open(
+          `https://t.me/share/url?url=${encodeURIComponent(fullUrl)}&text=${encodeURIComponent(shareText)}`,
+          "_blank",
+        );
         break;
-      
+
       case "Line":
-        window.open(`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(fullUrl)}&text=${encodeURIComponent(shareText)}`, '_blank');
+        window.open(
+          `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(fullUrl)}&text=${encodeURIComponent(shareText)}`,
+          "_blank",
+        );
         break;
-      
+
       case "Copy":
         copyToClipboard(fullUrl, e.currentTarget);
         break;
-      
+
       case "More":
         if (navigator.share) {
           try {
@@ -1227,14 +1300,14 @@ function ShareOption({
               url: fullUrl,
             });
           } catch (err) {
-            console.log('Share cancelled or failed:', err);
+            console.log("Share cancelled or failed:", err);
             copyToClipboard(fullUrl, e.currentTarget);
           }
         } else {
           copyToClipboard(fullUrl, e.currentTarget);
         }
         break;
-      
+
       default:
         copyToClipboard(fullUrl, e.currentTarget);
     }
@@ -1252,7 +1325,7 @@ function ShareOption({
         }, 2000);
       }
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error("Failed to copy:", err);
     }
   };
 
@@ -1280,7 +1353,7 @@ function ShareOption({
   };
 
   return (
-    <button 
+    <button
       onClick={handleShare}
       className="flex flex-col items-center gap-2 group"
     >
@@ -1299,45 +1372,52 @@ const calculateRatingFromReviews = (reviews: any[]) => {
   if (!reviews || reviews.length === 0) {
     return { average: 4.9, count: 0 };
   }
-  
+
   // Only count reviews that are not replies (exclude @mention replies)
-  const validReviews = reviews.filter(review => !review.comment.startsWith('@'));
-  const totalRating = validReviews.reduce((sum, review) => sum + review.rating, 0);
-  const averageRating = validReviews.length > 0 ? totalRating / validReviews.length : 4.9;
-  
+  const validReviews = reviews.filter(
+    (review) => !review.comment.startsWith("@"),
+  );
+  const totalRating = validReviews.reduce(
+    (sum, review) => sum + review.rating,
+    0,
+  );
+  const averageRating =
+    validReviews.length > 0 ? totalRating / validReviews.length : 4.9;
+
   return {
     average: averageRating,
-    count: validReviews.length
+    count: validReviews.length,
   };
 };
 
 // Function to get replies for a specific review
 const getRepliesForReview = (reviewId: number, allReviews: any[]) => {
-  const review = allReviews.find(r => r.id === reviewId);
+  const review = allReviews.find((r) => r.id === reviewId);
   if (!review) return [];
-  
+
   // Find replies that mention the review author (replies start with @mention)
-  const mentionName = review.users?.full_name || 'User';
-  return allReviews.filter(r => 
-    r.comment.startsWith(`@${mentionName}:`) &&
-    r.id !== reviewId
+  const mentionName = review.users?.full_name || "User";
+  return allReviews.filter(
+    (r) => r.comment.startsWith(`@${mentionName}:`) && r.id !== reviewId,
   );
 };
 
 // Function to filter reviews based on active filter
 const getFilteredReviews = (allReviews: any[], activeFilter: string) => {
   // Exclude replies from main review list
-  const mainReviews = allReviews.filter(review => !review.comment.startsWith('@'));
-  
+  const mainReviews = allReviews.filter(
+    (review) => !review.comment.startsWith("@"),
+  );
+
   switch (activeFilter) {
     case "Dengan Foto":
       // For now, return all since we don't have image data in reviews
       // TODO: Add image filtering logic when review images are implemented
       return mainReviews;
     case "Bintang 5":
-      return mainReviews.filter(review => review.rating === 5);
+      return mainReviews.filter((review) => review.rating === 5);
     case "Bintang 4":
-      return mainReviews.filter(review => review.rating === 4);
+      return mainReviews.filter((review) => review.rating === 4);
     default:
       return mainReviews;
   }
@@ -1346,10 +1426,12 @@ const getFilteredReviews = (allReviews: any[], activeFilter: string) => {
 function ProductCard({ item }: { item: any }) {
   const imageSrc =
     item.image_url && item.image_url.trim() !== "" ? item.image_url : null;
-  
+
   // Calculate rating from reviews if available
-  const rating = item.reviews ? calculateRatingFromReviews(item.reviews) : { average: item.average_rating || 4.9, count: 0 };
-  
+  const rating = item.reviews
+    ? calculateRatingFromReviews(item.reviews)
+    : { average: item.average_rating || 4.9, count: 0 };
+
   return (
     <Link href={`/product/${item.id}`} className="group">
       <Card className="h-full border-none shadow-sm hover:shadow-md transition-all rounded-xl overflow-hidden bg-white">
@@ -1381,7 +1463,10 @@ function ProductCard({ item }: { item: any }) {
           <div className="flex items-center gap-1 pt-1">
             <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
             <span className="text-[10px] text-slate-400 font-medium">
-              {rating.average.toFixed(1)} | {rating.count > 0 ? `${rating.count} Review` : `${item.rental_count || '50'}+ Tersewa`}
+              {rating.average.toFixed(1)} |{" "}
+              {rating.count > 0
+                ? `${rating.count} Review`
+                : `${item.rental_count || "50"}+ Tersewa`}
             </span>
           </div>
         </div>

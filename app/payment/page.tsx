@@ -65,7 +65,7 @@ export default function PaymentPage() {
       product: {
         id: "tent-001",
         name: "Tenda Arpenaz 4.1",
-        image_url: "/api/placeholder/150/150", // Use placeholder API
+        image_url: "/api/placeholder?width=150&height=150", // Use placeholder API
         price: 50000,
         quantity: 1,
         category: "tents"

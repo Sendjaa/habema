@@ -148,15 +148,19 @@ class OptimizedFetch {
 
   // Prefetch data for better UX
   public async prefetch(url: string, options: FetchOptions = {}): Promise<void> {
+    // Prefetch bersifat best-effort: kegagalan tidak boleh menjadi unhandled
+    // promise rejection (yang di dev memunculkan overlay Runtime Error).
+    const run = () => {
+      this.fetch(url, { ...options, cacheTime: 10 * 60 * 1000 }).catch((err) => {
+        console.warn(`[optimizedFetch] Prefetch gagal untuk ${url}:`, err);
+      });
+    };
+
     // Use requestIdleCallback for non-critical prefetching
     if ('requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(() => {
-        this.fetch(url, { ...options, cacheTime: 10 * 60 * 1000 }); // 10 minutes cache for prefetch
-      });
+      (window as any).requestIdleCallback(run);
     } else {
-      setTimeout(() => {
-        this.fetch(url, { ...options, cacheTime: 10 * 60 * 1000 });
-      }, 100);
+      setTimeout(run, 100);
     }
   }
 
