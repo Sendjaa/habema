@@ -12,6 +12,7 @@ import {
   Plus, Search, Edit, Trash2, Package, X, ChevronLeft, AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { OptimizedImage } from '@/components/optimized-image'
 
 // ── Types ──────────────────────────────────────────────────────
 interface Equipment {
@@ -258,7 +259,7 @@ function EquipmentModal({
             {/* Preview gambar */}
             {form.image_url && (
               <div className="rounded-lg overflow-hidden border border-stone-200 h-28">
-                <img src={form.image_url} alt="Preview" className="w-full h-full object-cover" />
+                <OptimizedImage src={form.image_url} alt="Preview" className="w-full h-full object-cover" width={200} height={112} />
               </div>
             )}
           </div>
@@ -295,7 +296,7 @@ function EquipmentCard({
       {/* Image */}
       <div className="relative h-40 bg-stone-100 flex items-center justify-center overflow-hidden flex-shrink-0">
         {item.image_url ? (
-          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+          <OptimizedImage src={item.image_url} alt={item.name} className="w-full h-full object-cover" width={320} height={160} />
         ) : (
           <Package className="w-10 h-10 text-stone-300" />
         )}

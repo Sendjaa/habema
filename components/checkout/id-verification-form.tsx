@@ -224,48 +224,19 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
 
   // Mock document analysis function
   const analyzeDocumentCharacteristics = (imageUrl: string) => {
-    // In production, this would use actual ML models to detect:
-    // - Watermarks and security features
-    // - Texture and material analysis
-    // - Font and typography consistency
-    // - Hologram detection
-    // - Edge and corner analysis
-    // - Color depth and saturation
-    
-    // For demo purposes, return realistic validation results
-    const random = Math.random();
-    
-    if (random < 0.1) {
-      // 10% chance of detecting fake document
-      return {
-        authenticity: 'fake' as const,
-        confidence: 0.95,
-        issues: [
-          'Tidak ada hologram yang terdeteksi',
-          'Font tidak konsisten dengan dokumen asli',
-          'Kualitas gambar terlalu rendah',
-          'Terdapat tanda-tanda editing digital'
-        ]
-      };
-    } else if (random < 0.3) {
-      // 20% chance of suspicious document
-      return {
-        authenticity: 'suspicious' as const,
-        confidence: 0.7,
-        issues: [
-          'Kualitas gambar kurang optimal',
-          'Sulit membaca beberapa detail',
-          'Pencahayaan tidak merata'
-        ]
-      };
-    } else {
-      // 70% chance of authentic document
-      return {
-        authenticity: 'authentic' as const,
-        confidence: 0.92,
-        issues: []
-      };
-    }
+    // CATATAN: ini hanya placeholder. Deteksi keaslian yang sesungguhnya
+    // memerlukan model ML (hologram, konsistensi font, tekstur, dll) atau
+    // layanan verifikasi pihak ketiga.
+    //
+    // Sebelumnya fungsi ini memakai Math.random() sehingga menolak dokumen
+    // ASLI secara acak (~10% "palsu", ~20% "mencurigakan"). Untuk MVP hal
+    // itu dihapus: dokumen diteruskan sebagai valid, dan keputusan akhir
+    // dilakukan admin secara manual lewat notifikasi verifikasi ID.
+    return {
+      authenticity: 'authentic' as const,
+      confidence: 0.92,
+      issues: [] as string[],
+    };
   };
 
   const handleSubmit = async () => {
@@ -811,7 +782,7 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
         </Label>
 
         <div
-          className={`relative h-64 rounded-2xl border-2 border-dashed transition-all duration-200 flex flex-col items-center justify-center overflow-hidden ${
+          className={`relative min-h-[16rem] rounded-2xl border-2 border-dashed transition-all duration-200 flex flex-col items-center justify-center overflow-hidden ${
             errors.photo
               ? "border-red-500 bg-red-50/30"
               : "border-slate-200 bg-slate-50/50"
@@ -825,7 +796,6 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
                 playsInline
                 muted
                 className="w-full h-full object-cover"
-                style={{ transform: 'scaleX(-1)' }} // Mirror for front camera
               />
               <div className="absolute bottom-4 inset-x-0 flex justify-center gap-4">
                 <button
@@ -858,7 +828,7 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
             <>
               <img
                 src={photoPreview}
-                className="w-full h-full object-cover"
+                className="w-full h-64 object-cover"
                 alt="Preview"
               />
               <button
@@ -875,54 +845,57 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
               </button>
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full">
+            <div className="flex flex-col items-center justify-center w-full px-6 py-8 gap-5">
               {/* ID Positioning Guide */}
-              <div className="mb-4 text-center">
-                <div className="w-24 h-16 mx-auto mb-2 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center bg-slate-50">
+              <div className="text-center">
+                <div className="w-28 h-16 mx-auto mb-3 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center bg-slate-50">
                   <div className="text-center">
-                    <div className="text-[8px] text-slate-400 font-medium">ID CARD</div>
-                    <div className="text-[6px] text-slate-400 mt-1">Position Here</div>
+                    <div className="text-[10px] font-semibold text-slate-500 tracking-wide">ID CARD</div>
+                    <div className="text-[9px] text-slate-400 mt-0.5">Position Here</div>
                   </div>
                 </div>
-                <div className="text-[8px] text-slate-500 space-y-1">
-                  <p>• Pastikan teks terbaca jelas</p>
-                  <p>• Hindari pantulan cahaya</p>
-                  <p>• Foto seluruh bagian ID</p>
-                </div>
+                <ul className="text-[11px] text-slate-500 space-y-0.5">
+                  <li>• Pastikan teks terbaca jelas</li>
+                  <li>• Hindari pantulan cahaya</li>
+                  <li>• Foto seluruh bagian ID</li>
+                </ul>
               </div>
-              
-              <button
-                type="button"
-                onClick={() => {
-                  startCamera();
-                  if (errors.photo) setErrors({ ...errors, photo: "" });
-                }}
-                className={`w-20 h-20 rounded-2xl bg-white border flex items-center justify-center shadow-sm transition-all ${
-                  errors.photo
-                    ? "border-red-300"
-                    : "border-slate-200 group-hover:border-slate-400"
-                }`}
-              >
-                <Camera
-                  className={`w-8 h-8 transition-colors ${
+
+              {/* Camera CTA */}
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    startCamera();
+                    if (errors.photo) setErrors({ ...errors, photo: "" });
+                  }}
+                  className={`w-16 h-16 rounded-2xl bg-white border flex items-center justify-center shadow-sm transition-all ${
                     errors.photo
-                      ? "text-red-400"
-                      : "text-slate-400 group-hover:text-slate-600"
+                      ? "border-red-300"
+                      : "border-slate-200 hover:border-slate-400"
                   }`}
-                />
-              </button>
-              <span
-                className={`text-[11px] font-bold mt-3 block ${errors.photo ? "text-red-500" : "text-slate-500"}`}
-              >
-                AMBIL FOTO DENGAN KAMERA
-              </span>
-              <p className="text-[9px] text-slate-400 mt-2 text-center max-w-xs">
-                Untuk keamanan dan validasi, foto harus diambil langsung melalui kamera
-              </p>
-              
+                >
+                  <Camera
+                    className={`w-7 h-7 transition-colors ${
+                      errors.photo
+                        ? "text-red-400"
+                        : "text-slate-400 group-hover:text-slate-600"
+                    }`}
+                  />
+                </button>
+                <span
+                  className={`text-xs font-bold tracking-wide ${errors.photo ? "text-red-500" : "text-slate-600"}`}
+                >
+                  AMBIL FOTO DENGAN KAMERA
+                </span>
+                <p className="text-[11px] text-slate-400 text-center max-w-[15rem] leading-relaxed">
+                  Untuk keamanan dan validasi, foto harus diambil langsung melalui kamera
+                </p>
+              </div>
+
               {/* File Upload Option */}
-              <div className="mt-4 pt-4 border-t border-slate-200">
-                <p className="text-[9px] text-slate-500 text-center mb-2">Atau upload file dari perangkat</p>
+              <div className="w-full flex flex-col items-center gap-2 pt-5 border-t border-slate-200">
+                <p className="text-[11px] text-slate-500 text-center">Atau upload file dari perangkat</p>
                 <input
                   type="file"
                   id="id-upload"
@@ -937,9 +910,9 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
                   <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                   </svg>
-                  <span className="text-[10px] font-medium text-slate-700">Upload File</span>
+                  <span className="text-xs font-medium text-slate-700">Upload File</span>
                 </label>
-                <p className="text-[8px] text-slate-400 mt-2 text-center">Maksimal 5MB (JPG, PNG)</p>
+                <p className="text-[10px] text-slate-400 text-center">Maksimal 5MB (JPG, PNG)</p>
               </div>
               
               {/* Manual Upload Fallback */}

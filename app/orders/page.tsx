@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import { OptimizedImage } from '@/components/optimized-image'
 
 export default function OrdersPage() {
   const { orders: realOrders, removeOrder } = useCartStore()
@@ -207,7 +208,7 @@ export default function OrdersPage() {
                     <div key={i} className="flex items-center gap-3 px-4 py-3">
                       <div className="w-10 h-10 rounded-lg bg-stone-100 border border-stone-200 flex-shrink-0 overflow-hidden">
                         {selectedOrder.image_url
-                          ? <img src={selectedOrder.image_url} className="w-full h-full object-cover" alt="" />
+                          ? <OptimizedImage src={selectedOrder.image_url} className="w-full h-full object-cover" alt="" width={40} height={40} />
                           : <Package className="w-5 h-5 text-stone-300 m-auto mt-2.5" />}
                       </div>
                       <div className="flex-1">
@@ -273,7 +274,7 @@ function OrderCard({ order, onDetail, statusInfo, onRemove }: any) {
           <div className="relative flex-shrink-0">
             <div className="w-16 h-16 bg-stone-100 rounded-xl border border-stone-200 overflow-hidden">
               {order?.image_url
-                ? <img src={order?.image_url} alt={order.items[0]} className="w-full h-full object-cover" />
+                ? <OptimizedImage src={order?.image_url} alt={order.items[0]} className="w-full h-full object-cover" width={64} height={64} />
                 : <div className="w-full h-full flex items-center justify-center"><Package className="w-7 h-7 text-stone-300" /></div>}
             </div>
             <span className="absolute -bottom-1.5 -right-1.5 bg-emerald-700 text-emerald-50 text-[10px] font-semibold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">

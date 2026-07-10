@@ -67,6 +67,20 @@ export default function ProductDetailPage({
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<string>("Semua");
 
+  // Tanggal sewa yang dibawa dari katalog (via query string). Diteruskan ke
+  // halaman booking agar pengguna tidak perlu memilih tanggal ulang.
+  const [dateQuery, setDateQuery] = useState("");
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const s = sp.get("startDate");
+    const e = sp.get("endDate");
+    const q = new URLSearchParams();
+    if (s) q.set("startDate", s);
+    if (e) q.set("endDate", e);
+    const str = q.toString();
+    setDateQuery(str ? `&${str}` : "");
+  }, []);
+
   const [helpfulCount, setHelpfulCount] = useState([12, 8, 5, 2, 1]);
   const [isLiked, setIsLiked] = useState([false, false, false, false, false]);
   const addToCart = useCartStore((state) => state.addToCart);
@@ -483,7 +497,7 @@ export default function ProductDetailPage({
                 asChild
                 className="flex-2 bg-[#1B4332] hover:bg-[#143326] font-bold h-12 rounded-lg text-white shadow-lg"
               >
-                <Link href={`/booking?id=${id}&quantity=${quantity}`}>
+                <Link href={`/booking?id=${id}&quantity=${quantity}${dateQuery}`}>
                   Konfirmasi Sewa
                 </Link>
               </Button>
@@ -857,7 +871,7 @@ export default function ProductDetailPage({
                   asChild
                   className="w-full bg-[#1B4332] hover:bg-[#143326] font-bold py-6 rounded-xl shadow-lg transition-all"
                 >
-                  <Link href={`/booking?id=${id}&quantity=${quantity}`}>
+                  <Link href={`/booking?id=${id}&quantity=${quantity}${dateQuery}`}>
                     Sewa Langsung
                   </Link>
                 </Button>

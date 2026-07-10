@@ -11,7 +11,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: [] });
     }
 
-    // Search by product name and category name
+    // Sanitasi: buang karakter yang punya arti khusus di filter PostgREST
+    // (koma & tanda kurung memisahkan/mengelompokkan kondisi .or()).
+    const term = search.replace(/[,()%]/g, "").trim();
+    if (term.length < 2) {
+      return NextResponse.json({ success: true, data: [] });
+    }
+
+    // Cari id kategori yang namanya cocok, agar produk berkategori tsb ikut
+    // muncul walau namanya tidak mengandung kata kunci (mis. cari "tenda").
+    const { data: matchedCats } = await supabase
+      .from('equipment_categories')
+      .select('id')
+      .ilike('name', `%${term}%`);
+    const categoryIds = (matchedCats || []).map((c: any) => c.id);
+
+    // Susun kondisi .or(): nama, deskripsi, dan (opsional) category_id.
+    const orConditions = [
+      `name.ilike.%${term}%`,
+      `description.ilike.%${term}%`,
+    ];
+    if (categoryIds.length > 0) {
+      orConditions.push(`category_id.in.(${categoryIds.join(',')})`);
+    }
+
     const { data, error } = await supabase
       .from('equipment')
       .select(`
@@ -21,18 +44,38 @@ export async function GET(request: NextRequest) {
           name
         )
       `)
-      .or(`
-        name.ilike.%${search}%, 
-        equipment_categories.name.ilike.%${search}%
-      `)
-      .eq('is_available', true)
+      .or(orConditions.join(','))
       .order('created_at', { ascending: false })
       .limit(limit);
 
     if (error) {
-      console.error('Search error:', error);
+      console.error('Search error (kompleks):', error.message);
+
+      // Fallback: query paling sederhana (hanya cocokkan nama produk).
+      const fallback = await supabase
+        .from('equipment')
+        .select(`*, equipment_categories ( id, name )`)
+        .ilike('name', `%${term}%`)
+        .limit(limit);
+
+      if (!fallback.error) {
+        return NextResponse.json({
+          success: true,
+          data: fallback.data || [],
+          count: fallback.data?.length || 0,
+          fallback: true,
+        });
+      }
+
+      console.error('Search error (fallback):', fallback.error.message);
       return NextResponse.json(
-        { success: false, error: 'Failed to search products' },
+        {
+          success: false,
+          error: 'Failed to search products',
+          detail: fallback.error.message,
+          hint: (fallback.error as any).hint ?? null,
+          code: (fallback.error as any).code ?? null,
+        },
         { status: 500 }
       );
     }

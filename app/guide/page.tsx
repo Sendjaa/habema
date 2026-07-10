@@ -81,7 +81,7 @@ const GUIDES = [
       tips: [
         "Pesan minimal 2 hari sebelum tanggal keberangkatan untuk memastikan ketersediaan",
         "Cek ulasan pengguna lain sebelum memilih peralatan",
-        "Manfaatkan fitur 'Paket Hemat' untuk sewa beberapa item sekaligus",
+        "Manfaatkan halaman 'Promo' untuk klaim kode potongan harga",
       ],
     },
   },

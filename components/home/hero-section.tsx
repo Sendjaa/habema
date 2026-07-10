@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Calendar, Compass, Tent, Users } from "lucide-react";
+import { ArrowRight, Calendar, ChevronDown, Compass, Tent, Users } from "lucide-react";
 import Image from "next/image";
 import { motion, Variants } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -85,130 +85,132 @@ export function HeroSection() {
               variants={textVariants}
               transition={{ delay: 0.2 }}
             >
-              {/* Modern Segmented Control Tab */}
-              <div className="inline-flex p-1 bg-stone-100 rounded-2xl mb-5 relative w-full sm:w-auto">
+              {/* Segmented Control Tab */}
+              <div className="grid grid-cols-2 gap-1 p-1 bg-stone-100/80 rounded-2xl mb-5">
                 <button
                   type="button"
                   onClick={() => setBookingType("rental")}
-                  className={`flex items-center justify-center gap-2 flex-1 sm:flex-initial px-5 md:py-2.5 py-1.5 text-xs font-bolder rounded-xl transition-all duration-300 ${
+                  className={`flex items-center justify-center gap-2 px-4 py-2.5 text-xs sm:text-[13px] font-bold rounded-xl transition-all duration-300 ${
                     bookingType === "rental"
                       ? "bg-white text-[#1B4332] shadow-sm ring-1 ring-black/5"
                       : "text-stone-500 hover:text-[#1B4332]"
                   }`}
                 >
-                  <Tent className="w-3.5 h-3.5 hidden" />
+                  <Tent className="w-4 h-4" />
                   Sewa Alat
                 </button>
                 <button
                   type="button"
                   onClick={() => setBookingType("opentrip")}
-                  className={`flex items-center justify-center gap-2 flex-1 sm:flex-initial px-5 md:py-2.5 py-1.5 text-xs font-bolder rounded-xl transition-all duration-300 ${
+                  className={`flex items-center justify-center gap-2 px-4 py-2.5 text-xs sm:text-[13px] font-bold rounded-xl transition-all duration-300 ${
                     bookingType === "opentrip"
                       ? "bg-white text-[#1B4332] shadow-sm ring-1 ring-black/5"
                       : "text-stone-500 hover:text-[#1B4332]"
                   }`}
                 >
-                  <Compass className="w-3.5 h-3.5 hidden" />
+                  <Compass className="w-4 h-4" />
                   Open Trip
                 </button>
               </div>
 
-              {/* Form Grid Area */}
+              {/* Form Fields */}
               {/* Setiap tab dirender dalam container ber-key sendiri agar React
                   tidak memakai ulang DOM input antar-tab (penyebab error
                   controlled/uncontrolled). */}
-              <div className="border-t border-stone-100 md:pt-4 pt-1 text-left w-full">
+              <div className="border-t border-stone-100 pt-4 text-left w-full">
                 {bookingType === "rental" ? (
                   <div
                     key="rental-fields"
-                    className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end"
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-3"
                   >
                     {/* INPUT: MULAI SEWA */}
-                    <div className="flex flex-col w-full">
-                      <span className="text-xs md:text-[10px] font-bold text-stone-400 tracking-wider mb-1 pl-0.5">
+                    <label className="flex flex-col w-full">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5 pl-0.5">
                         Mulai Sewa
                       </span>
-                      <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-emerald-800 focus-within:bg-white transition-all w-full">
-                        <Calendar className="w-4 h-4 text-stone-400 shrink-0" />
+                      <div className="flex items-center gap-2.5 bg-stone-50/80 border border-stone-200 rounded-xl px-3.5 h-12 transition-all focus-within:border-[#1B4332] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#1B4332]/10">
+                        <Calendar className="w-4 h-4 text-[#1B4332]/60 shrink-0" />
                         <input
                           type="date"
-                          className="w-full bg-transparent text-xs font-semibold text-stone-800 focus:outline-none cursor-pointer pr-1"
+                          className="w-full bg-transparent text-sm font-semibold text-stone-800 focus:outline-none cursor-pointer"
                           value={startDate}
                           onChange={(e) => setStartDate(e.target.value)}
                         />
                       </div>
-                    </div>
+                    </label>
 
                     {/* INPUT: SELESAI SEWA */}
-                    <div className="flex flex-col w-full">
-                      <span className="text-xs md:text-[10px] font-bold text-stone-400 tracking-wider mb-1 block pl-0.5">
+                    <label className="flex flex-col w-full">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5 pl-0.5">
                         Selesai Sewa
                       </span>
-                      <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-emerald-800 focus-within:bg-white transition-all w-full">
-                        <Calendar className="w-4 h-4 text-stone-400 shrink-0" />
+                      <div className="flex items-center gap-2.5 bg-stone-50/80 border border-stone-200 rounded-xl px-3.5 h-12 transition-all focus-within:border-[#1B4332] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#1B4332]/10">
+                        <Calendar className="w-4 h-4 text-[#1B4332]/60 shrink-0" />
                         <input
                           type="date"
-                          className="w-full bg-transparent text-xs font-semibold text-stone-800 focus:outline-none cursor-pointer pr-1"
+                          className="w-full bg-transparent text-sm font-semibold text-stone-800 focus:outline-none cursor-pointer"
                           value={endDate}
                           min={startDate || undefined}
                           onChange={(e) => setEndDate(e.target.value)}
                         />
                       </div>
-                    </div>
+                    </label>
                   </div>
                 ) : (
                   <div
                     key="opentrip-fields"
-                    className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end"
+                    className="grid grid-cols-1 sm:grid-cols-3 gap-3"
                   >
                     {/* SELECT DESTINASI */}
-                    <div className="flex flex-col w-full">
-                      <span className="text-xs md:text-[10px] font-bold text-stone-400 tracking-wider mb-1 block pl-0.5">
+                    <label className="flex flex-col w-full">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5 pl-0.5">
                         Destinasi
                       </span>
-                      <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-[#1B4332] focus-within:bg-white transition-all w-full">
-                        <Compass className="w-4 h-4 text-stone-400 shrink-0" />
-                        <select className="w-full bg-transparent text-xs font-semibold text-emerald-900 focus:outline-none cursor-pointer appearance-none">
+                      <div className="relative flex items-center gap-2.5 bg-stone-50/80 border border-stone-200 rounded-xl px-3.5 h-12 transition-all focus-within:border-[#1B4332] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#1B4332]/10">
+                        <Compass className="w-4 h-4 text-[#1B4332]/60 shrink-0" />
+                        <select className="w-full bg-transparent text-sm font-semibold text-stone-800 focus:outline-none cursor-pointer appearance-none pr-6">
                           <option value="">Pilih Gunung</option>
                           <option value="gede">Gede Pangrango</option>
                           <option value="merbabu">Gunung Merbabu</option>
                           <option value="prau">Gunung Prau</option>
                           <option value="rinjani">Gunung Rinjani</option>
                         </select>
+                        <ChevronDown className="w-4 h-4 text-stone-400 absolute right-3 pointer-events-none" />
                       </div>
-                    </div>
+                    </label>
 
                     {/* INPUT JADWAL BERANGKAT */}
-                    <div className="flex flex-col w-full">
-                      <span className="text-xs md:text-[10px] font-bold text-stone-400 tracking-wider mb-1 block pl-0.5">
+                    <label className="flex flex-col w-full">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5 pl-0.5">
                         Keberangkatan
                       </span>
-                      <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-[#1B4332] focus-within:bg-white transition-all w-full">
-                        <Calendar className="w-4 h-4 text-stone-400 shrink-0" />
+                      <div className="flex items-center gap-2.5 bg-stone-50/80 border border-stone-200 rounded-xl px-3.5 h-12 transition-all focus-within:border-[#1B4332] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#1B4332]/10">
+                        <Calendar className="w-4 h-4 text-[#1B4332]/60 shrink-0" />
                         <input
                           type="date"
-                          className="w-full bg-transparent text-xs font-semibold text-emerald-900 focus:outline-none cursor-pointer"
+                          className="w-full bg-transparent text-sm font-semibold text-stone-800 focus:outline-none cursor-pointer"
                           value={departDate}
                           onChange={(e) => setDepartDate(e.target.value)}
                         />
                       </div>
-                    </div>
+                    </label>
 
                     {/* SELECT TOTAL PESERTA */}
-                    <div className="flex flex-col w-full">
-                      <span className="text-xs md:text-[10px] font-bold text-stone-400 tracking-wider mb-1 block pl-0.5">
+                    <label className="flex flex-col w-full">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5 pl-0.5">
                         Kuota Peserta
                       </span>
-                      <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl px-3 h-12 focus-within:border-[#1B4332] focus-within:bg-white transition-all w-full">
-                        <Users className="w-4 h-4 text-stone-400 shrink-0" />
-                        <select className="w-full bg-transparent text-xs font-semibold text-emerald-900 focus:outline-none cursor-pointer appearance-none">
+                      <div className="relative flex items-center gap-2.5 bg-stone-50/80 border border-stone-200 rounded-xl px-3.5 h-12 transition-all focus-within:border-[#1B4332] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#1B4332]/10">
+                        <Users className="w-4 h-4 text-[#1B4332]/60 shrink-0" />
+                        <select className="w-full bg-transparent text-sm font-semibold text-stone-800 focus:outline-none cursor-pointer appearance-none pr-6">
                           <option value="1">1 Orang</option>
                           <option value="2">2 Orang</option>
                           <option value="3">3 Orang</option>
                           <option value="4">4+ Orang</option>
                         </select>
+                        <ChevronDown className="w-4 h-4 text-stone-400 absolute right-3 pointer-events-none" />
                       </div>
-                    </div>
+                    </label>
                   </div>
                 )}
               </div>
@@ -228,7 +230,7 @@ export function HeroSection() {
               >
                 <Link
                   href={
-                    bookingType === "rental" ? rentalHref : "/open-trip"
+                    bookingType === "rental" ? rentalHref : "/opentrip"
                   }
                 >
                   {bookingType === "rental"

@@ -15,6 +15,7 @@ import { insertRecord, insertRecordWithoutReturn } from "@/lib/supabase-helpers"
 import { leafletService, DeliveryCost } from "@/lib/leaflet-service";
 import { handleError, DatabaseError, NetworkError, ValidationError, safeAsync } from "@/lib/error-handler";
 import { LazyWrapper, LazyIDVerificationForm, LazyLocationPicker } from "@/components/lazy-components";
+import { OptimizedImage } from "@/components/optimized-image";
 
 // Function to create admin notification
 const createAdminNotification = async (bookingId: string, productName: string, userEmail: string | null, currentUser: User | null) => {
@@ -94,14 +95,28 @@ function BookingContent() {
   const productId = searchParams.get("id");
   const quantity = parseInt(searchParams.get("quantity") || "1");
 
+  // Tanggal dibawa dari katalog/hero (format YYYY-MM-DD). Dipakai sebagai nilai
+  // awal agar pengguna tidak perlu memilih ulang di halaman booking.
+  const urlStartDate = searchParams.get("startDate");
+  const urlEndDate = searchParams.get("endDate");
+  const parseUrlDate = (v: string | null): Date | null => {
+    if (!v) return null;
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
   // ==================== STATE DECLARATIONS ====================
   // hybrid checkout
   const [user, setUser] = useState<User | null>(null);
   const transaction = useCartStore((state) => state.currentTransaction);
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [startDate, setStartDate] = useState<Date | null>(() =>
+    parseUrlDate(urlStartDate),
+  );
+  const [endDate, setEndDate] = useState<Date | null>(() =>
+    parseUrlDate(urlEndDate),
+  );
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [idData, setIdData] = useState<any | null>(null);
@@ -167,6 +182,44 @@ function BookingContent() {
     fetchProduct();
   }, [productId]);
 
+  // Lengkapi gambar item transaksi yang tidak punya image_url (mis. transaksi
+  // lama dari localStorage) dengan mengambilnya langsung dari tabel equipment.
+  useEffect(() => {
+    const enrichItemImages = async () => {
+      const items = transaction?.items;
+      if (!Array.isArray(items) || items.length === 0) return;
+
+      const missingIds = items
+        .filter((it: any) => it?.id && !it.image_url)
+        .map((it: any) => String(it.id));
+      if (missingIds.length === 0) return;
+
+      const { data, error } = await supabase
+        .from("equipment")
+        .select("id, image_url")
+        .in("id", missingIds);
+      if (error || !data) return;
+
+      const imageById = new Map(
+        data.map((row: any) => [String(row.id), row.image_url]),
+      );
+      const enriched = items.map((it: any) =>
+        !it.image_url && imageById.get(String(it.id))
+          ? { ...it, image_url: imageById.get(String(it.id)) }
+          : it,
+      );
+
+      // Hanya update bila ada perubahan agar tidak memicu loop
+      const changed = enriched.some(
+        (it: any, i: number) => it.image_url !== items[i].image_url,
+      );
+      if (changed) {
+        useCartStore.getState().setTransaction({ ...transaction!, items: enriched });
+      }
+    };
+    enrichItemImages();
+  }, [transaction]);
+
   // Load existing condition data from localStorage
   useEffect(() => {
     const loadExistingConditionData = () => {
@@ -227,7 +280,7 @@ function BookingContent() {
 
   // ==================== CALCULATIONS ====================
   const days =
-    startDate && endDate ? calculateDaysBetween(startDate, endDate) : 0;
+    startDate && endDate ? Math.max(1, calculateDaysBetween(startDate, endDate)) : 0;
   const pricePerNight = product ? Number(product.price_per_night) : 0;
 
   // Calculate subtotal from transaction items if available, otherwise use single product
@@ -1271,23 +1324,32 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
           </div>
 
           {/* Right Column: Order Summary */}
-          <aside className="lg:col-span-3 sticky top-30">
+          <aside className="order-first lg:order-none lg:col-span-3 lg:sticky lg:top-30">
             <Card className="border-none shadow-sm ring-1 ring-slate-200 rounded-2xl overflow-hidden bg-white">
-              <div className="p-5 border-b border-slate-50 flex items-center gap-2">
+              <div className="p-3.5 lg:p-5 border-b border-slate-50 flex items-center gap-2">
                 <Info className="w-4 h-4 text-slate-400" />
                 <h3 className="font-bold text-slate-800 text-sm">
                   Ringkasan Sewa
                 </h3>
               </div>
-              <div className="p-5 space-y-4">
+              <div className="p-3.5 lg:p-5 space-y-3 lg:space-y-4">
                 {/* Display all items from transaction */}
                 {transaction?.items && transaction.items.length > 0 ? (
-                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                  <div className="space-y-2.5 lg:space-y-3 max-h-40 lg:max-h-60 overflow-y-auto">
                     {transaction.items.map((item: any, index: number) => (
                       <div key={`${item.id}-${index}`} className="flex gap-3 items-start">
-                        <img
-                          src={item.image_url || '/placeholder.svg'}
-                          className="w-12 h-12 rounded-lg object-cover ring-1 ring-slate-100 flex-shrink-0"
+                        <OptimizedImage
+                          src={
+                            item.image_url ||
+                            (String(item.id) === String(product?.id)
+                              ? product?.image_url
+                              : "") ||
+                            "/placeholder.svg"
+                          }
+                          alt={item.name || 'Produk'}
+                          className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg object-cover ring-1 ring-slate-100 flex-shrink-0 bg-slate-50"
+                          width={48}
+                          height={48}
                         />
                         <div className="flex-1 min-w-0">
                           <h4 className="text-xs font-bold text-slate-900 line-clamp-1">
@@ -1306,9 +1368,12 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                 ) : (
                   /* Fallback to single product display */
                   <div className="flex gap-4">
-                    <img
-                      src={product.image_url}
-                      className="w-14 h-14 rounded-xl object-cover ring-1 ring-slate-100"
+                    <OptimizedImage
+                      src={product.image_url || '/placeholder.svg'}
+                      alt={product.name || 'Produk'}
+                      className="w-14 h-14 rounded-xl object-cover ring-1 ring-slate-100 flex-shrink-0 bg-slate-50"
+                      width={56}
+                      height={56}
                     />
                     <div>
                       <h4 className="text-sm font-bold text-slate-900 line-clamp-1">
@@ -1321,24 +1386,32 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                   </div>
                 )}
 
-                <div className="space-y-2 pt-4 border-t border-slate-50">
-                  <div className="flex justify-between text-xs font-medium">
-                    <span className="text-slate-500">
-                      {days} hari x {transaction?.items?.length || quantity} Item
-                    </span>
-                    <span className="text-slate-900">
-                      Rp{subtotal.toLocaleString("id-ID")}
-                    </span>
-                  </div>
+                <div className="space-y-2 pt-3 lg:pt-4 border-t border-slate-50">
+                  {days > 0 ? (
+                    <>
+                      <div className="flex justify-between text-xs font-medium">
+                        <span className="text-slate-500">
+                          {days} hari x {transaction?.items?.length || quantity} Item
+                        </span>
+                        <span className="text-slate-900">
+                          Rp{subtotal.toLocaleString("id-ID")}
+                        </span>
+                      </div>
 
-                  <div className="flex justify-between items-end pt-4">
-                    <span className="font-bold text-slate-900 text-sm">
-                      Total
-                    </span>
-                    <span className="font-extrabold text-emerald-700 text-xl tracking-tight">
-                      Rp{totalPrice.toLocaleString("id-ID")}
-                    </span>
-                  </div>
+                      <div className="flex justify-between items-end pt-2 lg:pt-4">
+                        <span className="font-bold text-slate-900 text-sm">
+                          Total
+                        </span>
+                        <span className="font-extrabold text-emerald-700 text-lg lg:text-xl tracking-tight">
+                          Rp{totalPrice.toLocaleString("id-ID")}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center text-xs text-slate-500 py-2">
+                      Pilih tanggal sewa untuk melihat total harga
+                    </div>
+                  )}
                 </div>
 
                 {/* Delivery Cost Breakdown */}

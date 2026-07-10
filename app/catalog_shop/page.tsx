@@ -4,6 +4,7 @@ import { CatalogFilters } from "@/components/catalog/catalog-filters";
 import { CatalogGrid } from "@/components/catalog/catalog-grid";
 import { supabase } from "@/lib/supabaseClient";
 import { Equipment } from "@/lib/types";
+import { OptimizedImage } from "@/components/optimized-image";
 interface ProductCategory {
   id: number;
   name: string;
@@ -252,10 +253,13 @@ export default function CatalogShopPage() {
                       {/* Image Container */}
                       <div className="relative aspect-square bg-slate-100 overflow-hidden">
                         {product.image_url ? (
-                          <img
+                          <OptimizedImage
                             src={product.image_url}
                             alt={product.name}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            width={400}
+                            height={400}
+                            loading="lazy"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300">

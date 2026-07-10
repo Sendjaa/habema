@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Compass, Zap, Wind } from "lucide-react";
+import { OptimizedImage } from "@/components/optimized-image";
 
 const beginnersContent = [
   { id: 1, img: "https://i.pinimg.com/1200x/cc/bb/d2/ccbbd2653a61b9d536db636009c3e475.jpg", title: "Soft Treking" },
@@ -41,7 +42,7 @@ export function AudienceSplitter() {
           }}
           transition={{ duration: 0.8 }}
         >
-          <img src="https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=2070" className="w-full h-full object-cover" alt="Beginner" />
+          <OptimizedImage src="https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=2070" className="w-full h-full object-cover" alt="Beginner" width={1920} height={1080} loading="eager" priority="high" />
         </motion.div>
 
         <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-50 z-10" />
@@ -69,11 +70,11 @@ export function AudienceSplitter() {
                 <div className="flex gap-3">
                   {beginnersContent.map(item => (
                     <div key={item.id} className="w-16 h-20 lg:w-20 lg:h-28 rounded-lg overflow-hidden border border-white/10 grayscale hover:grayscale-0 transition-all">
-                      <img src={item.img} className="w-full h-full object-cover" alt="" />
+                      <OptimizedImage src={item.img} className="w-full h-full object-cover" alt={item.title} width={80} height={112} loading="lazy" />
                     </div>
                   ))}
                 </div>
-                <Button className="bg-white text-black hover:bg-emerald-500 hover:text-white rounded-none px-8 h-12 text-xs font-black transition-colors">
+                <Button className="bg-white text-black hover:bg-emerald-500 hover:text-white rounded-none px-8 h-12 text-xs font-black transition-colors" aria-label="Mulai perjalanan untuk pemula">
                   START JOURNEY
                 </Button>
               </motion.div>
@@ -111,7 +112,7 @@ export function AudienceSplitter() {
           }}
           transition={{ duration: 0.8 }}
         >
-          <img src="https://images.unsplash.com/photo-1522163182402-834f871fd851?q=80&w=2003" className="w-full h-full object-cover" alt="Expert" />
+          <OptimizedImage src="https://images.unsplash.com/photo-1522163182402-834f871fd851?q=80&w=2003" className="w-full h-full object-cover" alt="Expert" width={1920} height={1080} loading="eager" priority="high" />
         </motion.div>
 
         <div className="absolute inset-0 bg-gradient-to-tl from-orange-500/10 to-transparent opacity-50 z-10" />
@@ -139,11 +140,11 @@ export function AudienceSplitter() {
                 <div className="flex gap-3">
                   {expertsContent.map(item => (
                     <div key={item.id} className="w-16 h-20 lg:w-20 lg:h-28 rounded-lg overflow-hidden border border-white/10 grayscale hover:grayscale-0 transition-all">
-                      <img src={item.img} className="w-full h-full object-cover" alt="" />
+                      <OptimizedImage src={item.img} className="w-full h-full object-cover" alt={item.title} width={80} height={112} loading="lazy" />
                     </div>
                   ))}
                 </div>
-                <Button className="bg-orange-600 text-white hover:bg-white hover:text-black rounded-none px-8 h-12 text-xs font-black transition-colors">
+                <Button className="bg-orange-600 text-white hover:bg-white hover:text-black rounded-none px-8 h-12 text-xs font-black transition-colors" aria-label="Tantang puncak untuk ahli">
                   CHALLENGE PEAK
                 </Button>
               </motion.div>

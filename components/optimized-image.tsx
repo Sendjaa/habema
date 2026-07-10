@@ -57,6 +57,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
   // Determine optimal format based on browser support
   const getOptimalFormat = () => {
+    if (typeof document === 'undefined') return 'webp';
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return 'webp';
@@ -158,6 +159,7 @@ export const useImageOptimization = () => {
 
 // Preload critical images
 export const preloadCriticalImages = (imageUrls: string[]) => {
+  if (typeof document === 'undefined') return;
   imageUrls.forEach((url, index) => {
     const link = document.createElement('link');
     link.rel = 'preload';

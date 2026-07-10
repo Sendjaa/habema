@@ -70,7 +70,7 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/bundles" className="hover:text-gold transition-colors">
-                  Paket Hemat
+                  Promo
                 </Link>
               </li>
               <li>

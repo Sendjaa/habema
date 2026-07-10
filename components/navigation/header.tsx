@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Menu,
   X,
@@ -44,7 +44,7 @@ import Image from "next/image";
 const layananItems = [
   {
     label: "Rental",
-    href: "/rental",
+    href: "/catalog_rental",
     icon: Backpack,
     description: "Sewa peralatan outdoor",
   },
@@ -86,6 +86,7 @@ export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [navbarBottom, setNavbarBottom] = useState(0);
   const [searchValue, setSearchValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -155,6 +156,14 @@ export function Header() {
       document.body.style.overflow = "unset";
     };
   }, [isMenuOpen]);
+
+  // --- Lock Scroll saat Overlay Pencarian Mobile Terbuka ---
+  useEffect(() => {
+    document.body.style.overflow = isMobileSearchOpen ? "hidden" : "unset";
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isMobileSearchOpen]);
 
   useEffect(() => {
     const updateNavbarPosition = () => {
@@ -251,12 +260,25 @@ export function Header() {
         const response = await fetch(
           `/api/products?search=${encodeURIComponent(searchValue)}&limit=12`,
           {
-            signal: AbortSignal.timeout(5000), // 5 second timeout
+            // 15 detik — di dev, kompilasi route + query Supabase bisa lambat
+            signal: AbortSignal.timeout(15000),
           },
         );
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          // Ambil detail error dari server untuk memudahkan diagnosa
+          let detail = "";
+          try {
+            const body = await response.json();
+            detail = body?.detail || body?.error || "";
+          } catch {
+            /* ignore */
+          }
+          console.error(
+            `Search API ${response.status}:`,
+            detail || "(tanpa detail)",
+          );
+          throw new Error(`HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
         }
 
         const result = await response.json();
@@ -266,8 +288,13 @@ export function Header() {
           setSearchError(`Tidak ada hasil untuk "${searchValue}"`);
         }
       } catch (error: any) {
+        // AbortError: dibatalkan karena input berubah → abaikan
+        if (error?.name === "AbortError") return;
+
         console.error("Search error:", error);
-        if (error.name !== "AbortError") {
+        if (error?.name === "TimeoutError") {
+          setSearchError("Pencarian terlalu lama merespons. Coba lagi.");
+        } else {
           setSearchError("Terjadi kesalahan saat mencari. Coba lagi.");
         }
       } finally {
@@ -289,11 +316,9 @@ export function Header() {
     0,
   );
 
-  // Handle search submission
-  const handleSearch = (query: string) => {
+  // Simpan kata kunci ke riwayat pencarian (tanpa navigasi)
+  const saveRecentSearch = (query: string) => {
     if (query.trim().length < 2) return;
-
-    // Add to recent searches
     const updated = [
       query,
       ...recentSearches.filter((s) => s !== query).slice(0, 4),
@@ -302,6 +327,13 @@ export function Header() {
     if (isClient) {
       localStorage.setItem("habema_recent_searches", JSON.stringify(updated));
     }
+  };
+
+  // Handle search submission → arahkan ke halaman katalog
+  const handleSearch = (query: string) => {
+    if (query.trim().length < 2) return;
+
+    saveRecentSearch(query);
 
     // Navigate to catalog with search query
     setIsOpen(false);
@@ -316,6 +348,32 @@ export function Header() {
       localStorage.removeItem("habema_recent_searches");
     }
   };
+
+  // Saran kata kunci berdasarkan input: gabungan kategori yang cocok + kata
+  // dari nama produk yang cocok, agar pencarian lebih cepat & mudah.
+  const keywordSuggestions = useMemo(() => {
+    const q = searchValue.trim().toLowerCase();
+    if (q.length < 2) return [] as string[];
+
+    const suggestions = new Set<string>();
+
+    // 1. Kategori yang namanya mengandung kata kunci
+    categories.forEach((c) => {
+      if (c.name && c.name.toLowerCase().includes(q)) {
+        suggestions.add(c.name);
+      }
+    });
+
+    // 2. Nama produk lengkap yang cocok (maks. 6)
+    products.slice(0, 6).forEach((p) => {
+      if (p.name) suggestions.add(p.name);
+    });
+
+    // Jangan tampilkan chip yang identik dengan input saat ini
+    return Array.from(suggestions)
+      .filter((s) => s.toLowerCase() !== q)
+      .slice(0, 6);
+  }, [searchValue, categories, products]);
 
   return (
     <header
@@ -450,6 +508,31 @@ export function Header() {
                         </div>
                       )}
 
+                      {/* Keyword Suggestions (chip) */}
+                      {!isLoading &&
+                        searchValue.length >= 2 &&
+                        keywordSuggestions.length > 0 && (
+                          <div className="p-4 border-b border-gray-100">
+                            <div className="flex items-center gap-2 mb-2.5">
+                              <Search className="w-3.5 h-3.5 text-gray-400" />
+                              <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                Kata Kunci
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {keywordSuggestions.map((kw, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => setSearchValue(kw)}
+                                  className="px-3 py-1.5 bg-white text-gray-700 text-xs font-medium rounded-full border border-gray-200 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                                >
+                                  {kw}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                       {/* Results Grid */}
                       {!isLoading &&
                         searchValue.length >= 2 &&
@@ -461,7 +544,12 @@ export function Header() {
                                 href={`/product/${product.id}`}
                                 className="group cursor-pointer"
                                 onClick={() => {
-                                  handleSearch(searchValue);
+                                  // Simpan riwayat & tutup dropdown, TANPA
+                                  // redirect ke katalog — biarkan Link menuju
+                                  // halaman produk.
+                                  saveRecentSearch(searchValue);
+                                  setIsOpen(false);
+                                  setSearchValue("");
                                 }}
                               >
                                 <div className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-all">
@@ -693,10 +781,21 @@ export function Header() {
                   variant="ghost"
                   className="font-bold text-orange-700 hover:text-orange-800 hover:bg-orange-50 text-[14px]"
                 >
-                  Paket Hemat
+                  Promo
                 </Button>
               </Link>
             </div>
+
+            {/* Mobile Search Icon (samping keranjang) */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden text-emerald-900/70"
+              aria-label="Cari"
+              onClick={() => setIsMobileSearchOpen(true)}
+            >
+              <Search className="w-5.5 h-5.5" />
+            </Button>
 
             <Button
               variant="ghost"
@@ -732,6 +831,207 @@ export function Header() {
           </div>
         </div>
       </nav>
+
+      {/* ================= Mobile Search Overlay ================= */}
+      <AnimatePresence>
+        {isMobileSearchOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-[70] md:hidden bg-[#F2EDE4] flex flex-col"
+          >
+            {/* Search Input Bar */}
+            <div className="flex items-center gap-2 p-3 border-b border-emerald-900/10 bg-white">
+              <div className="flex-1 h-11 flex items-center px-3 rounded-lg bg-gray-100">
+                <Search className="w-5 h-5 mr-2 text-gray-500 flex-shrink-0" />
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Cari perlengkapan, kategori..."
+                  className="bg-transparent border-none outline-none text-sm flex-1 text-gray-800 placeholder-gray-500"
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSearch(searchValue);
+                      setIsMobileSearchOpen(false);
+                    }
+                  }}
+                />
+                {searchValue && (
+                  <button
+                    onClick={() => {
+                      setSearchValue("");
+                      setSearchError(null);
+                    }}
+                    className="ml-1 p-1 hover:bg-gray-200 rounded transition-colors"
+                  >
+                    <X className="w-4 h-4 text-gray-400" />
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => setIsMobileSearchOpen(false)}
+                className="px-2 py-2 text-sm font-semibold text-emerald-800"
+              >
+                Batal
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto">
+              {/* Error */}
+              {searchError && searchValue.length >= 2 && !isLoading && (
+                <div className="p-4 bg-red-50 border-b border-red-100">
+                  <div className="flex items-center gap-3 text-red-700">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                    <p className="text-sm font-medium">{searchError}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Loading */}
+              {isLoading && searchValue.length >= 2 && (
+                <div className="p-8 text-center">
+                  <div className="w-8 h-8 border-3 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mx-auto"></div>
+                  <p className="text-sm text-gray-500 mt-3">Mencari produk...</p>
+                </div>
+              )}
+
+              {/* Keyword Suggestions */}
+              {!isLoading &&
+                searchValue.length >= 2 &&
+                keywordSuggestions.length > 0 && (
+                  <div className="p-4 border-b border-gray-200">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <Search className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                        Kata Kunci
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {keywordSuggestions.map((kw, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setSearchValue(kw)}
+                          className="px-3 py-1.5 bg-white text-gray-700 text-xs font-medium rounded-full border border-gray-200 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                        >
+                          {kw}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              {/* Results */}
+              {!isLoading && searchValue.length >= 2 && products.length > 0 && (
+                <div className="grid grid-cols-2 gap-3 p-4">
+                  {products.map((product) => (
+                    <Link
+                      key={product.id}
+                      href={`/product/${product.id}`}
+                      className="group cursor-pointer"
+                      onClick={() => {
+                        saveRecentSearch(searchValue);
+                        setIsMobileSearchOpen(false);
+                        setSearchValue("");
+                      }}
+                    >
+                      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-all">
+                        <div className="aspect-square bg-gray-100 overflow-hidden">
+                          {product.image_url ? (
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-100 to-emerald-200">
+                              <Mountain className="w-8 h-8 text-emerald-600" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-3">
+                          <h4 className="text-xs font-bold text-gray-900 truncate mb-1">
+                            {product.name}
+                          </h4>
+                          <p className="text-xs text-gray-500 truncate mb-2">
+                            {product.equipment_categories?.name || "Gear"}
+                          </p>
+                          <span className="text-sm font-bold text-emerald-600">
+                            Rp
+                            {Number(
+                              product.price_per_night || product.price || 0,
+                            ).toLocaleString("id-ID")}
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+
+              {/* Empty / initial state: recent + kategori populer */}
+              {searchValue.length < 2 && !isLoading && (
+                <div className="p-4">
+                  {recentSearches.length > 0 && (
+                    <div className="mb-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                          <History className="w-4 h-4 text-gray-400" />
+                          Pencarian Terakhir
+                        </h4>
+                        <button
+                          onClick={clearRecentSearches}
+                          className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Hapus
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {recentSearches.map((search, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setSearchValue(search)}
+                            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full hover:bg-emerald-100 transition-colors border border-emerald-200"
+                          >
+                            {search}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">
+                      Kategori Populer
+                    </h4>
+                    <div className="space-y-2">
+                      {categories.slice(0, 6).map((category) => (
+                        <button
+                          key={category.id}
+                          onClick={() => setSearchValue(category.name)}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-white transition-colors text-left"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                            <Leaf className="w-4 h-4 text-emerald-600" />
+                          </div>
+                          <p className="text-sm font-medium text-gray-900 truncate flex-1 min-w-0">
+                            {category.name}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile Menu - RESPONSIVE FIX */}
       <AnimatePresence>
@@ -872,7 +1172,7 @@ export function Header() {
                   {/* Other Links */}
                   <MobileNavLink
                     href="/bundles"
-                    label="Paket Hemat"
+                    label="Promo"
                     onClick={closeMenu}
                   />
                   <MobileNavLink
@@ -898,7 +1198,7 @@ export function Header() {
                     </p>
                   </div>
                 </div>
-                <Link href="/rental" onClick={closeMenu} className="block">
+                <Link href="/catalog_rental" onClick={closeMenu} className="block">
                   <Button className="w-full bg-[#1B4332] hover:bg-[#133024] text-white font-bold h-12 shadow-lg shadow-emerald-900/20 transition-colors">
                     Sewa Sekarang
                   </Button>

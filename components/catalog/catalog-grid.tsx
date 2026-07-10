@@ -8,7 +8,14 @@ import { Star, Mountain } from "lucide-react";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 
-export function CatalogGrid({ equipment }: { equipment: any[] }) {
+export function CatalogGrid({
+  equipment,
+  dateQuery = "",
+}: {
+  equipment: any[];
+  /** Query string tanggal sewa (mis. "?startDate=...&endDate=...") untuk diteruskan ke halaman produk */
+  dateQuery?: string;
+}) {
   const [inventoryStatus, setInventoryStatus] = useState<Record<string, any>>(
     {},
   );
@@ -31,7 +38,7 @@ export function CatalogGrid({ equipment }: { equipment: any[] }) {
         return (
           <Link
             key={product.id}
-            href={`/product/${product.id}`}
+            href={`/product/${product.id}${dateQuery}`}
             className={!isAvailable ? "pointer-events-allowed" : ""}
           >
             <Card className="group flex flex-col h-full rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-all overflow-hidden cursor-pointer">

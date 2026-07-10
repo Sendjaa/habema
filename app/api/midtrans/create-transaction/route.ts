@@ -125,7 +125,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 5) Buat order id dan simpan ke booking agar webhook bisa mencocokkan
+    // 5) Buat order id dan (best-effort) simpan ke booking agar webhook bisa
+    // mencocokkan. Kolom midtrans_order_id/payment_status ditambahkan via
+    // migrasi SQL; bila belum ada, JANGAN gagalkan transaksi — lanjutkan saja
+    // supaya pembayaran tetap bisa diproses.
     const orderId = generateOrderId()
     const { error: updateError } = await supabaseAdmin
       .from('bookings')
@@ -134,9 +137,11 @@ export async function POST(request: NextRequest) {
       .eq('id', bookingId)
 
     if (updateError) {
-      return NextResponse.json(
-        { error: 'Gagal menyiapkan transaksi' },
-        { status: 500 }
+      console.warn(
+        '[create-transaction] Gagal menyimpan order id ke booking ' +
+          '(kolom midtrans_order_id/payment_status mungkin belum ada — jalankan migrasi SQL). ' +
+          'Melanjutkan tanpa memblokir pembayaran. Detail:',
+        updateError.message,
       )
     }
 

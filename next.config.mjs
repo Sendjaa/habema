@@ -3,9 +3,10 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Fix workspace root warning
-  turbopack: {
-    root: process.cwd(),
+  // Fix workspace root warning - use webpack on Windows
+  webpack: (config) => {
+    config.resolve.fallback = { fs: false, net: false, tls: false };
+    return config;
   },
   // Add proxy configuration for authentication
   async rewrites() {
@@ -27,19 +28,18 @@ const nextConfig = {
       inlineCss: true,
       removeUnusedCss: true,
     },
-    // Optimize bundle splitting
     optimizeServerReact: true,
   },
   // Move deprecated experimental keys to top level
   serverExternalPackages: ['@supabase/supabase-js'],
-  // Image optimization
+  // Image optimization - modern formats
   images: {
     formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    minimumCacheTTL: 60,
+    minimumCacheTTL: 31536000, // 1 year cache
     dangerouslyAllowSVG: true,
-    contentSecurityPolicy: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
+    contentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://*.googleapis.com https://*.midtrans.com;",
     remotePatterns: [
       {
         protocol: 'https',
@@ -53,15 +53,73 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   // CSS optimization
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production', 
+    removeConsole: process.env.NODE_ENV === 'production',
+    styledComponents: true,
   },
   // Compression and caching
   compress: true,
   poweredByHeader: false,
-}
+  // Reduce JS bundle size
+  // swcMinify removed - deprecated in Next.js 16
+  // Static export optimizations
+  output: 'standalone',
+  // Preconnect to external domains
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin',
+          },
+        ],
+      },
+    ];
+  },
+  // Redirects HTTP to HTTPS
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'header',
+            key: 'x-forwarded-proto',
+            value: 'http',
+          },
+        ],
+        destination: 'https://:path*',
+        permanent: true,
+      },
+    ];
+  },
+};
 
-export default nextConfig
+export default nextConfig;

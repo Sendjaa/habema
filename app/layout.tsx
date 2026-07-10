@@ -7,6 +7,8 @@ import { Toaster } from 'sonner'
 import { CssLoader } from '@/components/css-loader'
 import ErrorBoundary from '@/components/error-boundary'
 import { GoogleOAuthProviderWrapper } from '@/components/providers/google_oauth_provider'
+import { ScriptOptimizer } from '@/components/performance-optimizer'
+import ScriptOptimizerClient from '@/components/performance-optimizer-client'
 import './globals.css'
 
 // ── Fonts ──────────────────────────────────────────────────────
@@ -143,6 +145,24 @@ export default function RootLayout({
         <link rel="preconnect" href="https://images.unsplash.com" />
         <link rel="preconnect" href="https://i.pinimg.com" />
         <link rel="preconnect" href="https://vercel.app" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        
+        {/* Preload fonts for critical text */}
+        <link
+          rel="preload"
+          href="/fonts/fraunces-latin-400-normal.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="/fonts/dm-sans-latin-400-normal.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
         
         {/* Critical CSS - minimized for fastest render */}
         <style dangerouslySetInnerHTML={{
@@ -153,9 +173,12 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="//fonts.googleapis.com" />
         <link rel="dns-prefetch" href="//www.googletagmanager.com" />
       </head>
-      <body className="font-body antialiased bg-background text-foreground min-h-screen">
+        <body className="font-body antialiased bg-background text-foreground min-h-screen">
         {/* Critical CSS loader for non-blocking render */}
         <CssLoader />
+        
+        {/* Performance optimizer - preload critical resources (client-side) */}
+        <ScriptOptimizerClient />
         
         {/* Defer non-critical components */}
         <script

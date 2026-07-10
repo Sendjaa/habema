@@ -16,7 +16,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { ArrowLeft, CalendarDays } from "lucide-react";
+import { ArrowLeft, CalendarDays, CalendarCheck, Pencil } from "lucide-react";
 import Image from "next/image";
 import { useParallax } from "@/hooks/use-parallax";
 
@@ -45,6 +45,13 @@ function CatalogContent() {
   // jadikan state jika ingin menampilkan tanggal di filter
   const [startDate, setStartDate] = useState(urlStartDate);
   const [endDate, setEndDate] = useState(urlEndDate);
+
+  // Jika tanggal sudah dibawa dari hero section, form disembunyikan (tampil
+  // ringkasan). Form baru muncul saat belum ada tanggal atau pengguna menekan
+  // "Ubah Tanggal".
+  const [editingDates, setEditingDates] = useState(
+    !(urlStartDate && urlEndDate),
+  );
   
   // parallax scroll value
   const scrollY = useParallax();
@@ -52,6 +59,8 @@ function CatalogContent() {
   useEffect(() => {
     setStartDate(urlStartDate);
     setEndDate(urlEndDate);
+    // Bila datang dengan tanggal dari hero section, langsung tampilkan ringkasan
+    setEditingDates(!(urlStartDate && urlEndDate));
   
     const fetchData = async () => {
       setLoading(true);
@@ -150,17 +159,89 @@ function CatalogContent() {
   const handleUpdateFilter = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!startDate || !endDate) return alert("Tanggal Tidak boleh kosong!");
-  
+
     // memperbarui tanggal tanpa reload menggunakan instance hook yang benar
     const params = new URLSearchParams(useSearchParamsHook.toString());
     params.set("startDate", startDate);
     params.set("endDate", endDate);
-  
+
     router.push(`${pathname}?${params.toString()}`);
+    setEditingDates(false);
   };
+
+  // batal mengubah tanggal → kembali ke nilai dari URL
+  const handleCancelEdit = () => {
+    setStartDate(urlStartDate);
+    setEndDate(urlEndDate);
+    setEditingDates(false);
+  };
+
+  // format tanggal ke format Indonesia yang mudah dibaca
+  const formatTanggal = (iso: string) => {
+    if (!iso) return "-";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  // query string tanggal untuk diteruskan ke halaman produk → booking
+  const dateQuery = useMemo(() => {
+    if (!urlStartDate || !urlEndDate) return "";
+    const q = new URLSearchParams();
+    q.set("startDate", urlStartDate);
+    q.set("endDate", urlEndDate);
+    return `?${q.toString()}`;
+  }, [urlStartDate, urlEndDate]);
+
+  // hitung jumlah hari sewa (inklusif)
+  const totalHari = useMemo(() => {
+    if (!urlStartDate || !urlEndDate) return 0;
+    const s = new Date(urlStartDate);
+    const e = new Date(urlEndDate);
+    const diff = Math.round((e.getTime() - s.getTime()) / 86400000) + 1;
+    return diff > 0 ? diff : 0;
+  }, [urlStartDate, urlEndDate]);
 
 
     return(
+      <>
+      {/* ========================================================================= */}
+      {/* STICKY BREADCRUMB BAR (desktop) — konsisten dengan halaman produk */}
+      {/* ========================================================================= */}
+      <div className="hidden md:flex bg-white items-center p-2 sticky top-0 md:z-0 shadow-sm border-b ps-35">
+        <button
+          onClick={() => router.back()}
+          className="group flex items-center justify-center w-10 h-5"
+          aria-label="Kembali"
+        >
+          <ArrowLeft className="w-4 h-4 text-gray-900 group-hover:text-forest transition-colors" />
+        </button>
+
+        <Breadcrumb>
+          <BreadcrumbList className="text-[10px] md:text-xs font-bold tracking-0.1em text-gray-900">
+            <BreadcrumbItem>
+              <BreadcrumbLink
+                href="/"
+                className="hover:text-[#D4AF37] text-gray-900 transition-colors"
+              >
+                Beranda /
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbItem>
+              <BreadcrumbLink>
+                <BreadcrumbPage className="text-[#D4AF37] font-extrabold">
+                  Katalog Rental
+                </BreadcrumbPage>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </div>
+
       <main className="bg-white pb-24 md:pb-28 border-b border-gray-100 overflow-hidden">
       
       {/* ========================================================================= */}
@@ -184,7 +265,7 @@ function CatalogContent() {
         </div>
         <div className="absolute md:inset-0 md:bg-linear-to-t md:from-#FDFCFB/100 md:via-transparent md:to-#FDFCFB/200" />
         
-         <div className="absolute md:top-6 top-1 md:left-[4] left-1 right-4 md:top-8 md:left-35 md:right-12 flex items-center gap-0 z-10">
+         <div className="absolute md:hidden top-1 left-1 right-4 flex items-center gap-0 z-10">
           <button
             onClick={() => router.back()}
             className="group flex items-center justify-center w-10 h-5"
@@ -225,52 +306,96 @@ function CatalogContent() {
 
         <div className="absolute bottom-0 translate-y-60 lg:-translate-y-25 lg:translate-x-70 left-4 right-4 max-w-2xl mx-auto z-20">
           <div className="bg-white border border-gray-100 p-4 md:p-6 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] backdrop-blur-sm">
-            <form
-              onSubmit={handleUpdateFilter}
-              className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 items-end gap-4"
-            >
-              {/* Input Tanggal Mulai */}
-              <div className="flex flex-col gap-1.5 relative">
-                <label className="text-xs md:font-bold text-gray-500 tracking-wider">
-                  Tanggal Mulai
-                </label>
-                <div className="relative">
-                  <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none hidden" />
-                  <input
-                    type="date"
-                    className="w-full pl-1 md:pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md md:rounded-xl text-xs md:text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 transition-all"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
+            {!editingDates && urlStartDate && urlEndDate ? (
+              /* ── RINGKASAN: tanggal dibawa dari hero section ── */
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-xl bg-emerald-50 text-emerald-800 shrink-0">
+                    <CalendarCheck className="w-5 h-5 md:w-6 md:h-6" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-gray-400">
+                      Periode Sewa
+                      {totalHari > 0 && (
+                        <span className="ml-1 text-emerald-700">
+                          · {totalHari} Hari
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs md:text-base font-black text-gray-800 truncate">
+                      {formatTanggal(urlStartDate)} — {formatTanggal(urlEndDate)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-
-              {/* Input Tanggal Akhir */}
-              <div className="flex flex-col gap-1.5 relative">
-                <label className="text-xs md:font-bold text-gray-500 tracking-wider">
-                  Tanggal Akhir
-                </label>
-                <div className="relative">
-                  <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none hidden" />
-                  <input
-                    type="date"
-                    className="w-full pl-1 md:pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md md:rounded-xl text-xs md:text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 transition-all"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Tombol Action Submit */}
-              <div className="col-span-2 lg:col-span-1">
                 <button
-                  type="submit"
-                  className="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-semibold md:text-sm text-xs py-3 px-6 rounded-xl shadow-md shadow-emerald-800/10 hover:shadow-emerald-900/20 active:scale-[0.98] transition-all duration-200"
+                  type="button"
+                  onClick={() => setEditingDates(true)}
+                  className="flex items-center gap-1.5 shrink-0 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 font-semibold text-xs md:text-sm py-2 px-3 md:px-4 rounded-xl transition-all active:scale-[0.98]"
                 >
-                  Update Ketersediaan Gear
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Ubah Tanggal</span>
+                  <span className="sm:hidden">Ubah</span>
                 </button>
               </div>
-            </form>
+            ) : (
+              /* ── FORM: pilih / ubah tanggal ── */
+              <form
+                onSubmit={handleUpdateFilter}
+                className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 items-end gap-4"
+              >
+                {/* Input Tanggal Mulai */}
+                <div className="flex flex-col gap-1.5 relative">
+                  <label className="text-xs md:font-bold text-gray-500 tracking-wider">
+                    Tanggal Mulai
+                  </label>
+                  <div className="relative">
+                    <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none hidden" />
+                    <input
+                      type="date"
+                      className="w-full pl-1 md:pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md md:rounded-xl text-xs md:text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 transition-all"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Input Tanggal Akhir */}
+                <div className="flex flex-col gap-1.5 relative">
+                  <label className="text-xs md:font-bold text-gray-500 tracking-wider">
+                    Tanggal Akhir
+                  </label>
+                  <div className="relative">
+                    <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none hidden" />
+                    <input
+                      type="date"
+                      className="w-full pl-1 md:pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md md:rounded-xl text-xs md:text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 transition-all"
+                      value={endDate}
+                      min={startDate || undefined}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Tombol Action Submit */}
+                <div className="col-span-2 lg:col-span-1 flex gap-2">
+                  <button
+                    type="submit"
+                    className="flex-1 bg-emerald-800 hover:bg-emerald-900 text-white font-semibold md:text-sm text-xs py-3 px-6 rounded-xl shadow-md shadow-emerald-800/10 hover:shadow-emerald-900/20 active:scale-[0.98] transition-all duration-200"
+                  >
+                    Update Ketersediaan Gear
+                  </button>
+                  {urlStartDate && urlEndDate && (
+                    <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      className="shrink-0 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 font-semibold md:text-sm text-xs py-3 px-4 rounded-xl transition-all active:scale-[0.98]"
+                    >
+                      Batal
+                    </button>
+                  )}
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </div>
@@ -311,7 +436,7 @@ function CatalogContent() {
                 ))}
               </div>
             ) : filteredEquipment.length > 0 ? (
-              <CatalogGrid equipment={filteredEquipment} />
+              <CatalogGrid equipment={filteredEquipment} dateQuery={dateQuery} />
             ) : (
               <div className="bg-white rounded-3xl p-20 text-center border-2 border-dashed border-slate-200">
                 <div className="text-4xl mb-4">⛺</div>
@@ -338,6 +463,7 @@ function CatalogContent() {
         </div>
       </div>
     </main>
+    </>
     );
 }
 
