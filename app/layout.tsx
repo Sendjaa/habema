@@ -4,11 +4,8 @@ import { Fraunces, DM_Sans } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { LayoutWrapper } from '@/components/layout-wrapper'
 import { Toaster } from 'sonner'
-import { CssLoader } from '@/components/css-loader'
 import ErrorBoundary from '@/components/error-boundary'
 import { GoogleOAuthProviderWrapper } from '@/components/providers/google_oauth_provider'
-import { ScriptOptimizer } from '@/components/performance-optimizer'
-import ScriptOptimizerClient from '@/components/performance-optimizer-client'
 import './globals.css'
 
 // ── Fonts ──────────────────────────────────────────────────────
@@ -129,22 +126,16 @@ export default function RootLayout({
       <head>
         <link rel="icon" type="image/x-icon" sizes="32x32" href="/favicon-habema-32x32.ico" />
         
-        {/* Preload critical resources */}
-        <link rel="preload" href="/favicon-habema-32x32.ico" as="image" type="image/x-icon" />
-        <link rel="preload" href="/og-image.jpg" as="image" />
-        
-        {/* Preload LCP image for faster loading */}
+        {/* Preload LCP image — WebP for max perf */}
         <link 
           rel="preload" 
-          href="/images/bannerImage.png" 
+          href="/images/bannerImage.webp" 
           as="image" 
+          type="image/webp"
           fetchPriority="high"
         />
         
-        {/* Preconnect to external domains */}
-        <link rel="preconnect" href="https://images.unsplash.com" />
-        <link rel="preconnect" href="https://i.pinimg.com" />
-        <link rel="preconnect" href="https://vercel.app" crossOrigin="anonymous" />
+        {/* Preconnect — max 2 critical origins (fonts) */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         
@@ -174,35 +165,6 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="//www.googletagmanager.com" />
       </head>
         <body className="font-body antialiased bg-background text-foreground min-h-screen">
-        {/* Critical CSS loader for non-blocking render */}
-        <CssLoader />
-        
-        {/* Performance optimizer - preload critical resources (client-side) */}
-        <ScriptOptimizerClient />
-        
-        {/* Defer non-critical components */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              // Defer performance monitoring
-              setTimeout(() => {
-                const perfScript = document.createElement('script');
-                perfScript.src = '/components/performance-monitor.js';
-                perfScript.async = true;
-                document.body.appendChild(perfScript);
-              }, 100);
-              
-              // Defer analytics
-              setTimeout(() => {
-                const analyticsScript = document.createElement('script');
-                analyticsScript.src = '/_next/static/chunks/analytics.js';
-                analyticsScript.async = true;
-                document.body.appendChild(analyticsScript);
-              }, 500);
-            `
-          }}
-        />
-        
         {/* Toast notifications - critical path */}
         <Toaster
           position="top-center"

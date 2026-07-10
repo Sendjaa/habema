@@ -5,10 +5,9 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Calendar, ChevronDown, Compass, Tent, Users } from "lucide-react";
 import Image from "next/image";
 import { motion, Variants } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export function HeroSection() {
-  const [imageLoaded, setImageLoaded] = useState(false);
   const [bookingType, setBookingType] = useState<"rental" | "opentrip">(
     "rental",
   );
@@ -29,12 +28,6 @@ export function HeroSection() {
       transition: { duration: 0.8, ease: [0.25, 1, 0.5, 1] },
     },
   };
-
-  useEffect(() => {
-    const img = new window.Image();
-    img.src = "/images/bannerImage.png";
-    img.onload = () => setImageLoaded(true);
-  }, []);
 
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden bg-[#F4EFE6] pt-28 pb-16 lg:py-0">
@@ -245,10 +238,10 @@ export function HeroSection() {
           {/* RIGHT CONTENT - BANNER IMAGE */}
           <motion.div
             className="order-1 lg:order-2 lg:absolute lg:-right-12 -right-0.5 lg:top-1/2 lg:-translate-y-1/2 w-screen lg:w-[48%] xl:w-[54%] z-10 flex flex-col justify-center lg:-mt-10 -mt-25 lg:h-screen my-auto"
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 1, y: 0 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
             <motion.div
               animate={{ y: [0, -12, 0] }}
@@ -256,19 +249,13 @@ export function HeroSection() {
               className="w-full flex justify-center"
             >
               <Image
-                src="/images/bannerImage.png"
+                src="/images/bannerImage.webp"
                 alt="Outdoor Gear & Adventure"
                 width={850}
                 height={750}
-                className={`sm:w-[60%] md:w-[50%] lg:w-full h-auto object-contain transition-all duration-700 ${
-                  imageLoaded
-                    ? "opacity-100 scale-100 blur-0"
-                    : "opacity-0 scale-95 blur-md"
-                }`}
+                className="sm:w-[60%] md:w-[50%] lg:w-full h-auto object-contain"
                 priority
                 sizes="(max-width: 768px) 60vw, (max-width: 1024px) 50vw, 48vw"
-                placeholder="blur"
-                blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oAAMBAAIRAxEAPwCdABmX/9k="
               />
             </motion.div>
             <div className="flex items-center gap-4 lg:mt-10 mt-6">

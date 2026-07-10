@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -65,10 +66,12 @@ function FeaturedBundlesCard({ pkg, index }: { pkg: Package; index: number }) {
       <div className="relative rounded-[28px] overflow-hidden bg-white shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 border border-stone-100 flex flex-col">
         {/* IMAGE */}
         <div className="relative h-52 overflow-hidden flex-shrink-0">
-          <img
+          <Image
             src={pkg.image}
             alt={pkg.label}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            fill
+            className="object-cover transition-transform duration-700 group-hover:scale-110"
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
 
@@ -244,7 +247,6 @@ export function FeaturedBundles() {
   return (
     <section className="py-20 bg-[#f9f7f4]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; }
         body { margin: 0; background: #f9f7f4; }
 

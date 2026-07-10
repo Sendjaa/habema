@@ -497,7 +497,6 @@ export default function HabemaOpenTrip() {
   return (
     <div className="min-h-screen bg-[#f9f7f4]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; }
         body { margin: 0; background: #f9f7f4; }
 

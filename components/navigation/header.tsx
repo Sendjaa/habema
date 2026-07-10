@@ -388,7 +388,7 @@ export function Header() {
           {/* 1. Logo */}
           <Link href="/" className="flex items-center gap-3 shrink-0 group">
             <Image
-              src="/images/logo-dark.png"
+              src="/images/logo-dark.webp"
               alt="Habema Logo"
               width={80}
               height={40}

@@ -217,7 +217,7 @@ export default function OrderConfirmationPage() {
     }
 
     // Set logo source
-    img.src = '/images/logo-dark.png'
+    img.src = '/images/logo-dark.webp'
   }
 
   useEffect(() => {

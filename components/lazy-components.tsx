@@ -37,7 +37,7 @@ export const LazyLocationPicker = lazy(() =>
 // Simple lazy loading utilities
 export const preloadCriticalResources = () => {
   const criticalResources = [
-    '/images/bannerImage.png',
+    '/images/bannerImage.webp',
     '/favicon-habema-32x32.ico'
   ];
 

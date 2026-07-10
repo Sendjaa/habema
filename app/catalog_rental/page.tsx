@@ -256,7 +256,7 @@ function CatalogContent() {
           // }}
         >
           <Image
-            src="/images/background_header_catalog_rental.png"
+            src="/images/background_header_catalog_rental.webp"
             fill
             priority
             alt="Catalog Banner"
