@@ -151,12 +151,12 @@ function FeaturedBundlesCard({ pkg, index }: { pkg: Package; index: number }) {
 
             {pkg.exclude && pkg.exclude.length > 0 && (
               <div className="mt-3">
-                <p className="text-[11px] font-bold uppercase tracking-widest mb-2 text-stone-400">
+                <p className="text-[11px] font-bold uppercase tracking-widest mb-2 text-stone-600">
                   Exclude
                 </p>
                 <ul className="space-y-1">
                   {pkg.exclude?.map?.((it) => (
-                    <li key={it} className="flex gap-2 text-sm text-stone-400">
+                    <li key={it} className="flex gap-2 text-sm text-stone-600">
                       <span className="flex-shrink-0 mt-0.5 text-xs">✕</span>
                       {it}
                     </li>
@@ -264,7 +264,7 @@ export function FeaturedBundles() {
       <div className="max-w-6xl mx-auto px-4 md:px-8">
         {/* Header */}
         <div className="text-center mb-12 space-y-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-emerald-600 mb-2">
+          <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 mb-2">
             Paket Terpopuler
           </p>
           <h2 
@@ -272,11 +272,11 @@ export function FeaturedBundles() {
             style={{ fontFamily: "'Fraunces', serif" }}
           >
             Petualangan Terbaik<br />
-            <span style={{ fontStyle: "italic", color: "#a8a29e" }}>
+            <span style={{ fontStyle: "italic", color: "#5a5a5a" }}>
               Untuk Anda
             </span>
           </h2>
-          <p className="text-stone-500 max-w-2xl mx-auto">
+          <p className="text-stone-600 max-w-2xl mx-auto">
             Hemat hingga 25% dengan paket bundling kami yang dirancang khusus untuk setiap jenis petualangan.
           </p>
         </div>
@@ -289,7 +289,7 @@ export function FeaturedBundles() {
             ))
           ) : (
             <div className="col-span-full text-center py-12">
-              <p className="text-stone-500">
+              <p className="text-stone-600">
                 {loading ? "Memuat data..." : "Tidak ada paket yang tersedia"}
               </p>
             </div>

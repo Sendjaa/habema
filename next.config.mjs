@@ -8,6 +8,8 @@ const nextConfig = {
     config.resolve.fallback = { fs: false, net: false, tls: false };
     return config;
   },
+  // Explicitly configure Turbopack to silence warning
+  turbopack: {},
   // Add proxy configuration for authentication
   async rewrites() {
     return [
@@ -25,7 +27,7 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', 'sonner'],
     optimizeCss: {
-      inlineCss: true,
+      inlineCss: false, // Disable - we handle CSS manually
       removeUnusedCss: true,
     },
     optimizeServerReact: true,
@@ -39,7 +41,7 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 31536000, // 1 year cache
     dangerouslyAllowSVG: true,
-    contentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://*.googleapis.com https://*.midtrans.com;",
+    contentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://*.googleapis.com https://*.midtrans.com;",
     remotePatterns: [
       {
         protocol: 'https',
@@ -69,10 +71,6 @@ const nextConfig = {
   // Compression and caching
   compress: true,
   poweredByHeader: false,
-  // Reduce JS bundle size
-  // swcMinify removed - deprecated in Next.js 16
-  // Static export optimizations
-  output: 'standalone',
   // Preconnect to external domains
   async headers() {
     return [

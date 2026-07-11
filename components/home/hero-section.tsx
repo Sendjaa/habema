@@ -55,9 +55,9 @@ export function HeroSection() {
               className="text-2xl md:text-7xl lg:text-[56px] relative xl:text-[76px] font-black leading-[0.95] tracking-tight text-[#1B4332] mx-auto lg:mx-0"
               variants={textVariants}
             >
-              Rental &{" "}
+              Sewa Alat Camping &{" "}
               <span className="text-orange-600 font-serif italic font-semibold">
-                Open Trip.
+                Outdoor Terpercaya
               </span>
             </motion.h1>
 
@@ -67,10 +67,9 @@ export function HeroSection() {
               variants={textVariants}
               transition={{ delay: 0.1 }}
             >
-              Habema menyediakan perlengkapan pendakian premium dan trip
-              terpandu untuk memastikan petualangan luar ruangan Anda aman,
-              nyaman, dan tak terlupak
-              an.
+              Habema menyediakan perlengkapan camping dan outdoor premium untuk petualangan Anda. 
+              Tenda, sleeping bag, carrier, cooking gear berkualitas di Bandung dengan harga terjangkau, 
+              aman, dan terpercaya.
             </motion.p>
 
             <motion.div
@@ -118,7 +117,7 @@ export function HeroSection() {
                   >
                     {/* INPUT: MULAI SEWA */}
                     <label className="flex flex-col w-full">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5 pl-0.5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600 mb-1.5 pl-0.5">
                         Mulai Sewa
                       </span>
                       <div className="flex items-center gap-2.5 bg-stone-50/80 border border-stone-200 rounded-xl px-3.5 h-12 transition-all focus-within:border-[#1B4332] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#1B4332]/10">
@@ -134,7 +133,7 @@ export function HeroSection() {
 
                     {/* INPUT: SELESAI SEWA */}
                     <label className="flex flex-col w-full">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5 pl-0.5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600 mb-1.5 pl-0.5">
                         Selesai Sewa
                       </span>
                       <div className="flex items-center gap-2.5 bg-stone-50/80 border border-stone-200 rounded-xl px-3.5 h-12 transition-all focus-within:border-[#1B4332] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#1B4332]/10">
@@ -156,7 +155,7 @@ export function HeroSection() {
                   >
                     {/* SELECT DESTINASI */}
                     <label className="flex flex-col w-full">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5 pl-0.5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600 mb-1.5 pl-0.5">
                         Destinasi
                       </span>
                       <div className="relative flex items-center gap-2.5 bg-stone-50/80 border border-stone-200 rounded-xl px-3.5 h-12 transition-all focus-within:border-[#1B4332] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#1B4332]/10">
@@ -174,7 +173,7 @@ export function HeroSection() {
 
                     {/* INPUT JADWAL BERANGKAT */}
                     <label className="flex flex-col w-full">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5 pl-0.5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600 mb-1.5 pl-0.5">
                         Keberangkatan
                       </span>
                       <div className="flex items-center gap-2.5 bg-stone-50/80 border border-stone-200 rounded-xl px-3.5 h-12 transition-all focus-within:border-[#1B4332] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#1B4332]/10">
@@ -190,7 +189,7 @@ export function HeroSection() {
 
                     {/* SELECT TOTAL PESERTA */}
                     <label className="flex flex-col w-full">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5 pl-0.5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600 mb-1.5 pl-0.5">
                         Kuota Peserta
                       </span>
                       <div className="relative flex items-center gap-2.5 bg-stone-50/80 border border-stone-200 rounded-xl px-3.5 h-12 transition-all focus-within:border-[#1B4332] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#1B4332]/10">
@@ -250,11 +249,12 @@ export function HeroSection() {
             >
               <Image
                 src="/images/bannerImage.webp"
-                alt="Outdoor Gear & Adventure"
+                alt="Sewa Alat Camping Outdoor Terpercaya di Bandung - Tenda, Carrier, Sleeping Bag"
                 width={850}
                 height={750}
                 className="sm:w-[60%] md:w-[50%] lg:w-full h-auto object-contain"
                 priority
+                fetchPriority="high"
                 sizes="(max-width: 768px) 60vw, (max-width: 1024px) 50vw, 48vw"
               />
             </motion.div>
@@ -278,7 +278,7 @@ export function HeroSection() {
                   </div>
                 ))}
               </div>
-              <div className="text-[10px] md:text-[11px] font-extrabold text-emerald-900/60 uppercase tracking-widest">
+              <div className="text-[10px] md:text-[11px] font-extrabold text-emerald-800 uppercase tracking-widest">
                 Join 2,000+ Adventurers
               </div>
             </div>

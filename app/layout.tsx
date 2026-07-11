@@ -139,22 +139,6 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         
-        {/* Preload fonts for critical text */}
-        <link
-          rel="preload"
-          href="/fonts/fraunces-latin-400-normal.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
-        <link
-          rel="preload"
-          href="/fonts/dm-sans-latin-400-normal.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
-        
         {/* Critical CSS - minimized for fastest render */}
         <style dangerouslySetInnerHTML={{
           __html: `*{box-sizing:border-box}body{margin:0;background:#F5EFE7;font-family:var(--font-body);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.bg-background{background-color:#F5EFE7}.text-foreground{color:#2D5016}.font-body{font-family:var(--font-body)}.antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.min-h-screen{min-height:100vh}.loading-spinner{width:40px;height:40px;border:4px solid #E8DFCF;border-top:4px solid #2D5016;border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.navbar-container{position:sticky;top:0;z-index:50;background:rgba(245,239,231,.95);backdrop-filter:blur(10px)}.hero-gradient{background:linear-gradient(135deg,#2D5016 0%,#3E6B1F 100%)}.no-js{display:none}.js-loaded{opacity:1;transition:opacity .3s ease}`

@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://habema.biz.id/sitemap.xml
+
+Host: https://habema.biz.id

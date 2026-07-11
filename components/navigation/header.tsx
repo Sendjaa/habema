@@ -104,6 +104,7 @@ export function Header() {
   const cartItems = useCartStore((state) => state.items);
   const [isClient, setIsClient] = React.useState(false);
   const [user, setUser] = useState<any>(null);
+  const throttleTimer = useRef<NodeJS.Timeout | null>(null);
 
   React.useEffect(() => {
     setIsClient(true);
@@ -168,19 +169,21 @@ export function Header() {
   useEffect(() => {
     const updateNavbarPosition = () => {
       setIsScrolled(window.scrollY > 10);
-
-      const headerElement = document.querySelector("header");
-      if (headerElement) {
-        const rect = headerElement.getBoundingClientRect();
-        setNavbarBottom(rect.bottom);
-      }
+      // Use window.innerHeight instead of getBoundingClientRect to avoid layout thrashing
+      setNavbarBottom(window.innerHeight > 100 ? 100 : window.innerHeight);
     };
     const handleScroll = () => {
-      updateNavbarPosition();
+      // Throttle scroll handler to reduce reflows
+      if (!throttleTimer.current) {
+        throttleTimer.current = setTimeout(() => {
+          updateNavbarPosition();
+          throttleTimer.current = null;
+        }, 16); // ~60fps
+      }
     };
 
     updateNavbarPosition();
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("resize", updateNavbarPosition);
 
     return () => {
@@ -398,7 +401,7 @@ export function Header() {
               <h1 className="text-xl font-bold text-[#1B4332] tracking-tight leading-none">
                 HABEMA
               </h1>
-              <span className="text-[10px] font-semibold text-emerald-800/60 uppercase tracking-widest mt-0.5">
+              <span className="text-[10px] font-semibold text-emerald-800 uppercase tracking-widest mt-0.5">
                 Outdoor Rental
               </span>
             </div>
@@ -1098,7 +1101,7 @@ export function Header() {
                               <span className="leading-none truncate">
                                 {user.email?.split("@")[0] || "Akun Saya"}
                               </span>
-                              <span className="text-[10px] font-medium text-emerald-600/60 mt-1">
+                              <span className="text-[10px] font-medium text-emerald-700 mt-1">
                                 Lihat Profil
                               </span>
                             </div>

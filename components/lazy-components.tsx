@@ -46,7 +46,8 @@ export const preloadCriticalResources = () => {
     link.rel = 'preload';
     link.href = resource;
     link.as = 'image';
-    link.type = 'image/png';
+    link.type = resource.endsWith('.webp') ? 'image/webp' : 'image/png';
+    link.fetchPriority = 'high';
     document.head.appendChild(link);
   });
 };
