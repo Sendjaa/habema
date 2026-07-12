@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import path from 'path';
+import * as path from 'path';
 
 // ===== Runtime error capture (UAT: laporkan semua error, jangan cuma fail cepat) =====
 let consoleErrors: string[] = [];
@@ -18,14 +18,12 @@ test.afterEach(async ({}, testInfo) => {
   const report = {
     consoleErrors,
     pageErrors,
-    url: testInfo.url ?? '',
   };
   await testInfo.attach('runtime-errors', {
     body: JSON.stringify(report, null, 2),
     contentType: 'application/json',
   });
   if (pageErrors.length || consoleErrors.length) {
-    console.log('\\n=== RUNTIME ERRORS (UAT) ===');
     pageErrors.forEach((e) => console.log('PAGEERROR:', e));
     consoleErrors.forEach((e) => console.log('CONSOLE:', e));
     console.log('===========================\\n');
@@ -50,7 +48,7 @@ test('UAT full flow: hero → katalog → pilih alat → booking → identitas �
   // ---------- 1. HERO SECTION ----------
   await test.step('Hero: isi form sewa & buka katalog', async () => {
     await page.goto('/');
-    await expect.soft(page.getByText(/Rental &|Sewa Alat/i)).toBeVisible({ timeout: 15000 });
+    await expect.soft(page.getByRole('heading', { name: /Sewa Alat Camping & Outdoor Terpercaya/i })).toBeVisible({ timeout: 15000 });
     await fillHeroDates(page);
     await page.getByRole('link', { name: /Jelajahi Katalog Rental/i }).click();
     await expect.soft(page).toHaveURL(/catalog_rental/, { timeout: 10000 });

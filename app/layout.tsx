@@ -9,7 +9,6 @@ import { GoogleOAuthProviderWrapper } from '@/components/providers/google_oauth_
 import './globals.css'
 
 // ── Fonts ──────────────────────────────────────────────────────
-// Fraunces: display/serif untuk heading & branding
 const fraunces = Fraunces({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
@@ -17,7 +16,6 @@ const fraunces = Fraunces({
   display: 'swap',
 })
 
-// DM Sans: body font yang bersih dan modern
 const dmSans = DM_Sans({
   subsets: ['latin'],
   weight: ['300', '400', '500', '600'],
@@ -28,47 +26,90 @@ const dmSans = DM_Sans({
 // ── Metadata ───────────────────────────────────────────────────
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? 'https://habema.id'
+    process.env.NEXT_PUBLIC_APP_URL ?? 'https://habema.biz.id'
   ),
   title: {
-    default: 'Habema — Sewa Alat Outdoor & Camping',
+    default: 'Habema — Rental, Shop & Open Trip Outdoor Terpercaya',
     template: '%s | Habema',
   },
   description:
-    'Sewa perlengkapan camping dan outdoor premium untuk petualangan tanpa batas. Tenda, sleeping bag, carrier, dan lebih banyak lagi dari Basecamp Habema.',
+    'Mau sewa tenda, beli perlengkapan camping, atau ikut open trip ke gunung dan wisata alam favorit? Habema punya semuanya. Sewa alat, belanja gear, dan gabung open trip dengan mudah dan aman.',
   keywords: [
+    // Brand
+    'habema',
+    'habema outdoor',
+    'habema bandung',
+
+    // Rental / Sewa
     'sewa alat camping',
     'rental outdoor gear',
-    'habema',
-    'tenda camping',
-    'perlengkapan pendakian',
-    'Papua outdoor',
+    'sewa tenda camping',
     'sewa carrier',
+    'sewa sleeping bag',
+    'sewa cooking set outdoor',
+    'sewa kompor camping',
+    'sewa matras camping',
+    'sewa alat mendaki',
+    'rental peralatan hiking',
+    'sewa perlengkapan gunung',
+    'tempat sewa alat camping bandung',
+    'rental gear outdoor bandung',
+
+    // Shop / Belanja
+    'jual alat camping',
+    'toko perlengkapan outdoor',
+    'perlengkapan pendakian',
+    'gear camping murah',
+    'jual tenda dome',
+    'jual carrier gunung',
+    'perlengkapan hiking online',
+    'belanja alat outdoor',
+
+    // Open Trip
+    'open trip gunung',
+    'open trip camping',
+    'open trip pendakian',
+    'trip hiking bareng',
+    'paket open trip gunung bandung',
+    'komunitas pendaki',
+    'jadwal open trip 2026',
+
+    // Lokasi
+    'outdoor bandung',
+    'camping bandung',
+    'pendakian jawa barat',
+    'sewa alat camping jawa barat',
+
+    // Long-tail
+    'tenda camping berkualitas',
+    'perlengkapan camping lengkap',
+    'sewa alat camping murah',
+    'rental gear pendakian terpercaya',
   ],
-  authors: [{ name: 'Habema', url: 'https://habema.id' }],
+  authors: [{ name: 'Habema', url: 'https://habema.biz.id' }],
   creator: 'Habema',
   openGraph: {
     type: 'website',
     locale: 'id_ID',
-    url: 'https://habema.id',
+    url: 'https://habema.biz.id',
     siteName: 'Habema',
-    title: 'Habema — Sewa Alat Outdoor & Camping',
+    title: 'Habema — Rental, Shop & Open Trip Outdoor Terpercaya',
     description:
-      'Sewa perlengkapan camping dan outdoor premium untuk petualangan tanpa batas.',
+      'Mau sewa tenda, beli perlengkapan camping, atau ikut open trip ke gunung dan wisata alam favorit? Habema punya semuanya. Sewa alat, belanja gear, dan gabung open trip dengan mudah dan aman.',
     images: [
       {
         url: '/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'Habema — Sewa Alat Outdoor & Camping',
+        alt: 'Habema — Rental, Shop & Open Trip Outdoor Terpercaya',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Habema — Sewa Alat Outdoor & Camping',
+    title: 'Habema — Rental, Shop & Open Trip Outdoor Terpercaya',
     description:
-      'Sewa perlengkapan camping dan outdoor premium untuk petualangan tanpa batas.',
+      'Mau sewa tenda, beli perlengkapan camping, atau ikut open trip ke gunung dan wisata alam favorit? Habema punya semuanya. Sewa alat, belanja gear, dan gabung open trip dengan mudah dan aman.',
     images: ['/og-image.jpg'],
   },
   robots: {
@@ -93,7 +134,7 @@ export const metadata: Metadata = {
   manifest: '/site.webmanifest',
 }
 
-// ── Viewport (dipisah dari metadata — best practice Next.js 14+) ──
+// ── Viewport ──────────────────────────────────────────────────
 export const viewport: Viewport = {
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
@@ -112,7 +153,6 @@ export default function RootLayout({
 }>) {
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 
-  // Validasi Google Client ID
   if (!googleClientId) {
     console.warn('⚠️ NEXT_PUBLIC_GOOGLE_CLIENT_ID tidak ditemukan di .env.local')
   }
@@ -125,31 +165,26 @@ export default function RootLayout({
     >
       <head>
         <link rel="icon" type="image/x-icon" sizes="32x32" href="/favicon-habema-32x32.ico" />
-        
-        {/* Preload LCP image — WebP for max perf */}
-        <link 
-          rel="preload" 
-          href="/images/bannerImage.webp" 
-          as="image" 
+
+        <link
+          rel="preload"
+          href="/images/bannerImage.webp"
+          as="image"
           type="image/webp"
           fetchPriority="high"
         />
-        
-        {/* Preconnect — max 2 critical origins (fonts) */}
+
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        
-        {/* Critical CSS - minimized for fastest render */}
+
         <style dangerouslySetInnerHTML={{
           __html: `*{box-sizing:border-box}body{margin:0;background:#F5EFE7;font-family:var(--font-body);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.bg-background{background-color:#F5EFE7}.text-foreground{color:#2D5016}.font-body{font-family:var(--font-body)}.antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.min-h-screen{min-height:100vh}.loading-spinner{width:40px;height:40px;border:4px solid #E8DFCF;border-top:4px solid #2D5016;border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.navbar-container{position:sticky;top:0;z-index:50;background:rgba(245,239,231,.95);backdrop-filter:blur(10px)}.hero-gradient{background:linear-gradient(135deg,#2D5016 0%,#3E6B1F 100%)}.no-js{display:none}.js-loaded{opacity:1;transition:opacity .3s ease}`
         }} />
-        
-        {/* DNS prefetch for non-critical resources */}
+
         <link rel="dns-prefetch" href="//fonts.googleapis.com" />
         <link rel="dns-prefetch" href="//www.googletagmanager.com" />
       </head>
-        <body className="font-body antialiased bg-background text-foreground min-h-screen">
-        {/* Toast notifications - critical path */}
+      <body className="font-body antialiased bg-background text-foreground min-h-screen">
         <Toaster
           position="top-center"
           richColors
@@ -165,15 +200,12 @@ export default function RootLayout({
           }}
         />
 
-        {/* ── Google OAuth Provider ── */}
         <GoogleOAuthProviderWrapper clientId={googleClientId || ''}>
-          {/* Main layout (Navbar/Footer logic inside) */}
           <ErrorBoundary>
             <LayoutWrapper>{children}</LayoutWrapper>
           </ErrorBoundary>
         </GoogleOAuthProviderWrapper>
 
-        {/* Analytics & performance — production only */}
         {process.env.NODE_ENV === 'production' && (
           <>
             <Analytics />
