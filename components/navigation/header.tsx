@@ -50,7 +50,7 @@ const layananItems = [
   },
   {
     label: "Shop",
-    href: "/shop",
+    href: "/catalog_shop",
     icon: Store,
     description: "Belanja perlengkapan",
   },

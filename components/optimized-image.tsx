@@ -33,7 +33,9 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
   // Generate responsive image URLs
   const generateOptimizedSrc = (originalSrc: string, w?: number, h?: number) => {
-    const baseUrl = originalSrc.includes('unsplash.com') ? originalSrc : '';
+    // Hanya CDN Unsplash yang support param ?w/h/q on-the-fly.
+    // URL lain (Supabase storage, pinimg, dll) pakai apa adanya.
+    if (!originalSrc.includes('unsplash.com')) return originalSrc;
     const params = new URLSearchParams();
     
     if (w) params.set('w', w.toString());
@@ -42,7 +44,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     if (format && format !== 'auto') params.set('f', format);
     
     const paramString = params.toString();
-    return `${baseUrl}?${paramString}`;
+    return `${originalSrc}?${paramString}`;
   };
 
   // Generate responsive sizes attribute

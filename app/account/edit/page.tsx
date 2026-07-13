@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, ChevronLeft, Save, User, Phone, Mail } from "lucide-react";
+import { Loader2, ChevronLeft, Save, User, Phone, Mail, Camera } from "lucide-react";
 import { toast } from "sonner";
 
 export default function EditProfilePage() {
@@ -19,6 +19,9 @@ export default function EditProfilePage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
   const getProfile = async () => {
@@ -36,6 +39,7 @@ export default function EditProfilePage() {
     setFullName(user.user_metadata?.full_name || "");
     setPhone(user.user_metadata?.phone || "");
     setEmail(user.email || "");
+    setAvatarUrl(user.user_metadata?.avatar_url || null);
     setLoading(false);
   };
 
@@ -66,14 +70,36 @@ export default function EditProfilePage() {
   }
 }
 
-  const formatToE164 = (phoneNumber: string) => {
-    let cleaned = phoneNumber.replace(/\D/g, ""); // Hapus karakter non-digit
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { toast.error("Ukuran foto maksimal 2MB"); return; }
 
-    if (cleaned.startsWith("0")) {
-      cleaned = "62" + cleaned.substring(1);
+    setUploadingPhoto(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const ext = file.name.split('.').pop();
+      const path = `${user.id}/avatar.${ext}`;
+
+      const { error: upErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(path);
+
+      await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
+      setAvatarUrl(publicUrl);
+      toast.success("Foto profil diperbarui");
+    } catch (err: any) {
+      toast.error(err.message || "Gagal upload foto");
+    } finally {
+      setUploadingPhoto(false);
     }
-
-    return `+${cleaned}`;
   };
 
   if (loading) {
@@ -120,14 +146,32 @@ export default function EditProfilePage() {
       <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-10">
         <Card className="bg-white border-stone-200 rounded-2xl shadow-none overflow-hidden">
           <form onSubmit={handleUpdate} className="p-4 md:p-8 space-y-6">
-            {/* Avatar Placeholder */}
+            {/* Avatar */}
             <div className="flex flex-col items-center py-2 md:py-4 border-b border-stone-50">
-              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
-                <User className="w-8 h-8 md:w-10 md:h-10 text-emerald-700" />
+              <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-full bg-emerald-100 flex items-center justify-center mb-3 overflow-hidden">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-8 h-8 md:w-10 md:h-10 text-emerald-700" />
+                )}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="absolute -bottom-1 -right-1 w-7 h-7 bg-white border-2 border-stone-100 rounded-lg flex items-center justify-center shadow-sm hover:bg-stone-50 transition-colors"
+                >
+                  {uploadingPhoto ? <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-600" /> : <Camera className="w-3.5 h-3.5 text-stone-600" />}
+                </button>
               </div>
-              <p className="text-[10px] md:text-xs font-medium text-emerald-700 cursor-pointer hover:underline">
-                Ubah Foto Profil
-              </p>
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="text-[10px] md:text-xs font-medium text-emerald-700 cursor-pointer hover:underline disabled:opacity-50"
+              >
+                {uploadingPhoto ? "Mengunggah..." : "Ubah Foto Profil"}
+              </button>
             </div>
 
             <div className="space-y-4">

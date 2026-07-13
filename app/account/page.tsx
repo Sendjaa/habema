@@ -302,6 +302,9 @@ export default function AccountPage() {
           .from("addresses").select("*").eq("user_id", authUser.id);
         setAddresses(addrError ? [] : (addrData ?? []));
       } catch { setAddresses([]); }
+
+      // Load notif preferences from user_metadata
+      setNotif({ ...DEFAULT_NOTIF, ...authUser.user_metadata?.notif_preferences });
     } catch (err) {
       console.error("Error syncing data:", err);
     } finally {
@@ -336,7 +339,11 @@ export default function AccountPage() {
   }, [orderToCancel]);
 
   const toggleNotif = (key: keyof typeof DEFAULT_NOTIF) =>
-    setNotif((prev) => ({ ...prev, [key]: !prev[key] }));
+    setNotif((prev) => {
+      const updated = { ...prev, [key]: !prev[key] };
+      supabase.auth.updateUser({ data: { notif_preferences: updated } });
+      return updated;
+    });
 
   if (loading) {
     return (
@@ -382,7 +389,10 @@ export default function AccountPage() {
               <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
                 <span className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{initials}</span>
               </div>
-              <button className="absolute -bottom-1 -right-1 w-7 h-7 bg-white border-2 border-stone-100 rounded-lg flex items-center justify-center shadow-sm hover:bg-stone-50 transition-colors">
+              <button
+                onClick={() => router.push("/account/edit")}
+                className="absolute -bottom-1 -right-1 w-7 h-7 bg-white border-2 border-stone-100 rounded-lg flex items-center justify-center shadow-sm hover:bg-stone-50 transition-colors"
+              >
                 <Camera className="w-3.5 h-3.5 text-stone-600" />
               </button>
             </div>
@@ -511,7 +521,7 @@ export default function AccountPage() {
               </div>
               {completedCount < 4 && (
                 <div className="px-4 pb-4">
-                  <button className="w-full py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-xl border border-emerald-100 hover:bg-emerald-100 transition-colors">
+                  <button onClick={() => router.push("/account/edit")} className="w-full py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-xl border border-emerald-100 hover:bg-emerald-100 transition-colors">
                     Lengkapi Verifikasi
                   </button>
                 </div>
@@ -526,8 +536,6 @@ export default function AccountPage() {
               {[
                 { icon: User,    label: "Edit Profil",   href: "/account/edit" },
                 { icon: MapPin,  label: "Alamat Saya",   href: "/account/addresses" },
-                { icon: Bell,    label: "Notifikasi",    href: "#" },
-                { icon: Settings,label: "Pengaturan",    href: "/account/settings" },
               ].map((item) => (
                 <Link key={item.label} href={item.href}
                   className="flex items-center justify-between px-5 py-3 hover:bg-stone-50 transition-colors border-b border-stone-50 last:border-0"
