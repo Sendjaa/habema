@@ -128,7 +128,6 @@ export const metadata: Metadata = {
       { url: '/favicon-habema-32x32.ico', sizes: '32x32', type: 'image/x-icon' },
       { url: '/icon.svg', type: 'image/svg+xml' },
     ],
-    apple: '/apple-touch-icon.png',
     shortcut: '/favicon-habema-32x32.ico',
   },
   manifest: '/site.webmanifest',
@@ -165,14 +164,6 @@ export default function RootLayout({
     >
       <head>
         <link rel="icon" type="image/x-icon" sizes="32x32" href="/favicon-habema-32x32.ico" />
-
-        <link
-          rel="preload"
-          href="/images/bannerImage.webp"
-          as="image"
-          type="image/webp"
-          fetchPriority="high"
-        />
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

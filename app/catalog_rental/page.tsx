@@ -8,15 +8,7 @@ import { Equipment } from "@/lib/types";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { ArrowLeft, CalendarDays, CalendarCheck, Pencil } from "lucide-react";
+import { CalendarDays, CalendarCheck, Pencil } from "lucide-react";
 import Image from "next/image";
 import { useParallax } from "@/hooks/use-parallax";
 
@@ -209,39 +201,6 @@ function CatalogContent() {
 
     return(
       <>
-      {/* ========================================================================= */}
-      {/* STICKY BREADCRUMB BAR (desktop) — konsisten dengan halaman produk */}
-      {/* ========================================================================= */}
-      <div className="hidden md:flex bg-white items-center p-2 sticky top-0 md:z-0 shadow-sm border-b ps-35">
-        <button
-          onClick={() => router.back()}
-          className="group flex items-center justify-center w-10 h-5"
-          aria-label="Kembali"
-        >
-          <ArrowLeft className="w-4 h-4 text-gray-900 group-hover:text-forest transition-colors" />
-        </button>
-
-        <Breadcrumb>
-          <BreadcrumbList className="text-[10px] md:text-xs font-bold tracking-0.1em text-gray-900">
-            <BreadcrumbItem>
-              <BreadcrumbLink
-                href="/"
-                className="hover:text-[#D4AF37] text-gray-900 transition-colors"
-              >
-                Beranda /
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbItem>
-              <BreadcrumbLink>
-                <BreadcrumbPage className="text-[#D4AF37] font-extrabold">
-                  Katalog Rental
-                </BreadcrumbPage>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </div>
-
       <main className="bg-white pb-24 md:pb-28 border-b border-gray-100 overflow-hidden">
       
       {/* ========================================================================= */}
@@ -264,35 +223,6 @@ function CatalogContent() {
           />
         </div>
         <div className="absolute md:inset-0 md:bg-linear-to-t md:from-#FDFCFB/100 md:via-transparent md:to-#FDFCFB/200" />
-        
-         <div className="absolute md:hidden top-1 left-1 right-4 flex items-center gap-0 z-10">
-          <button
-            onClick={() => router.back()}
-            className="group flex items-center justify-center w-10 h-5"
-            aria-label="Kembali"
-          >
-            <ArrowLeft className="w-4 h-4 text-gray-900 group-hover:text-forest transition-colors" />
-          </button>
-
-          <Breadcrumb>
-            <BreadcrumbList className="text-[10px] md:text-xs font-bold tracking-0.1em text-gray-900">
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  href="/"
-                  className="hover:text-[#D4AF37] text-gray-900 transition-colors"
-                >
-                  Beranda  /
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              {/* <BreadcrumbSeparator className="text-white/40" /> */}
-              <BreadcrumbItem>
-                <BreadcrumbPage className="text-[#D4AF37] font-extrabold">
-                 Katalog Rental
-                </BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
 
         {/* Text Title Tengah Banner */}
         <div className="absolute top-1/5 md:top-1/4 -translate-y-1/4 left-4 md:left-180 text-gray-900 z-10">

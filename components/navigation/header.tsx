@@ -94,7 +94,7 @@ export function Header() {
   const [categories, setCategories] = useState<SearchCategory[]>([]);
   const [featuredRecommendation, setFeaturedRecommendation] =
     useState<SearchProduct | null>(null);
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [featuredLoading, setFeaturedLoading] = useState(true);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [expandedMobileMenu, setExpandedMobileMenu] = useState<string | null>(
     null,
@@ -222,10 +222,11 @@ export function Header() {
   // Fetch initial data (categories & featured)
   useEffect(() => {
     const fetchInitialData = async () => {
+      setFeaturedLoading(true);
       try {
         const [catRes, recRes] = await Promise.all([
           fetch("/api/categories"),
-          fetch("/api/products/featured?limit=1"),
+          fetch("/api/products/featured-products?limit=1"),
         ]);
         if (catRes.ok) {
           const data = await catRes.json();
@@ -233,10 +234,12 @@ export function Header() {
         }
         if (recRes.ok) {
           const data = await recRes.json();
-          setFeaturedRecommendation(data[0]);
+          setFeaturedRecommendation(data.data?.[0] || null);
         }
       } catch (error) {
         console.error("Gagal memuat data awal:", error);
+      } finally {
+        setFeaturedLoading(false);
       }
     };
     fetchInitialData();
@@ -667,7 +670,22 @@ export function Header() {
                           </div>
 
                           {/* Featured Product */}
-                          {featuredRecommendation && (
+                          {featuredLoading ? (
+                            <div className="mt-6 pt-6 border-t border-gray-200">
+                              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">
+                                Rekomendasi
+                              </h4>
+                              <div className="bg-white rounded-xl border border-gray-100 p-3 flex gap-3 animate-pulse">
+                                <div className="w-16 h-16 rounded-lg bg-gray-200 flex-shrink-0" />
+                                <div className="flex-1 min-w-0 space-y-2">
+                                  <div className="inline-block bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold w-[40px] h-[20px]" />
+                                  <div className="h-4 w-3/4 bg-gray-200 rounded" />
+                                  <div className="h-3 w-1/2 bg-gray-100 rounded" />
+                                  <div className="h-4 w-1/3 bg-emerald-100 rounded" />
+                                </div>
+                              </div>
+                            </div>
+                          ) : featuredRecommendation && (
                             <div className="mt-6 pt-6 border-t border-gray-200">
                               <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">
                                 Rekomendasi

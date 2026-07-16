@@ -1,6 +1,6 @@
-"use client";
+"use client"
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,28 @@ export default function AdminLogin() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Check if already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        // Check if user is admin
+        const { data: profile, error } = await supabase
+          .from('users')
+          .select('is_vendor')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!error && profile?.is_vendor) {
+          router.push("/admin");
+        }
+      }
+    };
+
+    checkAuth();
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +77,39 @@ export default function AdminLogin() {
       }
 
       if (data.user) {
+        // Check if user is admin (using is_vendor as admin flag)
+        const { data: profile, error: profileError } = await supabase
+          .from('users')
+          .select('is_vendor')
+          .eq('id', data.user.id)
+          .single();
+
+        // Auto-create user in users table if not exists (for admin)
+        if (profileError && profileError.code === 'PGRST116') {
+          const { error: createError } = await supabase
+            .from('users')
+            .insert([{
+              id: data.user.id,
+              email: data.user.email!,
+              is_vendor: true,
+              full_name: 'Admin'
+            }]);
+          
+          if (createError) {
+            toast.error("Gagal membuat profil admin: " + createError.message);
+            await supabase.auth.signOut();
+            setIsLoading(false);
+            return;
+          }
+        }
+
+        if (!profileError && !profile?.is_vendor) {
+          toast.error("Akses ditolak. Hanya admin yang bisa masuk.");
+          await supabase.auth.signOut();
+          setIsLoading(false);
+          return;
+        }
+
         toast.success("Login berhasil!");
         router.push("/admin");
       }

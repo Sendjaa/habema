@@ -185,83 +185,142 @@ function Card({ pkg, index }: { pkg: Package; index: number }) {
   );
 }
 
-/* ─── MOSAIC HEADER ──────────────────────────────── */
-function MosaicHeader() {
+/* ─── HERO CAROUSEL ──────────────────────────────── */
+const HERO_SLIDES = [
+  {
+    image: "https://images.unsplash.com/photo-1537225228614-56cc3556d7ed?w=1600&q=80",
+    badge: "Est. 2020",
+    title: "Berkemah Lebih",
+    highlight: "Mudah & Berkesan",
+    subtitle: "Open Trip · Camping Keluarga · Private Camp · Campervan",
+  },
+  {
+    image: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1600&q=80",
+    badge: "Terlaris",
+    title: "Saksikan",
+    highlight: "Matahari Terbit",
+    subtitle: "Open Trip Sunrise — keberangkatan setiap akhir pekan.",
+  },
+  {
+    image: "https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=1600&q=80",
+    badge: "Campervan",
+    title: "Jelajah Bebas",
+    highlight: "dengan Campervan",
+    subtitle: "3 hari 2 malam petualangan seru ke daerah wisata pilihanmu.",
+  },
+  {
+    image: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=1600&q=80",
+    badge: "Private Camp",
+    title: "Area Eksklusif",
+    highlight: "Untuk Komunitas",
+    subtitle: "Private camp untuk sekolah, kampus, & komunitas — nuansa alami.",
+  },
+];
+
+function HeroCarousel() {
+  const [idx, setIdx] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const n = HERO_SLIDES.length;
+
+  useEffect(() => {
+    if (paused) return;
+    const t = setInterval(() => setIdx((i) => (i + 1) % n), 5000);
+    return () => clearInterval(t);
+  }, [paused, n]);
+
+  const go = (i: number) => setIdx(((i % n) + n) % n);
+  const s = HERO_SLIDES[idx];
+
   return (
-    <div
-      className="relative w-full overflow-hidden"
-      style={{ height: "min(68vw, 520px)", minHeight: 240 }}
-    >
-      {/* 3-col mosaic */}
-      <div className="absolute inset-0 grid gap-0.5" style={{ gridTemplateColumns: "2fr 1fr", gridTemplateRows: "1fr 1fr" }}>
-        {/* big left */}
-        <div className="row-span-2 overflow-hidden">
-          <img
-            src="https://images.unsplash.com/photo-1537225228614-56cc3556d7ed?w=1200&q=80"
-            alt="camping"
-            className="w-full h-full object-cover"
-          />
-        </div>
-        {/* top right */}
-        <div className="overflow-hidden">
-          <img
-            src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=700&q=80"
-            alt="sunrise"
-            className="w-full h-full object-cover"
-          />
-        </div>
-        {/* bottom right */}
-        <div className="overflow-hidden">
-          <img
-            src="https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=700&q=80"
-            alt="campervan"
-            className="w-full h-full object-cover"
-          />
-        </div>
-      </div>
-
-      {/* overlay fades into bg */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-[#f9f7f4]" />
-
-      {/* brand card — bottom left */}
+    <div className="mx-auto max-w-7xl px-4 lg:px-8 mt-4">
       <div
-        className="absolute bottom-5 left-5 md:bottom-8 md:left-8"
-        style={{
-          animation: "fadeUp 0.8s ease both",
-        }}
+        className="relative overflow-hidden rounded-[28px]"
+        style={{ height: "min(46vw, 520px)", minHeight: 320 }}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
       >
-        <div className="bg-white/90 backdrop-blur-md rounded-3xl px-6 py-5 shadow-xl max-w-xs">
-          <div className="flex items-center gap-1.5 mb-2">
-            <span className="text-emerald-500">⛺</span>
-            <span className="text-xs font-bold tracking-widest uppercase text-stone-400">
-              Habema Outdoor · Est.&nbsp;2020
-            </span>
-          </div>
-          <h1
-            className="text-2xl md:text-3xl font-black text-stone-900 leading-tight"
-            style={{ fontFamily: "'Fraunces', serif" }}
-          >
-            Berkemah Lebih<br />
-            <span className="italic text-emerald-600">Mudah & Berkesan</span>
-          </h1>
-          <p className="text-stone-500 text-xs mt-2 leading-relaxed">
-            Open Trip · Camping Keluarga · Private Camp · Campervan
-          </p>
+      {/* slides (crossfade) */}
+      {HERO_SLIDES.map((sl, i) => (
+        <div
+          key={i}
+          className="absolute inset-0 transition-opacity duration-[1100ms] ease-out"
+          style={{ opacity: i === idx ? 1 : 0 }}
+        >
+          <img src={sl.image} alt={sl.title} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/35 to-transparent" />
         </div>
+      ))}
+
+      {/* animated caption for active slide */}
+      <div
+        key={idx}
+        className="absolute left-6 md:left-10 top-1/2 -translate-y-1/2 max-w-md pr-4 z-10"
+        style={{ animation: "fadeUp 0.7s ease both" }}
+      >
+        <span className="inline-block text-[11px] font-bold tracking-widest uppercase px-3 py-1 rounded-full bg-emerald-500 text-white mb-4 shadow">
+          {s.badge}
+        </span>
+        <h2
+          className="text-white font-black text-3xl md:text-5xl leading-[1.05] drop-shadow-lg"
+          style={{ fontFamily: "'Fraunces', serif" }}
+        >
+          {s.title} <span className="italic text-emerald-300">{s.highlight}</span>
+        </h2>
+        <p className="text-white/85 text-sm md:text-base mt-3 drop-shadow">{s.subtitle}</p>
       </div>
 
-      {/* contact pill top-right */}
-      <div className="absolute top-4 right-4">
-        <a
-          href="https://wa.me/6283898749357"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 text-xs font-bold text-stone-700 shadow hover:bg-white transition-all duration-300"
-        >
-          <span className="text-green-500">●</span>
-          083898749357
-        </a>
+      {/* contact pill */}
+      <a
+        href="https://wa.me/6283898749357"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 text-xs font-bold text-stone-700 shadow hover:bg-white transition-all duration-300"
+      >
+        <span className="text-green-500">●</span>
+        083898749357
+      </a>
+
+      {/* arrows */}
+      <button
+        onClick={() => go(idx - 1)}
+        aria-label="Sebelumnya"
+        className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/75 hover:bg-white text-stone-800 shadow-lg flex items-center justify-center text-2xl transition"
+      >
+        ‹
+      </button>
+      <button
+        onClick={() => go(idx + 1)}
+        aria-label="Berikutnya"
+        className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/75 hover:bg-white text-stone-800 shadow-lg flex items-center justify-center text-2xl transition"
+      >
+        ›
+      </button>
+
+      {/* brand chip */}
+      <div className="absolute bottom-5 left-5 md:bottom-7 md:left-10 z-20 flex items-center gap-2 bg-white/85 backdrop-blur-md rounded-full pl-3 pr-4 py-2 shadow">
+        <span className="text-emerald-500 text-lg">⛺</span>
+        <span className="text-[11px] font-bold tracking-widest uppercase text-stone-500">
+          Habema Outdoor · Est. 2020
+        </span>
       </div>
+
+      {/* dots */}
+      <div className="absolute bottom-6 right-5 md:bottom-7 md:right-10 z-20 flex gap-1.5">
+        {HERO_SLIDES.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => go(i)}
+            aria-label={`Ke slide ${i + 1}`}
+            className="h-2.5 rounded-full transition-all duration-300"
+            style={{
+              width: i === idx ? 24 : 10,
+              background: i === idx ? "#10b981" : "rgba(255,255,255,0.65)",
+            }}
+          />
+        ))}
+      </div>
+    </div>
     </div>
   );
 }
@@ -461,6 +520,11 @@ export default function HabemaOpenTrip() {
       ? packages
       : packages.filter((p) => p.category === active);
 
+  // Rekomendasi: paket ber-badge dulu, fallback 3 pertama
+  const recommended = packages.filter((p) => p.badge);
+  const recommendations =
+    recommended.length > 0 ? recommended.slice(0, 3) : packages.slice(0, 3);
+
   // Show loading state
   if (loading) {
     return (
@@ -511,8 +575,8 @@ export default function HabemaOpenTrip() {
         ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 99px; }
       `}</style>
 
-      {/* MOSAIC */}
-      <MosaicHeader />
+      {/* HERO CAROUSEL */}
+      <HeroCarousel />
 
       {/* MAIN CONTENT */}
       <main className="max-w-6xl mx-auto px-4 md:px-8 pt-10 pb-24">
@@ -540,6 +604,42 @@ export default function HabemaOpenTrip() {
             </span>
           </h2>
         </div>
+
+        {/* RECOMMENDATIONS */}
+        {recommendations.length > 0 && (
+          <section className="mb-10">
+            <div className="flex items-end justify-between mb-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-emerald-600 mb-1">
+                  Rekomendasi
+                </p>
+                <h3
+                  className="text-xl md:text-2xl font-black text-stone-900"
+                  style={{ fontFamily: "'Fraunces', serif" }}
+                >
+                  Pilihan Terbaik{" "}
+                  <span className="italic text-stone-400">Untukmu</span>
+                </h3>
+              </div>
+              <span className="text-xs text-stone-400 hidden sm:block">
+                Geser &rarr;
+              </span>
+            </div>
+            <div
+              className="flex gap-4 overflow-x-auto pb-4 snap-x"
+              style={{ scrollbarWidth: "thin" }}
+            >
+              {recommendations.map((pkg, i) => (
+                <div
+                  key={pkg?.id || `rec-${i}`}
+                  className="min-w-[280px] max-w-[280px] snap-start"
+                >
+                  <Card pkg={pkg} index={i} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* FILTER TABS */}
         <div className="flex flex-wrap gap-2 mb-10">

@@ -22,7 +22,7 @@ interface Product {
 }
 
 export function FeaturedProducts() {
-  const { data: featuredResponse, loading, error, refetch } = useOptimizedFetch<{ success: boolean; data: Product[] }>('/api/products/featured', {
+  const { data: featuredResponse, loading, error, refetch } = useOptimizedFetch<{ success: boolean; data: Product[] }>('/api/products/featured-products', {
     cacheTime: 10 * 60 * 1000, // 10 minutes cache
     retryCount: 2,
     dedupe: true
@@ -59,10 +59,38 @@ export function FeaturedProducts() {
   const products = (Array.isArray(featured) ? featured : []) || (error ? fallbackData : [])
 
   if (loading) return (
-    <div className="py-24 flex flex-col items-center justify-center gap-4 text-forest/40 animate-pulse">
-      <Sparkles className="w-8 h-8 text-gold" />
-      <p className="font-mono text-[10px] tracking-[0.3em] uppercase">Menyelaraskan Katalog Terlaris...</p>
-    </div>
+    <section className="relative py-16 md:py-24 bg-[#FDFCFB] overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 md:px-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 md:mb-20 gap-6">
+          <div className="space-y-3 md:space-y-4 max-w-2xl">
+            <div className="flex items-center gap-2 text-gold font-bold text-[9px] md:text-[10px] uppercase tracking-[0.3em]">
+              <Flame size={14} fill="currentColor" /> Paling Sering Di-rental
+            </div>
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-forest tracking-tighter leading-[0.9]">
+              Gear Terfavorit <br className="md:block" /> 
+              <span className="italic">Pilihan Pro.</span>
+            </h2>
+          </div>
+          <div className="px-6 md:px-8 py-3 md:py-4 bg-white border border-forest/10 rounded-xl md:rounded-2xl font-bold text-forest text-sm text-center w-[140px]">
+            <span className="flex items-center justify-center gap-3">
+              Semua Gear
+            </span>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-2">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="h-full rounded-xl border border-slate-200 bg-white overflow-hidden animate-pulse">
+              <div className="aspect-square bg-slate-200 rounded-t-xl" />
+              <div className="p-2.5 space-y-2">
+                <div className="h-8 w-3/4 bg-slate-200 rounded" />
+                <div className="h-6 w-1/2 bg-slate-200 rounded" />
+                <div className="mt-auto pt-1.5 h-4 w-full bg-slate-100 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   )
 
   return (
