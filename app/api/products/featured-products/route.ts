@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabaseClient'
 
 // Cache TTL in seconds
 const CACHE_TTL = 600; // 10 minutes
@@ -9,6 +8,19 @@ let cacheTimestamp = 0;
 export async function GET(request: Request) {
   const now = Date.now();
   const { searchParams } = new URL(request.url)
+
+  // Lazy import supabase – handle missing env gracefully
+  let supabase: any
+  try {
+    const mod = await import('@/lib/supabaseClient')
+    supabase = mod.supabase
+  } catch (e: any) {
+    console.error('Supabase client init failed:', e.message)
+    return NextResponse.json(
+      { error: 'Database not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local' },
+      { status: 503 }
+    )
+  }
   const limit = parseInt(searchParams.get('limit') || '15')
   
   // Generate cache key based on limit

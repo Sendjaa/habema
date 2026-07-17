@@ -1,8 +1,19 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabaseClient'
 
 export async function GET() {
   try {
+    // Lazy import supabase – handle missing env gracefully
+    let supabase: any
+    try {
+      const mod = await import('@/lib/supabaseClient')
+      supabase = mod.supabase
+    } catch (e: any) {
+      console.error('Supabase client init failed:', e.message)
+      return NextResponse.json(
+        { error: 'Database not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local' },
+        { status: 503 }
+      )
+    }
 
     // Fetch all active bundles from database
     console.log('Fetching bundles from database...')

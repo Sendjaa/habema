@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
 
 export async function GET(request: NextRequest) {
   try {
+    // Lazy import supabase – handle missing env gracefully
+    let supabase: any
+    try {
+      const mod = await import('@/lib/supabaseClient')
+      supabase = mod.supabase
+    } catch (e: any) {
+      console.error('Supabase client init failed:', e.message)
+      return NextResponse.json(
+        { error: 'Database not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local' },
+        { status: 503 }
+      )
+    }
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const limit = parseInt(searchParams.get('limit') || '20');

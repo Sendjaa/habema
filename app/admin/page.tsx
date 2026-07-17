@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from "@/lib/supabaseClient"
 import { supabaseAdmin } from "@/lib/supabaseAdmin"
@@ -23,9 +23,11 @@ import {
   CheckCircle,
   AlertCircle,
   XCircle,
-  Activity
+  Activity,
+  Bell
 } from "lucide-react"
 import Link from "next/link"
+import { toast } from "sonner"
 
 // Types
 interface DashboardStats {
@@ -64,6 +66,7 @@ export default function AdminDashboard() {
   })
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
   const [refreshing, setRefreshing] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     checkAuth()
@@ -156,6 +159,28 @@ export default function AdminDashboard() {
 
       // Authenticated, load dashboard data
       await loadDashboardData()
+
+      // Subscribe ke realtime notifications
+      const channel = supabase
+        .channel('admin-notifications')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'notifications' },
+          (payload) => {
+            const notif = payload.new as any
+            toast.info(notif.title || 'Notifikasi Baru', {
+              description: notif.message || 'Ada aktivitas baru di dashboard',
+              duration: 5000,
+            })
+            // Refresh dashboard data
+            loadDashboardData()
+          }
+        )
+        .subscribe()
+
+      return () => {
+        supabase.removeChannel(channel)
+      }
     } catch (error) {
       console.error('Auth check error:', error)
       router.replace("/admin/login")
@@ -315,6 +340,17 @@ export default function AdminDashboard() {
 
       console.log('Dashboard data loaded successfully')
 
+      // Fetch unread notifications count
+      try {
+        const { count } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_read', false)
+        setUnreadCount(count || 0)
+      } catch (e) {
+        // ignore
+      }
+
     } catch (error) {
       console.error('Error loading dashboard data:', error)
       // Set default values on error
@@ -372,6 +408,14 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="relative">
+              <Bell className="w-5 h-5 text-stone-500" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </div>
             <Button
               variant="ghost"
               size="sm"

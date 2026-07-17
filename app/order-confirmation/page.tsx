@@ -269,7 +269,16 @@ export default function OrderConfirmationPage() {
     isWhatsAppBooking = currentTransaction.payment?.method === "WhatsApp Konfirmasi";
   }
 
-  const orderId = `HBM-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+  // Ambil orderId dari transaction store atau localStorage (bukan random)
+  const orderId = transactionData?.payment?.orderId
+    || currentTransaction?.payment?.orderId
+    || (typeof window !== 'undefined' && (() => {
+      try {
+        const recent = localStorage.getItem('recentBooking')
+        return recent ? JSON.parse(recent).id : null
+      } catch { return null }
+    })())
+    || 'HBM-UNKNOWN'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50">
