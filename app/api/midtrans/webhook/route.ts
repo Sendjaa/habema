@@ -12,6 +12,11 @@ type Booking = {
   midtrans_order_id?: string
 }
 
+// GET handler — Midtrans verifikasi URL dengan GET
+export async function GET() {
+  return NextResponse.json({ status: 'ok', message: 'Midtrans webhook endpoint is active' })
+}
+
 /**
  * Midtrans Server-to-Server Notification Webhook
  * Midtrans akan POST ke endpoint ini saat status pembayaran berubah.
