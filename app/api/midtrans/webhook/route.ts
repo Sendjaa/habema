@@ -43,19 +43,24 @@ export async function POST(request: NextRequest) {
       fraud_status,
     })
 
-    // 1) Verifikasi signature
-    if (signature_key) {
-      const isValid = verifyMidtransSignature({
+    // 1) Verifikasi signature (return 200 untuk test notification dari Midtrans)
+    let signatureValid = false
+    if (signature_key && order_id && order_id !== 'test-notification') {
+      signatureValid = verifyMidtransSignature({
         order_id: order_id || '',
         status_code: String(status_code || ''),
         gross_amount: String(gross_amount || ''),
         signature_key,
       })
 
-      if (!isValid) {
+      if (!signatureValid) {
         console.error('[webhook] Invalid signature for order:', order_id)
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 403 })
+        return NextResponse.json({ message: 'Webhook received' }, { status: 200 })
       }
+    } else {
+      // Test notification dari Midtrans — return 200 tanpa proses
+      console.log('[webhook] Test notification received, returning OK')
+      return NextResponse.json({ message: 'Webhook received' }, { status: 200 })
     }
 
     // 2) Map transaction_status ke payment_status kita
