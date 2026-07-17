@@ -96,6 +96,7 @@ export function Header() {
     useState<SearchProduct | null>(null);
   const [featuredLoading, setFeaturedLoading] = useState(true);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [expandedMobileMenu, setExpandedMobileMenu] = useState<string | null>(
     null,
   );

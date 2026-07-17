@@ -221,7 +221,7 @@ export default function AdminDashboard() {
           // Recent bookings - filter out null created_at and sort
           recentBookingsData = bookings
             .filter(b => b.created_at)
-            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
             .slice(0, 5)
         }
       } catch (bookingError) {
@@ -398,7 +398,7 @@ export default function AdminDashboard() {
       <main className="px-4 sm:px-6 py-6 max-w-7xl mx-auto space-y-6">
 
         {/* Welcome Banner */}
-        <Card className="bg-gradient-to-br from-emerald-800 to-emerald-900 text-white p-5 sm:p-6 rounded-2xl border-0 shadow-lg">
+        <Card className="bg-linear-to-br from-emerald-800 to-emerald-900 text-white p-5 sm:p-6 rounded-2xl border-0 shadow-lg">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h2
