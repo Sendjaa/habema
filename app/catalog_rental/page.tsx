@@ -353,15 +353,22 @@ function CatalogContent() {
           <main className="flex-1">
             {/* Content Area */}
             {loading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                {[...Array(10)].map((_, i) => (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                {[...Array(8)].map((_, i) => (
                   <div
                     key={i}
-                    className="bg-white rounded-2xl p-2 border border-slate-100 space-y-3"
+                    className="bg-white rounded-xl border border-stone-200 overflow-hidden"
                   >
-                    <Skeleton className="aspect-square w-full rounded-xl" />
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-6 w-1/2" />
+                    <Skeleton className="aspect-square w-full rounded-none" />
+                    <div className="p-4 space-y-3">
+                      <Skeleton className="h-3 w-1/3" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-5 w-1/2" />
+                      <div className="flex items-center justify-between">
+                        <Skeleton className="h-3 w-20" />
+                        <Skeleton className="h-3 w-16" />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
