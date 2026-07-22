@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CalendarDays, CalendarCheck, Pencil } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useParallax } from "@/hooks/use-parallax";
 
 function CatalogContent() {
@@ -102,6 +103,14 @@ function CatalogContent() {
     fetchData();
   }, [urlStartDate, urlEndDate]);
   
+  // Best seller: top 5 equipment dengan rental_count tertinggi
+  const bestSellers = useMemo(() => {
+    return [...equipment]
+      .filter((item) => (item as any).rental_count > 0)
+      .sort((a, b) => ((b as any).rental_count || 0) - ((a as any).rental_count || 0))
+      .slice(0, 5);
+  }, [equipment]);
+
   // Logika Filter & Sortir yang sudah dioptimasi
   const filteredEquipment = useMemo(() => {
     let result = [...equipment];
@@ -350,50 +359,128 @@ function CatalogContent() {
           </aside>
 
           {/* Main Grid */}
-          <main className="flex-1">
+          <main className="flex-1 min-w-0">
             {/* Content Area */}
             {loading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-                {[...Array(8)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="bg-white rounded-xl border border-stone-200 overflow-hidden"
-                  >
-                    <Skeleton className="aspect-square w-full rounded-none" />
-                    <div className="p-4 space-y-3">
-                      <Skeleton className="h-3 w-1/3" />
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-5 w-1/2" />
-                      <div className="flex items-center justify-between">
-                        <Skeleton className="h-3 w-20" />
-                        <Skeleton className="h-3 w-16" />
+              <div className="space-y-8">
+                {/* Skeleton Best Seller */}
+                <div className="space-y-3">
+                  <Skeleton className="h-6 w-40" />
+                  <div className="flex gap-3 overflow-hidden">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="shrink-0 w-48 md:w-56 bg-white rounded-xl border border-stone-200 overflow-hidden">
+                        <Skeleton className="aspect-square w-full rounded-none" />
+                        <div className="p-3 space-y-2">
+                          <Skeleton className="h-3 w-2/3" />
+                          <Skeleton className="h-4 w-1/2" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Skeleton Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                  {[...Array(8)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="bg-white rounded-xl border border-stone-200 overflow-hidden"
+                    >
+                      <Skeleton className="aspect-square w-full rounded-none" />
+                      <div className="p-4 space-y-3">
+                        <Skeleton className="h-3 w-1/3" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-5 w-1/2" />
+                        <div className="flex items-center justify-between">
+                          <Skeleton className="h-3 w-20" />
+                          <Skeleton className="h-3 w-16" />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            ) : filteredEquipment.length > 0 ? (
-              <CatalogGrid equipment={filteredEquipment} dateQuery={dateQuery} />
             ) : (
-              <div className="bg-white rounded-3xl p-20 text-center border-2 border-dashed border-slate-200">
-                <div className="text-4xl mb-4">⛺</div>
-                <h3 className="font-bold text-slate-800 text-lg">
-                  Produk Tidak Ditemukan
-                </h3>
-                <p className="text-sm text-slate-500 mb-6">
-                  Coba gunakan kata kunci lain atau bersihkan filter.
-                </p>
-                <Button
-                  variant="outline"
-                  className="rounded-full border-[#1B4332] text-[#1B4332] hover:bg-[#1B4332] hover:text-white transition-all"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedCategory("all");
-                    setPriceRange([0, 1000000]);
-                  }}
-                >
-                  Reset Semua Filter
-                </Button>
+              <div className="space-y-8">
+                {/* Best Seller Section */}
+                {bestSellers.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <h2 className="text-lg font-bold text-stone-800">Best Seller</h2>
+                      <span className="text-xs text-stone-400 font-medium">
+                        Paling populer
+                      </span>
+                    </div>
+                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                      {bestSellers.map((product) => {
+                        const price = Number((product as any).price_per_night || 0);
+                        const rentalCount = Number((product as any).rental_count || 0);
+                        return (
+                          <Link
+                            key={product.id}
+                            href={`/product/${product.id}${dateQuery}`}
+                            className="group shrink-0 w-44 md:w-56 bg-white rounded-xl border border-stone-200 overflow-hidden hover:shadow-md transition-all"
+                          >
+                            <div className="relative aspect-square bg-stone-100">
+                              {(product as any).image_url ? (
+                                <Image
+                                  src={(product as any).image_url}
+                                  alt={product.name}
+                                  fill
+                                  sizes="200px"
+                                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                              ) : (
+                                <div className="flex h-full items-center justify-center text-stone-400 text-xs font-bold uppercase tracking-widest">
+                                  No Image
+                                </div>
+                              )}
+                            </div>
+                            <div className="p-3">
+                              <h3 className="text-sm font-semibold text-stone-800 line-clamp-2 mb-1 group-hover:text-forest transition-colors">
+                                {product.name}
+                              </h3>
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-bold text-forest">
+                                  Rp{price.toLocaleString("id-ID")}
+                                  <span className="text-[10px] text-stone-400 font-normal">/hari</span>
+                                </span>
+                                <span className="text-[10px] text-stone-400 font-medium">
+                                  {rentalCount}x
+                                </span>
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Main Catalog Grid */}
+                {filteredEquipment.length > 0 ? (
+                  <CatalogGrid equipment={filteredEquipment} dateQuery={dateQuery} />
+                ) : (
+                  <div className="bg-white rounded-3xl p-20 text-center border-2 border-dashed border-slate-200">
+                    <div className="text-4xl mb-4">⛺</div>
+                    <h3 className="font-bold text-slate-800 text-lg">
+                      Produk Tidak Ditemukan
+                    </h3>
+                    <p className="text-sm text-slate-500 mb-6">
+                      Coba gunakan kata kunci lain atau bersihkan filter.
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="rounded-full border-[#1B4332] text-[#1B4332] hover:bg-[#1B4332] hover:text-white transition-all"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setSelectedCategory("all");
+                        setPriceRange([0, 1000000]);
+                      }}
+                    >
+                      Reset Semua Filter
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </main>
