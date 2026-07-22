@@ -22,6 +22,38 @@ export async function GET() {
  * Midtrans akan POST ke endpoint ini saat status pembayaran berubah.
  * Wajib return 200 OK, atau Midtrans akan retry.
  */
+async function incrementRentalCount(bookingId: string) {
+  const { data: items, error } = await supabaseAdmin
+    .from('booking_items')
+    .select('equipment_id, quantity')
+    .eq('booking_id', bookingId)
+
+  if (error || !items) {
+    console.error('[webhook] Gagal ambil booking_items:', error?.message)
+    return
+  }
+
+  for (const item of items) {
+    const qty = item.quantity ?? 1
+
+    const { data: equip } = await supabaseAdmin
+      .from('equipment')
+      .select('rental_count')
+      .eq('id', item.equipment_id)
+      .single()
+
+    if (equip) {
+      const newCount = (equip.rental_count || 0) + qty
+      await supabaseAdmin
+        .from('equipment')
+        .update({ rental_count: newCount })
+        .eq('id', item.equipment_id)
+    }
+  }
+
+  console.log(`[webhook] rental_count ditambahkan untuk ${items.length} equipment`)
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -105,6 +137,8 @@ export async function POST(request: NextRequest) {
       .eq('midtrans_order_id', order_id)
       .single()
 
+    let bookingId: string | null = null
+
     if (!booking && fetchError) {
       console.warn('[webhook] Booking not found for order_id:', order_id, '- trying by id')
       const { data: byId } = await supabaseAdmin
@@ -114,16 +148,23 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (byId) {
+        bookingId = byId.id
         await supabaseAdmin
           .from('bookings')
           .update(updateData)
-          .eq('id', byId.id)
+          .eq('id', bookingId)
       }
-    } else {
+    } else if (booking) {
+      bookingId = booking.id
       await supabaseAdmin
         .from('bookings')
         .update(updateData)
-        .eq('midtrans_order_id', order_id)
+        .eq('id', bookingId)
+    }
+
+    // 4) Increment rental_count jika payment berhasil
+    if (bookingId && (transaction_status === 'capture' || transaction_status === 'settlement')) {
+      await incrementRentalCount(bookingId)
     }
 
     return NextResponse.json({ message: 'Webhook received and processed' }, { status: 200 })
