@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
     // 3) Update booking di database
     const updateData: Partial<Booking> = {
       payment_status: paymentStatus,
+      ...(payment_type ? { payment_method: payment_type } : {}),
     }
     if (bookingStatus) {
       updateData.status = bookingStatus
