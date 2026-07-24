@@ -193,7 +193,7 @@ function ProductCard({
                 </div>
                 <span className="font-semibold text-stone-700">{rating.toFixed(1)}</span>
               </div>
-              <span className="text-stone-400 text-nowrap text-[10px]">Tersewa {rentalCount}x</span>
+              <span className="text-stone-400 md:text-nowrap text-[10px]">Tersewa {rentalCount}x</span>
             </div>
           </div>
         </Card>

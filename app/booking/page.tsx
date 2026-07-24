@@ -8,53 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/booking/date-range-picker";
 import { calculateDaysBetween } from "@/lib/booking-utils";
-import { CheckCircle, ShieldCheck, Info, Loader2, MapPin, Calculator, AlertCircle } from "lucide-react";
+import { CheckCircle, Loader2, MapPin, Calculator, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import type { Database } from "@/types/supabase";
-import { insertRecord, insertRecordWithoutReturn } from "@/lib/supabase-helpers";
 import { leafletService, DeliveryCost } from "@/lib/leaflet-service";
-import { handleError, DatabaseError, NetworkError, ValidationError, safeAsync } from "@/lib/error-handler";
 import { LazyWrapper, LazyIDVerificationForm, LazyLocationPicker } from "@/components/lazy-components";
 import { OptimizedImage } from "@/components/optimized-image";
 
-// Function to create admin notification
-const createAdminNotification = async (bookingId: string, productName: string, userEmail: string | null, currentUser: User | null) => {
-  try {
-    console.log('Creating admin notification for booking:', bookingId);
-    
-    // Use current user ID for notification to avoid null constraint
-    // For admin notifications, we'll send to the current user or system
-    const notificationUserId = currentUser?.id || userEmail;
-    
-    if (!notificationUserId) {
-      console.log('Skipping notification - no user ID available');
-      return;
-    }
-    
-    const notificationData = {
-      user_id: notificationUserId,
-      booking_id: bookingId,
-      title: "Pesanan Baru",
-      message: `Pesanan baru untuk ${productName}${userEmail ? ` dari ${userEmail}` : ' (Guest User)'}`,
-      notification_type: "new_booking",
-      is_read: false
-    };
-
-    console.log('Notification data:', notificationData);
-
-    const { error } = await insertRecordWithoutReturn('notifications', notificationData);
-
-    if (error) {
-      console.error("Error creating admin notification:", error);
-      console.error("Error details:", JSON.stringify(error, null, 2));
-    } else {
-      console.log("Admin notification created successfully");
-    }
-  } catch (error) {
-    console.error("Error in createAdminNotification:", error);
-    console.error("Caught error details:", error instanceof Error ? error.message : error);
-  }
-};
 
 // Load Midtrans Snap script
 const loadMidtransScript = () => {
@@ -118,7 +78,7 @@ function BookingContent() {
     parseUrlDate(urlEndDate),
   );
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+
   const [idData, setIdData] = useState<any | null>(null);
   const [conditionData, setConditionData] =
     useState<ConditionChecklistData | null>(null);
@@ -260,13 +220,7 @@ function BookingContent() {
             phone: user.phone || ''
           });
 
-          // Jika tanggal dan condition sudah lengkap, langsung ke step pembayaran
-          if (startDate && endDate && conditionData) {
-            setStep(4);
-            toast.success('Data identitas Anda sebelumnya telah dimuat. Lanjut ke pembayaran.');
-          } else {
-            toast.success('Data identitas Anda sebelumnya telah dimuat.');
-          }
+          toast.success('Data identitas Anda sebelumnya telah dimuat.');
 
           console.log('Data identitas sebelumnya telah dimuat:', identityData);
         }
@@ -342,36 +296,34 @@ function BookingContent() {
           deposit_amount: deposit,
         };
 
-        // Save anonymous booking to database
-        const { data: newBooking, error: bookingError } = await insertRecord('bookings', anonymousOrderData);
+        // Save anonymous booking via server API — kirim semua item dari keranjang
+        const anonItems = (transaction?.items ?? []).map((item: any) => ({
+          equipment_id: item.id,
+          quantity: Number(item.quantity),
+          unit_price: Number(item.price),
+          subtotal: Number(item.price) * Number(item.quantity) * Number(days),
+        }));
 
-        if (bookingError) {
-          const error = handleError(bookingError);
-          toast.error(error.userMessage);
+        const anonRes = await fetch('/api/bookings/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderData: anonymousOrderData,
+            itemData: anonItems,
+            userEmail: null,
+          }),
+        });
+
+        const anonResult = await anonRes.json();
+        if (!anonRes.ok) {
+          console.error('Failed to create anonymous booking:', anonResult);
+          toast.error('Gagal menyimpan pesanan. Silakan coba lagi.');
           return;
         }
+
+        const newBooking = anonResult.data;
 
         console.log('Anonymous booking saved to database:', newBooking);
-
-        // Save booking items
-        const itemData = {
-          booking_id: newBooking.id,
-          equipment_id: productId,
-          quantity: Number(quantity),
-          unit_price: Number(pricePerNight),
-          subtotal: Number(subtotal),
-        };
-
-        const { error: itemError } = await insertRecordWithoutReturn('booking_items', itemData);
-
-        if (itemError) {
-          const error = handleError(itemError);
-          toast.error(error.userMessage);
-          return;
-        }
-
-        // Skip notification for anonymous users due to user_id constraint
-        console.log('Skipping notification for anonymous booking - no user_id available');
 
         // Log booking details for debugging
         console.log('=== ANONYMOUS BOOKING CREATED ===');
@@ -385,17 +337,11 @@ function BookingContent() {
 
 
         // Update transaction data with booking info
+        // Spread transaction dulu agar items dari keranjang tidak hilang
         setTransactionData({
-          items: [
-            {
-              id: product.id,
-              name: product.name,
-              price: Number(pricePerNight),
-              quantity: Number(quantity),
-              category: product.equipment_categories?.name || "Equipment",
-              image_url: product.image_url
-            }
-          ],
+          ...transaction,
+          items: transaction?.items ?? [],
+          orderId: newBooking.id,
           days: Number(days),
           duration: Number(days),
           totalPrice: Number(totalPrice),
@@ -448,37 +394,35 @@ Mohon konfirmasi pesanan saya ya!`;
         return;
       }
 
-      // For authenticated users, save to database
-      const { data: newBooking, error: bookingError } = await insertRecord('bookings', orderData);
+      // For authenticated users, save to database via server API — kirim semua item
+      const authItems = (transaction?.items ?? []).map((item: any) => ({
+        equipment_id: item.id,
+        quantity: Number(item.quantity),
+        unit_price: Number(item.price),
+        subtotal: Number(item.price) * Number(item.quantity) * Number(days),
+      }));
 
-      if (bookingError) throw bookingError;
+      const authRes = await fetch('/api/bookings/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderData,
+          itemData: authItems,
+          userEmail: user?.email || null,
+        }),
+      });
 
-      // 4. Persiapkan data untuk Tabel Booking_Items 
-      const itemData: Database['public']['Tables']['booking_items']['Insert'] = {
-        booking_id: newBooking.id,
-        equipment_id: productId,
-        quantity: Number(quantity),
-        unit_price: Number(pricePerNight),
-        subtotal: Number(subtotal),
-      };
+      const authResult = await authRes.json();
+      if (!authRes.ok) throw new Error(authResult.error || 'Failed to create booking');
 
-      const { error: itemError } = await insertRecordWithoutReturn('booking_items', itemData);
-
-      if (itemError) throw itemError;
-
-      // 6. Create notification for admin
-      await createAdminNotification(newBooking.id, product.name, user?.email || null, user);
+      const newBooking = authResult.data;
 
       // 5. Update Global State (Zustand)
+      // Spread transaction dulu agar items dari keranjang tidak hilang
       setTransactionData({
-        items: [{
-          id: product.id,
-          name: product.name,
-          price: Number(pricePerNight),
-          quantity: Number(quantity),
-          category: product.equipment_categories?.name || "Equipment",
-          image_url: product.image_url
-        }],
+        ...transaction,
+        items: transaction?.items ?? [],
+        orderId: newBooking.id,
         days: Number(days),
         duration: Number(days),
         totalPrice: Number(totalPrice),
@@ -626,7 +570,8 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
           name: product.name,
           price: Number(product.price_per_night),
           quantity: quantity,
-          category: "equipment"
+          category: product.equipment_categories?.name || "Equipment",
+          image_url: product.image_url
         }],
         duration: Number(days),
         days: Number(days),
@@ -642,7 +587,17 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
       console.log('Transaction Data:', transactionData);
 
       // Set transaction data to store for payment processing
-      useCartStore.getState().setTransaction(transactionData);
+      // Gabung dengan data yang sudah ada agar delivery, dates, items, dll tidak hilang
+      // Jangan timpa items — biarkan semua item dari keranjang tetap utuh
+      const existingTransaction = useCartStore.getState().currentTransaction;
+      useCartStore.getState().setTransaction({
+        ...existingTransaction,
+        items: existingTransaction?.items ?? [],
+        duration: Number(days),
+        days: Number(days),
+        totalPrice: Number(totalPrice),
+        payment: transactionData.payment,
+      });
 
       // Prepare Midtrans payload — harga dihitung ulang di server dari bookingId
       const midtransPayload = {
@@ -677,6 +632,14 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
         return;
       }
 
+      // Save Midtrans orderId ke store
+      if (result.orderId) {
+        const current = useCartStore.getState().currentTransaction;
+        if (current) {
+          useCartStore.getState().setTransaction({ ...current, orderId: result.orderId });
+        }
+      }
+
       // Load Midtrans Snap script
       await loadMidtransScript();
 
@@ -689,6 +652,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
           console.log('Using redirect URL:', result.redirect_url);
           window.open(result.redirect_url, '_blank');
           setIsProcessingPayment(false);
+          router.push('/order-confirmation');
         } else {
           console.log('Using Snap popup with token:', result.token);
           // Open Midtrans Snap popup
@@ -773,71 +737,23 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
 
   // ==================== MAIN RENDER ====================
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-24">
-      <div className="max-w-7xl mx-auto px-4 py-10">
-        <header className="mb-10">
-          <div className="flex items-center gap-2 mb-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">
-              Secure Checkout
-            </span>
-          </div>
-          <h1 className="text-3xl font-extrabold text-slate-900">
-            Selesaikan Pembayaran
+    <div className="min-h-screen bg-cream pb-24">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <header className="mb-6">
+          <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-forest">
+            Checkout
           </h1>
         </header>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column: Stepper */}
-          <div className="hidden lg:block lg:col-span-3 space-y-4 sticky top-30">
-            <div className="bg-white rounded-2xl p-4 border border-slate-200">
-              <h3 className="text-sm font-bold text-slate-900 mb-4">Langkah Pemesanan</h3>
-              <div className="space-y-4">
-                {[
-                  { id: 1, name: 'Jadwal Sewa', status: step >= 1 ? (step > 1 ? 'completed' : 'current') : 'upcoming' },
-                  { id: 2, name: 'Syarat & Kondisi', status: step >= 2 ? (step > 2 ? 'completed' : 'current') : 'upcoming' },
-                  { id: 3, name: 'Verifikasi Identitas', status: step >= 3 ? (step > 3 ? 'completed' : 'current') : 'upcoming' },
-                  { id: 4, name: 'Pembayaran', status: step >= 4 ? 'current' : 'upcoming' },
-                ].map((stepItem, index) => (
-                  <div key={stepItem.id} className="flex items-start gap-3">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 transition-all ${stepItem.status === 'completed'
-                        ? 'bg-emerald-600 text-white'
-                        : stepItem.status === 'current'
-                          ? 'bg-slate-900 text-white ring-2 ring-slate-900 ring-offset-2'
-                          : 'bg-slate-200 text-slate-400'
-                      }`}>
-                      {stepItem.status === 'completed' ? '✓' : stepItem.id}
-                    </div>
-                    <div className="flex-1">
-                      <span className={`text-xs font-medium ${stepItem.status === 'current'
-                          ? 'text-slate-900'
-                          : stepItem.status === 'completed'
-                            ? 'text-emerald-600'
-                            : 'text-slate-400'
-                        }`}>
-                        {stepItem.name}
-                      </span>
-                      {index < 3 && (
-                        <div className={`w-0.5 h-4 mt-1 ml-3 transition-all ${stepItem.status === 'completed' ? 'bg-emerald-600' : 'bg-slate-200'
-                          }`} />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Middle Column: Booking Steps */}
-          <div className="lg:col-span-6 space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
+          {/* Main Column: Booking Steps */}
+          <div className="lg:col-span-2 space-y-4">
             {/* Step 1: Jadwal Sewa */}
             <StepCard
               number={1}
               title="Jadwal Sewa"
-              active={step === 1}
               completed={!!(startDate && endDate)}
-              onEdit={() => setStep(1)}
             >
               <div className="space-y-6">
                 <DateRangePicker
@@ -938,7 +854,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                       {deliveryError && (
                         <div className="bg-red-50 border border-red-200 rounded-xl p-3">
                           <div className="flex items-start gap-2">
-                            <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                             <div>
                               <p className="text-xs text-red-800 font-medium">
                                 {deliveryError.includes('di luar jangkauan') || deliveryError.includes('area layanan')
@@ -1126,38 +1042,23 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                 </div>
               </div>
 
-              {startDate && endDate &&
-                ((deliveryOption === 'pickup') ||
-                  (deliveryOption === 'delivery' && deliveryAddress.trim() && deliveryCost && !deliveryError && !isCalculatingDelivery &&
-                    // Additional validation for special locations
-                    (specialLocationType === 'standard' ||
-                      (emergencyContact.name.trim() && emergencyContact.phone.trim()))
-                  )) && (
-                  <Button
-                    onClick={() => setStep(2)}
-                    className="w-full mt-6 bg-slate-900 h-12 rounded-xl font-bold"
-                  >
-                    Lanjutkan
-                  </Button>
-                )}
+              {!startDate && !endDate && (
+                <p className="text-xs text-stone-400 font-medium">Pilih tanggal sewa untuk melanjutkan</p>
+              )}
             </StepCard>
 
             {/* Step 2: Syarat & Kondisi */}
             <StepCard
               number={2}
               title="Syarat & Kondisi"
-              active={step === 2}
               completed={!!conditionData}
-              onEdit={() => setStep(2)}
               disabled={!startDate || !endDate}
             >
               <RentalConditionsChecklist
                 equipmentName={product.name}
                 onChecklistComplete={(data: ConditionChecklistData) => {
                   setConditionData(data);
-                  // Simpan condition data ke localStorage untuk digunakan di session berikutnya
                   localStorage.setItem('rentalConditions', JSON.stringify(data));
-                  setStep(3);
                 }}
               />
             </StepCard>
@@ -1166,18 +1067,14 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
             <StepCard
               number={3}
               title="Verifikasi Identitas"
-              active={step === 3}
               completed={!!idData}
-              onEdit={() => setStep(3)}
               disabled={!conditionData}
             >
               <LazyWrapper>
                 <LazyIDVerificationForm
                   onVerificationComplete={(data: any) => {
                     setIdData(data);
-                    setStep(4);
                   }}
-                  onEdit={() => setStep(3)}
                   disabled={!conditionData}
                 />
               </LazyWrapper>
@@ -1187,7 +1084,6 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
             <StepCard
               number={4}
               title="Metode Pembayaran"
-              active={step === 4}
               completed={false}
               disabled={!idData}
             >
@@ -1324,18 +1220,17 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
           </div>
 
           {/* Right Column: Order Summary */}
-          <aside className="order-first lg:order-none lg:col-span-3 lg:sticky lg:top-30">
-            <Card className="border-none shadow-sm ring-1 ring-slate-200 rounded-2xl overflow-hidden bg-white">
-              <div className="p-3.5 lg:p-5 border-b border-slate-50 flex items-center gap-2">
-                <Info className="w-4 h-4 text-slate-400" />
-                <h3 className="font-bold text-slate-800 text-sm">
+          <aside className="lg:col-span-1 lg:sticky lg:top-6">
+            <Card className="rounded-xl border border-stone-200 bg-white shadow-sm">
+              <div className="p-4 border-b border-stone-200">
+                <h3 className="font-black uppercase tracking-tight text-forest text-sm">
                   Ringkasan Sewa
                 </h3>
               </div>
-              <div className="p-3.5 lg:p-5 space-y-3 lg:space-y-4">
+              <div className="p-4 space-y-3">
                 {/* Display all items from transaction */}
                 {transaction?.items && transaction.items.length > 0 ? (
-                  <div className="space-y-2.5 lg:space-y-3 max-h-40 lg:max-h-60 overflow-y-auto">
+                  <div className="space-y-2.5 max-h-40 lg:max-h-60 overflow-y-auto">
                     {transaction.items.map((item: any, index: number) => (
                       <div key={`${item.id}-${index}`} className="flex gap-3 items-start">
                         <OptimizedImage
@@ -1347,19 +1242,19 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                             "/placeholder.svg"
                           }
                           alt={item.name || 'Produk'}
-                          className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg object-cover ring-1 ring-slate-100 flex-shrink-0 bg-slate-50"
+                          className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg object-cover ring-1 ring-stone-100 shrink-0 bg-stone-50"
                           width={48}
                           height={48}
                         />
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-xs font-bold text-slate-900 line-clamp-1">
+                          <h4 className="text-xs font-bold text-forest line-clamp-1">
                             {item.name}
                           </h4>
-                          <p className="text-[10px] text-slate-500">
+                          <p className="text-[10px] text-stone-500 font-medium">
                             {item.quantity} unit × Rp{item.price.toLocaleString('id-ID')}
                           </p>
                         </div>
-                        <p className="text-xs font-bold text-slate-900 flex-shrink-0">
+                        <p className="text-xs font-bold text-forest shrink-0">
                           Rp{(item.price * item.quantity).toLocaleString('id-ID')}
                         </p>
                       </div>
@@ -1371,44 +1266,44 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                     <OptimizedImage
                       src={product.image_url || '/placeholder.svg'}
                       alt={product.name || 'Produk'}
-                      className="w-14 h-14 rounded-xl object-cover ring-1 ring-slate-100 flex-shrink-0 bg-slate-50"
+                      className="w-14 h-14 rounded-xl object-cover ring-1 ring-stone-100 shrink-0 bg-stone-50"
                       width={56}
                       height={56}
                     />
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 line-clamp-1">
+                      <h4 className="text-sm font-bold text-forest line-clamp-1">
                         {product.name}
                       </h4>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">
+                      <p className="text-[10px] text-stone-500 font-bold uppercase tracking-tight">
                         {product.equipment_categories?.name}
                       </p>
                     </div>
                   </div>
                 )}
 
-                <div className="space-y-2 pt-3 lg:pt-4 border-t border-slate-50">
+                <div className="space-y-2 pt-3 border-t border-stone-200">
                   {days > 0 ? (
                     <>
                       <div className="flex justify-between text-xs font-medium">
-                        <span className="text-slate-500">
+                        <span className="text-stone-500">
                           {days} hari x {transaction?.items?.length || quantity} Item
                         </span>
-                        <span className="text-slate-900">
+                        <span className="text-forest font-bold">
                           Rp{subtotal.toLocaleString("id-ID")}
                         </span>
                       </div>
 
-                      <div className="flex justify-between items-end pt-2 lg:pt-4">
-                        <span className="font-bold text-slate-900 text-sm">
+                      <div className="flex justify-between items-end pt-2">
+                        <span className="font-bold text-forest text-sm">
                           Total
                         </span>
-                        <span className="font-extrabold text-emerald-700 text-lg lg:text-xl tracking-tight">
+                        <span className="font-black text-forest text-lg tracking-tight">
                           Rp{totalPrice.toLocaleString("id-ID")}
                         </span>
                       </div>
                     </>
                   ) : (
-                    <div className="text-center text-xs text-slate-500 py-2">
+                    <div className="text-center text-xs text-stone-500 py-2 font-medium">
                       Pilih tanggal sewa untuk melihat total harga
                     </div>
                   )}
@@ -1416,42 +1311,42 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
 
                 {/* Delivery Cost Breakdown */}
                 {deliveryCost && (
-                  <div className={`${deliveryCost.locationType !== 'standard' ? 'bg-orange-50 border-orange-200' : 'bg-emerald-50 border-emerald-200'} border rounded-xl p-3 mt-4`}>
+                  <div className="bg-stone-50 border border-stone-200 rounded-xl p-3 mt-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <MapPin className={`w-4 h-4 ${deliveryCost.locationType !== 'standard' ? 'text-orange-600' : 'text-emerald-600'}`} />
-                      <span className={`text-sm font-medium ${deliveryCost.locationType !== 'standard' ? 'text-orange-900' : 'text-emerald-900'}`}>
+                      <MapPin className="w-4 h-4 text-forest" />
+                      <span className="text-sm font-bold text-forest">
                         Detail Pengantaran
                         {deliveryCost.locationType !== 'standard' && (
-                          <span className="ml-2 text-xs px-2 py-1 bg-orange-200 text-orange-800 rounded-full">
-                            {deliveryCost.locationType === 'camping' ? '🏕️ Camping' :
-                              deliveryCost.locationType === 'outdoor' ? '🎪 Outdoor Event' :
-                                deliveryCost.locationType === 'remote' ? '🏔️ Remote' :
-                                  deliveryCost.locationType === 'emergency' ? '🚨 Emergency' : 'Special'}
+                          <span className="ml-2 text-xs px-2 py-0.5 bg-gold text-white rounded-full font-bold">
+                            {deliveryCost.locationType === 'camping' ? 'Camping' :
+                              deliveryCost.locationType === 'outdoor' ? 'Outdoor Event' :
+                                deliveryCost.locationType === 'remote' ? 'Remote' :
+                                  deliveryCost.locationType === 'emergency' ? 'Emergency' : 'Special'}
                           </span>
                         )}
                       </span>
                     </div>
                     <div className="space-y-1 text-xs">
-                      <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
-                        <span>Jarak:</span>
-                        <span className="font-medium">{deliveryCost.distance} km</span>
+                      <div className="flex justify-between text-stone-600 font-medium">
+                        <span>Jarak</span>
+                        <span className="font-bold text-forest">{deliveryCost.distance} km</span>
                       </div>
-                      <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
-                        <span>Estimasi waktu:</span>
-                        <span className="font-medium">{deliveryCost.duration}</span>
+                      <div className="flex justify-between text-stone-600 font-medium">
+                        <span>Estimasi waktu</span>
+                        <span className="font-bold text-forest">{deliveryCost.duration}</span>
                       </div>
-                      <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
-                        <span>Biaya dasar:</span>
-                        <span className="font-medium">{leafletService.formatCost(deliveryCost.breakdown.baseCost)}</span>
+                      <div className="flex justify-between text-stone-600 font-medium">
+                        <span>Biaya dasar</span>
+                        <span className="font-bold text-forest">{leafletService.formatCost(deliveryCost.breakdown.baseCost)}</span>
                       </div>
-                      <div className={`flex justify-between ${deliveryCost.locationType !== 'standard' ? 'text-orange-800' : 'text-emerald-800'}`}>
-                        <span>Biaya jarak ({deliveryCost.distance} km × Rp2.000):</span>
-                        <span className="font-medium">{leafletService.formatCost(deliveryCost.breakdown.distanceCost)}</span>
+                      <div className="flex justify-between text-stone-600 font-medium">
+                        <span>Biaya jarak</span>
+                        <span className="font-bold text-forest">{leafletService.formatCost(deliveryCost.breakdown.distanceCost)}</span>
                       </div>
                       {deliveryCost.locationType !== 'standard' && deliveryCost.locationType && (
-                        <div className="flex justify-between text-orange-800">
-                          <span>Tambahan lokasi khusus:</span>
-                          <span className="font-medium">
+                        <div className="flex justify-between font-bold text-forest">
+                          <span>Tambahan lokasi khusus</span>
+                          <span>
                             {deliveryCost.locationType === 'camping' ? '+25%' :
                               deliveryCost.locationType === 'outdoor' ? '+20%' :
                                 deliveryCost.locationType === 'remote' ? '+35%' :
@@ -1460,18 +1355,14 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                         </div>
                       )}
                       {deliveryCost.specialNotes && (
-                        <div className={`text-xs ${deliveryCost.locationType !== 'standard' ? 'text-orange-700 bg-orange-100' : 'text-emerald-700 bg-emerald-100'} p-2 rounded-lg mt-2`}>
-                          <span className="font-medium">📍 {deliveryCost.specialNotes}</span>
+                        <div className="text-xs text-stone-500 font-medium bg-white p-2 rounded-lg mt-2 border border-stone-200">
+                          {deliveryCost.specialNotes}
                         </div>
                       )}
-                      <div className={`border-t ${deliveryCost.locationType !== 'standard' ? 'border-orange-300' : 'border-emerald-300'} pt-1 mt-1`}>
-                        <div className="flex justify-between font-bold">
-                          <span className={deliveryCost.locationType !== 'standard' ? 'text-orange-900' : 'text-emerald-900'}>
-                            Total biaya pengantaran:
-                          </span>
-                          <span className={deliveryCost.locationType !== 'standard' ? 'text-orange-900' : 'text-emerald-900'}>
-                            {leafletService.formatCost(deliveryCost.cost)}
-                          </span>
+                      <div className="border-t border-stone-200 pt-1 mt-1">
+                        <div className="flex justify-between font-bold text-forest">
+                          <span>Total biaya pengantaran</span>
+                          <span>{leafletService.formatCost(deliveryCost.cost)}</span>
                         </div>
                       </div>
                     </div>
@@ -1490,33 +1381,29 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
 function StepCard({
   number,
   title,
-  active,
   completed,
-  onEdit,
   children,
   disabled,
 }: any) {
   return (
-    <div
-      className={`p-6 rounded-2xl transition-all border ${active ? "bg-white border-slate-200 shadow-sm" : "bg-transparent border-transparent opacity-50"} ${disabled ? "grayscale" : ""}`}
-    >
-      <div className="flex items-center gap-4 mb-4">
-        <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${completed ? "bg-emerald-600 text-white" : active ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-500"}`}
-        >
-          {completed ? <CheckCircle className="w-5 h-5" /> : number}
-        </div>
-        <h3 className="font-bold text-slate-800 text-base">{title}</h3>
-        {completed && !active && (
-          <button
-            onClick={onEdit}
-            className="ml-auto text-xs font-bold text-emerald-600"
+    <div className="rounded-xl border border-stone-200 bg-white shadow-sm">
+      <div className="p-4 sm:p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div
+            className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${completed ? "bg-forest text-white" : "bg-stone-200 text-stone-500"}`}
           >
-            Ubah
-          </button>
+            {completed ? <CheckCircle className="w-4 h-4" /> : number}
+          </div>
+          <h3 className="font-bold text-forest text-sm">{title}</h3>
+        </div>
+        {disabled ? (
+          <div className="pl-10 text-xs text-stone-400 font-medium italic">
+            Lengkapi bagian sebelumnya terlebih dahulu
+          </div>
+        ) : (
+          <div className="pl-10">{children}</div>
         )}
       </div>
-      {active && <div className="pl-0 sm:pl-12">{children}</div>}
     </div>
   );
 }

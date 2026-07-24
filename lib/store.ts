@@ -51,6 +51,7 @@ interface TransactionData {
   items: any[];
   duration: number;
   days: number;
+  orderId?: string;
   payment: {
     method: string;
     bank?: string;

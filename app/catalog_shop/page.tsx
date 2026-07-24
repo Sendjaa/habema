@@ -132,7 +132,7 @@ export function ShopContent() {
 
       {/* HERO BANNER — modern dengan gradient halus dan animasi */}
       <section className="relative overflow-hidden bg-forest py-12 md:py-20">
-        <div className="absolute inset-0 bg-gradient-to-br from-forest/90 via-forest-light/60 to-gold/20" />
+        <div className="absolute inset-0 bg-linear-to-br from-forest/90 via-forest-light/60 to-gold/20" />
         <div
           className="absolute inset-0 w-full h-full scale-100 pointer-events-none will-change-transform"
           style={{ transform: `translate3d(0, ${scrollY * 0.2}px, 0)` }}
@@ -248,7 +248,7 @@ export function ShopContent() {
                       whileHover={{ scale: 1.02 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <Skeleton className="aspect-[3/4] w-full rounded-none animate-pulse" />
+                      <Skeleton className="aspect-3/4 w-full rounded-none animate-pulse" />
                       <div className="p-4 space-y-2">
                         <Skeleton className="h-3 w-1/3 animate-pulse" />
                         <Skeleton className="h-4 w-3/4 animate-pulse" />

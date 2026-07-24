@@ -10,11 +10,14 @@ const isProduction = process.env.MIDTRANS_PRODUCTION === 'true'
 // Mock pembayaran HANYA boleh aktif di non-produksi dan dengan flag eksplisit.
 const allowMock = !isProduction && process.env.MIDTRANS_ALLOW_MOCK === 'true'
 
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+
+    // Gunakan host dari request agar callback URL sesuai lingkungan saat ini
+    const proto = request.headers.get('x-forwarded-proto') || 'http'
+    const host = request.headers.get('host') || 'localhost:3000'
+    const baseUrl = `${proto}://${host}`
     const { bookingId, customerDetails } = body
 
     if (!bookingId) {
@@ -132,7 +135,6 @@ export async function POST(request: NextRequest) {
     const orderId = generateOrderId()
     const { error: updateError } = await supabaseAdmin
       .from('bookings')
-      // @ts-expect-error kolom midtrans_order_id ditambahkan via migrasi SQL
       .update({ midtrans_order_id: orderId, payment_status: 'pending' })
       .eq('id', bookingId)
 

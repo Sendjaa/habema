@@ -61,62 +61,28 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
     }
   };
 
-  // Function to insert or update identity data to Supabase
+  // Function to insert or update identity data via server API
   const upsertIdentityToSupabase = async (identityData: any) => {
-    try {
-      console.log('Upserting identity data:', identityData);
-      
-      // First check if identity already exists
-      const { data: existingIdentity } = await checkExistingIdentity(identityData.user_id);
-      
-      let result;
-      if (existingIdentity) {
-        // Update existing identity
-        console.log('Updating existing identity for user:', identityData.user_id);
-        const { data, error } = await supabase
-          .from('user_identity')
-          .update({
-            id_type: identityData.idType,
-            id_number: identityData.idNumber,
-            id_photo_url: identityData.photoUrl,
-            verification_status: 'pending',
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', identityData.user_id)
-          .select()
-          .single();
-        
-        result = { data, error };
-      } else {
-        // Insert new identity
-        console.log('Inserting new identity for user:', identityData.user_id);
-        const { data, error } = await supabase
-          .from('user_identity')
-          .insert({
-            user_id: identityData.user_id,
-            id_type: identityData.idType,
-            id_number: identityData.idNumber,
-            id_photo_url: identityData.photoUrl,
-            verification_status: 'pending'
-          })
-          .select()
-          .single();
-        
-        result = { data, error };
-      }
-      
-      console.log('Supabase response:', result);
-      
-      if (result.error) {
-        console.error('Supabase error details:', JSON.stringify(result.error, null, 2));
-        throw result.error;
-      }
-      
-      return result.data;
-    } catch (error) {
-      console.error('Error upserting identity details:', JSON.stringify(error, null, 2));
-      throw error;
+    const res = await fetch('/api/identity/upsert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: identityData.user_id,
+        idType: identityData.idType,
+        idNumber: identityData.idNumber,
+        photoUrl: identityData.photoUrl,
+        fullName: identityData.fullName,
+        validationResults: identityData.validationResults,
+      }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      console.error('Supabase error details:', JSON.stringify(json));
+      throw new Error(json.error || 'Failed to save identity');
     }
+
+    return json.data;
   };
 
   // Load existing identity from database if user is authenticated
@@ -345,34 +311,10 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
         try {
           await upsertIdentityToSupabase({
             ...data,
-            user_id: user.id
+            user_id: user.id,
+            fullName,
+            validationResults
           });
-          
-          // Trigger admin notification for ID verification
-          try {
-            await supabase
-              .from("notifications")
-              .insert({
-                user_id: null, // System notification (no specific user)
-                title: "Verifikasi ID Baru",
-                message: `User ${user.email} telah mengupload identitas ${idType.toUpperCase()} dengan nomor ${idNumber}. Status: ${validationResults.authenticity === 'authentic' ? 'Valid' : 'Perlu Dicek'}. Confidence: ${Math.round(validationResults.confidence * 100)}%`,
-                notification_type: "id_verification",
-                is_read: false,
-                metadata: {
-                  user_email: user.email,
-                  id_type: idType,
-                  id_number: idNumber,
-                  full_name: fullName,
-                  verification_status: validationResults.authenticity,
-                  confidence: validationResults.confidence,
-                  issues: validationResults.issues
-                }
-              });
-            console.log('Admin notification created for ID verification');
-          } catch (notifError) {
-            console.error('Error creating admin notification:', notifError);
-            // Continue even if notification fails
-          }
           
           toast.success("Identitas berhasil disimpan dan diverifikasi");
         } catch (supabaseError) {

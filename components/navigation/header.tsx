@@ -390,6 +390,13 @@ export function Header() {
           : "bg-[#F2EDE4] border-b border-transparent"
       }`}
     >
+      <div
+        className={`fixed inset-0 bg-black/20 transition-opacity duration-150 ${
+          isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setIsOpen(false)}
+      />
+
       <nav className="max-w-7xl mx-auto px-4 lg:px-8">
         <div className="flex justify-between items-center h-16 md:h-20 gap-4">
           {/* 1. Logo */}
@@ -457,16 +464,6 @@ export function Header() {
             <AnimatePresence>
               {isOpen && (
                 <>
-                  {/* Overlay */}
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="fixed inset-0 bg-black/20 z-40"
-                    onClick={() => setIsOpen(false)}
-                  />
-
                   {/* Search Results Modal */}
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}

@@ -65,7 +65,7 @@ export default function CartPage() {
           <h1 className="text-2xl font-bold text-forest mb-2">Keranjang Kosong</h1>
           <p className="text-muted-foreground mb-6">Belum ada item di keranjang Anda.</p>
           <Button className="w-full bg-[#1B4332] text-white font-bold py-6 rounded-xl" asChild>
-            <Link href="/catalog"><ArrowLeft className="w-4 h-4 mr-2" /> Kembali ke Katalog</Link>
+            <Link href="/catalog_rental"><ArrowLeft className="w-4 h-4 mr-2" /> Kembali ke Katalog</Link>
           </Button>
         </Card>
       </div>

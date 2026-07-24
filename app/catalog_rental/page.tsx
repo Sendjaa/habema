@@ -405,7 +405,7 @@ function CatalogContent() {
                 {bestSellers.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-3">
-                      <h2 className="text-lg font-bold text-stone-800">Best Seller</h2>
+                      <h1 className="text-lg font-bold text-stone-800">Paling Banyak di Sewa</h1>
                       <span className="text-xs text-stone-400 font-medium">
                         Paling populer
                       </span>
@@ -454,7 +454,9 @@ function CatalogContent() {
                       })}
                     </div>
                   </div>
+                
                 )}
+
 
                 {/* Main Catalog Grid */}
                 {filteredEquipment.length > 0 ? (

@@ -126,7 +126,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/favicon-habema-32x32.ico', sizes: '32x32', type: 'image/x-icon' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon-habema-32x32.ico', type: 'image/svg+xml' },
     ],
     shortcut: '/favicon-habema-32x32.ico',
   },
