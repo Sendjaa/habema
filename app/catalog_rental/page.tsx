@@ -27,7 +27,6 @@ function CatalogContent() {
   const [loading, setLoading] = useState(true);
   
   const [selectedCategory, setSelectedCategory] = useState<string | "all">("all");
-  const [searchQuery, setSearchQuery] = useState("");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
   const [sortBy, setSortBy] = useState<"name" | "price-low" | "price-high" | "rating">("name");
   
@@ -115,28 +114,18 @@ function CatalogContent() {
   const filteredEquipment = useMemo(() => {
     let result = [...equipment];
   
-    // 1. Filter Search
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (item) =>
-          item.name.toLowerCase().includes(query) ||
-          (item.description && item.description.toLowerCase().includes(query)),
-      );
-    }
-  
-    // 2. Filter Kategori (Strict String Comparison)
+    // 1. Filter Kategori (Strict String Comparison)
     if (selectedCategory !== "all") {
       result = result.filter((item) => item.category_id === selectedCategory);
     }
   
-    // 3. Filter Harga
+    // 2. Filter Harga
     result = result.filter(
       (item) =>
         item.dailyPrice >= priceRange[0] && item.dailyPrice <= priceRange[1],
     );
   
-    // 4. Sortir
+    // 3. Sortir
     switch (sortBy) {
       case "price-low":
         result.sort((a, b) => a.dailyPrice - b.dailyPrice);
@@ -154,7 +143,7 @@ function CatalogContent() {
     }
   
     return result;
-  }, [equipment, selectedCategory, searchQuery, priceRange, sortBy]);
+  }, [equipment, selectedCategory, priceRange, sortBy]);
   
   // mengubah tanggal dan klik update/cari katalog
   const handleUpdateFilter = (e: React.FormEvent<HTMLFormElement>) => {
@@ -348,8 +337,7 @@ function CatalogContent() {
                 dbCategories={dbCategories}
                 selectedCategory={selectedCategory}
                 onCategoryChange={setSelectedCategory}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
+                hideSearch
                 priceRange={priceRange}
                 onPriceRangeChange={setPriceRange}
                 sortBy={sortBy}
@@ -468,13 +456,12 @@ function CatalogContent() {
                       Produk Tidak Ditemukan
                     </h3>
                     <p className="text-sm text-slate-500 mb-6">
-                      Coba gunakan kata kunci lain atau bersihkan filter.
+                      Coba bersihkan filter atau ubah kategori yang dipilih.
                     </p>
                     <Button
                       variant="outline"
                       className="rounded-full border-[#1B4332] text-[#1B4332] hover:bg-[#1B4332] hover:text-white transition-all"
                       onClick={() => {
-                        setSearchQuery("");
                         setSelectedCategory("all");
                         setPriceRange([0, 1000000]);
                       }}

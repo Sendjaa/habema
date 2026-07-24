@@ -4,8 +4,7 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Search, X, SlidersHorizontal, ArrowLeft } from 'lucide-react'
-import Link from 'next/link'
+import { Search, X, SlidersHorizontal } from 'lucide-react'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,6 +18,7 @@ import {
 export function CatalogFilters({
   dbCategories = [],
   hideCategory = false,
+  hideSearch = false,
   selectedCategory,
   onCategoryChange,
   searchQuery,
@@ -103,32 +103,22 @@ export function CatalogFilters({
     <div className="flex flex-col gap-4">
       {/* Search Bar Row */}
       <div className="flex items-center gap-2">
-        {/* Tombol Back ke Home */}
-        <Link href="/">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8 md:h-11 md:w-11 rounded-md md:rounded-xl bg-white border border-stone-200 shadow-xs md:shadow-sm text-stone-600 hover:text-[#2D5016]"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-        </Link>
-
-        {/* Search Input Container */}
-        <div className="relative group flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 group-focus-within:text-[#2D5016] hover:text-[#2D5016]" />
-          <Input 
-            placeholder="Cari perlengkapan..." 
-            value={searchQuery} 
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10 pr-10 rounded-md md:rounded-xl lg:rounded-xl border-stone-200 focus-visible:ring-[#2D5016] placeholder:text-[#2D5016] bg-white h-8 md:h-11 text-xs md:text-sm lg:text-sm shadow-sm w-full"
-          />
-          {searchQuery && (
-            <button onClick={() => onSearchChange('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-stone-100 rounded-full transition-colors">
-              <X className="w-3 h-3 text-stone-400" />
-            </button>
-          )}
-        </div>
+        {!hideSearch && (
+          <div className="relative group flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 group-focus-within:text-[#2D5016] hover:text-[#2D5016]" />
+            <Input 
+              placeholder="Cari perlengkapan..." 
+              value={searchQuery} 
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="pl-10 pr-10 rounded-md md:rounded-xl lg:rounded-xl border-stone-200 focus-visible:ring-[#2D5016] placeholder:text-[#2D5016] bg-white h-8 md:h-11 text-xs md:text-sm lg:text-sm shadow-sm w-full"
+            />
+            {searchQuery && (
+              <button onClick={() => onSearchChange('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-stone-100 rounded-full transition-colors">
+                <X className="w-3 h-3 text-stone-400" />
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Tombol Filter Mobile */}
         <div className="md:hidden">
