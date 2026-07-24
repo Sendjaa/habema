@@ -133,7 +133,7 @@ export function AudienceSplitter() {
             </motion.div>
 
             <div
-              className={`absolute inset-0 bg-gradient-to-br ${p.gradient} opacity-50 z-10`}
+              className={`absolute inset-0 bg-linear-to-br ${p.gradient} opacity-50 z-10`}
             />
 
             <div

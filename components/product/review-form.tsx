@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabaseClient";
-import type { Database } from "@/types/supabase";
+import { LoginModal } from "@/components/auth/login-modal";
 
 interface ReviewFormProps {
   equipmentId: string;
@@ -18,6 +18,7 @@ export function ReviewForm({ equipmentId, onReviewSubmitted }: ReviewFormProps) 
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,15 +33,16 @@ export function ReviewForm({ equipmentId, onReviewSubmitted }: ReviewFormProps) 
       return;
     }
 
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+
     setSubmitting(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        toast.error("Anda harus login untuk memberikan review");
-        return;
-      }
 
       // Check if user exists in users table
       const { data: userRecord, error: userError } = await supabase
@@ -144,6 +146,10 @@ export function ReviewForm({ equipmentId, onReviewSubmitted }: ReviewFormProps) 
       >
         {submitting ? "Mengirim..." : "Kirim Review"}
       </Button>
+      <LoginModal
+        open={showLoginModal}
+        onOpenChange={setShowLoginModal}
+      />
     </form>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 // ==================== IMPORTS ====================
-import { useState, Suspense, useEffect, lazy } from "react";
+import { useState, Suspense, useEffect, lazy, useRef } from "react";
 import type { User } from "@supabase/supabase-js";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { DateRangePicker } from "@/components/booking/date-range-picker";
 import { calculateDaysBetween } from "@/lib/booking-utils";
 import { CheckCircle, Loader2, MapPin, Calculator, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { LoginModal } from "@/components/auth/login-modal";
 import type { Database } from "@/types/supabase";
 import { leafletService, DeliveryCost } from "@/lib/leaflet-service";
 import { LazyWrapper, LazyIDVerificationForm, LazyLocationPicker } from "@/components/lazy-components";
@@ -86,6 +87,9 @@ function BookingContent() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const skipAuthCheck = useRef(false);
 
   // Pickup/Delivery options
   const [deliveryOption, setDeliveryOption] = useState<'pickup' | 'delivery'>('pickup');
@@ -276,6 +280,12 @@ function BookingContent() {
         subtotal: subtotal,
         deposit_amount: deposit,
       };
+
+      // Show login modal for anonymous users before proceeding
+      if (!user && !skipAuthCheck.current) {
+        setShowLoginModal(true);
+        return;
+      }
 
       // For anonymous users, save to database with null user_id
       if (!user) {
@@ -1373,6 +1383,16 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
           </aside>
         </div>
       </div>
+      <LoginModal
+        open={showLoginModal}
+        onOpenChange={(open) => {
+          setShowLoginModal(open);
+          if (!open) {
+            skipAuthCheck.current = true;
+            setTimeout(() => handleFinalAction(), 0);
+          }
+        }}
+      />
     </div>
   );
 }

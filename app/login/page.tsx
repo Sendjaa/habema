@@ -8,20 +8,20 @@ type Mode = 'login' | 'register' | 'forgot' | 'reset'
 
 const COPY = {
   login: {
-    title: 'Halo, Petualang!',
-    sub: 'Siap untuk perjalanan berikutnya? Masuk ke akunmu.',
+    title: 'Dapatkan Harga Spesial!',
+    sub: 'Nikmati diskon 10-50% untuk pendaftar baru. Masuk dan hemat setiap petualanganmu.',
     cta: 'Masuk',
     switch: { text: 'Belum punya akun?', label: 'Daftar sekarang', mode: 'register' as Mode },
   },
   register: {
-    title: 'Mulai Petualanganmu',
-    sub: 'Buat akun dan temukan perlengkapan terbaik untukmu.',
+    title: 'Klaim Diskon 10-50%',
+    sub: 'Daftar sekarang dan nikmati penawaran spesial untuk penyewaan perlengkapan pertamamu.',
     cta: 'Buat Akun',
     switch: { text: 'Sudah punya akun?', label: 'Masuk di sini', mode: 'login' as Mode },
   },
   forgot: {
     title: 'Lupa Password?',
-    sub: 'Masukkan email mu dan kami akan mengirimkan link reset.',
+    sub: 'Tenang, kami kirim link reset ke emailmu. Jangan khawatir, diskon 10-50% tetap bisa kamu klaim setelah masuk.',
     cta: 'Kirim Link Reset',
     switch: { text: 'Ingat passwordmu?', label: 'Kembali ke login', mode: 'login' as Mode },
   },

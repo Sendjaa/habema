@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Check, Copy, Tag, Sparkles } from "lucide-react";
+import { Check, Copy, Tag, Sparkles, ArrowRight } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+import { LoginModal } from "@/components/auth/login-modal";
+import { Button } from "@/components/ui/button";
 
 /* ─── TYPES ─────────────────────────────────────── */
 type Promo = {
@@ -133,12 +136,21 @@ function useInView(threshold = 0.12) {
 function PromoCard({ promo, index }: { promo: Promo; index: number }) {
   const { ref, visible } = useInView();
   const [copied, setCopied] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [showLogin, setShowLogin] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data?.user ?? null));
+  }, []);
 
   const handleCopy = async () => {
+    if (!user) {
+      setShowLogin(true);
+      return;
+    }
     try {
       await navigator.clipboard.writeText(promo.code);
     } catch {
-      // Fallback bila Clipboard API tidak tersedia (mis. konteks non-secure)
       const ta = document.createElement("textarea");
       ta.value = promo.code;
       ta.style.position = "fixed";
@@ -181,7 +193,6 @@ function PromoCard({ promo, index }: { promo: Promo; index: number }) {
             </span>
             <h3
               className="text-lg font-black text-stone-900 leading-snug"
-              style={{ fontFamily: "'Fraunces', serif" }}
             >
               {promo.title}
             </h3>
@@ -254,6 +265,10 @@ function PromoCard({ promo, index }: { promo: Promo; index: number }) {
             </button>
           </div>
         </div>
+        <LoginModal
+          open={showLogin}
+          onOpenChange={setShowLogin}
+        />
       </div>
     </div>
   );
@@ -264,21 +279,14 @@ export default function HabemaPromo() {
   const titleRef = useInView(0.1);
 
   return (
-    <div
-      className="min-h-screen bg-[#f9f7f4]"
-      style={{ fontFamily: "'DM Sans', sans-serif" }}
-    >
+    <div className="min-h-screen bg-background">
       <style>{`
         * { box-sizing: border-box; }
-        body { margin: 0; background: #f9f7f4; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #f9f7f4; }
-        ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 99px; }
       `}</style>
 
       {/* HERO */}
       <section className="relative overflow-hidden bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-950 pt-28 pb-16 md:pt-32 md:pb-20">
-        <div className="absolute inset-0 opacity-[0.06] pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] bg-size-[18px_18px]" />
+        <div className="absolute inset-0 opacity-[0.06] pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] bg-[length:18px_18px]" />
         <div className="max-w-6xl mx-auto px-4 md:px-8 relative text-center">
           <span className="inline-flex items-center gap-2 text-xs font-bold tracking-widest text-amber-300 uppercase mb-4">
             <Sparkles className="w-4 h-4" />
@@ -286,14 +294,13 @@ export default function HabemaPromo() {
           </span>
           <h1
             className="text-4xl md:text-6xl font-black text-white leading-tight mb-4"
-            style={{ fontFamily: "'Fraunces', serif" }}
           >
-            Klaim Promo di{" "}
+            Diskuy 10-50% di{" "}
             <span className="italic text-amber-300">Habema</span>
           </h1>
           <p className="text-emerald-100/80 text-sm md:text-base max-w-xl mx-auto leading-relaxed">
-            Salin kode promo di bawah ini dan gunakan saat booking atau
-            penyewaan untuk mendapatkan potongan harga terbaik.
+            Login atau daftar dulu, salin kode promo, dan gunakan saat booking
+            untuk nikmati potongan harga terbaik.
           </p>
         </div>
       </section>
@@ -314,7 +321,6 @@ export default function HabemaPromo() {
           </p>
           <h2
             className="text-3xl md:text-4xl font-black text-stone-900 leading-tight"
-            style={{ fontFamily: "'Fraunces', serif" }}
           >
             Pilih & Salin Kodenya
           </h2>
@@ -330,7 +336,6 @@ export default function HabemaPromo() {
         <div className="mt-16 rounded-[32px] bg-white border border-stone-100 shadow-sm px-8 md:px-12 py-10 text-center">
           <h3
             className="text-2xl md:text-3xl font-black text-stone-900 leading-snug mb-3"
-            style={{ fontFamily: "'Fraunces', serif" }}
           >
             Ada pertanyaan soal promo?
           </h3>
@@ -342,9 +347,9 @@ export default function HabemaPromo() {
             href="https://wa.me/6283898749357?text=Halo%20Habema%2C%20saya%20mau%20tanya%20soal%20promo"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block px-7 py-3.5 rounded-2xl font-bold text-sm bg-emerald-600 hover:bg-emerald-700 text-white transition-all duration-300 shadow-lg"
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl font-bold text-sm bg-emerald-600 hover:bg-emerald-700 text-white transition-all duration-300 shadow-lg"
           >
-            💬 Tanya via WhatsApp
+            Tanya via WhatsApp
           </a>
         </div>
       </main>

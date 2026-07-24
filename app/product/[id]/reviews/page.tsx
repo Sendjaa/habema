@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Star, ArrowLeft, MessageSquare, MessageCircle, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabaseClient";
+import { LoginModal } from "@/components/auth/login-modal";
 import { ReviewForm } from "@/components/product/review-form";
 
 // Function to calculate rating from reviews (excluding replies)
@@ -74,6 +75,7 @@ export default function ReviewsPage() {
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyText, setReplyText] = useState("");
   const [submittingReply, setSubmittingReply] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>("Semua");
 
   const reviewFilters = ["Semua", "Dengan Foto", "Bintang 5", "Bintang 4"];
@@ -119,7 +121,7 @@ export default function ReviewsPage() {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
-        toast.error("Anda harus login untuk membalas review");
+        setShowLoginModal(true);
         return;
       }
 
@@ -551,6 +553,10 @@ export default function ReviewsPage() {
           )}
         </Card>
       </div>
+      <LoginModal
+        open={showLoginModal}
+        onOpenChange={setShowLoginModal}
+      />
     </div>
   );
 }

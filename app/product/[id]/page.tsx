@@ -29,6 +29,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { LoginModal } from "@/components/auth/login-modal";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/store";
 import { toast } from "sonner";
@@ -63,7 +64,7 @@ export default function ProductDetailPage({
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyText, setReplyText] = useState("");
   const [submittingReply, setSubmittingReply] = useState(false);
-  // const [likedReviews, setLikedReviews] = useState<number[]>([]);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<string>("Semua");
 
@@ -116,7 +117,7 @@ export default function ProductDetailPage({
       } = await supabase.auth.getUser();
 
       if (!user) {
-        toast.error("Anda harus login untuk membalas review");
+        setShowLoginModal(true);
         return;
       }
 
@@ -1223,6 +1224,10 @@ export default function ProductDetailPage({
           </div>
         </div>
       </div>
+      <LoginModal
+        open={showLoginModal}
+        onOpenChange={setShowLoginModal}
+      />
     </div>
   );
 }

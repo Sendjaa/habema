@@ -3,18 +3,17 @@
 import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-// 1. Impor useRouter dari next/navigation
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ShoppingCart, ArrowLeft, Trash2, Plus, Minus, Calendar } from 'lucide-react'
 import { useCartStore } from '@/lib/store'
+import { LoginModal } from '@/components/auth/login-modal'
+import { supabase } from '@/lib/supabaseClient'
 
 export default function CartPage() {
-  // 2. Inisialisasi router
   const router = useRouter()
   
-  // Gunakan selector untuk menghindari re-render yang tidak perlu
   const cart = useCartStore((state) => state.items)
   const removeFromCart = useCartStore((state) => state.removeItem)
   const updateItemQuantity = useCartStore((state) => state.updateItemQuantity)
@@ -23,6 +22,7 @@ export default function CartPage() {
   
   const [isClient, setIsClient] = React.useState(false)
   const [duration, setDuration] = React.useState(1)
+  const [showLoginModal, setShowLoginModal] = React.useState(false)
 
   React.useEffect(() => {
     setIsClient(true)
@@ -33,9 +33,14 @@ export default function CartPage() {
   const totalHargaUnit = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0)
   const totalKeseluruhan = totalHargaUnit * duration
 
-  // 3. Update handleCheckout untuk navigasi menggunakan Query Parameters (?id=...&quantity=...)
-  const handleCheckout = () => {
-    if (cart.length === 0) return;    
+  const handleCheckout = async () => {
+    if (cart.length === 0) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
     
     // Mengambil data untuk URL (menggunakan item pertama sebagai referensi ID sesuai permintaan)
     const firstItemId = cart[0].id;
@@ -206,6 +211,10 @@ export default function CartPage() {
           </div>
         </div>
       </div>
+      <LoginModal
+        open={showLoginModal}
+        onOpenChange={setShowLoginModal}
+      />
     </div>
   )
 }
