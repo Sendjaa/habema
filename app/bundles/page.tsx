@@ -1,12 +1,34 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { Check, Copy, Tag, Sparkles, ArrowRight } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Check, Tag, Sparkles, Gift, LogIn, Star, Percent } from "lucide-react";
+import Link from "next/link";
+import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
 import { LoginModal } from "@/components/auth/login-modal";
-import { Button } from "@/components/ui/button";
+import { useCartStore } from "@/lib/store";
+import type { ClaimedDiscount } from "@/lib/store";
+import { toast } from "sonner";
 
 /* ─── TYPES ─────────────────────────────────────── */
+type DiscountRow = {
+  id: string
+  code: string
+  description: string | null
+  discount_type: string
+  discount_value: number
+  min_purchase: number | null
+  max_discount: number | null
+  start_date: string | null
+  end_date: string | null
+  is_active: boolean
+  applies_to: string
+  target_id: string | null
+  usage_limit: number | null
+  usage_count: number
+  created_at: string
+}
+
 type Promo = {
   id: string;
   code: string;
@@ -17,101 +39,29 @@ type Promo = {
   expiry?: string;
   accent: string;
   accentLight: string;
-};
+  discount_type: string;
+  discount_value: number;
+  min_purchase: number | null;
+  max_discount: number | null;
+}
 
-/* ─── DATA ───────────────────────────────────────── */
-const PROMOS: Promo[] = [
-  {
-    id: "newbie-10",
-    code: "HABEMABARU",
-    title: "Diskon Pengguna Baru",
-    desc: "Khusus penyewaan pertama kamu di Habema. Nikmati potongan langsung untuk semua alat outdoor.",
-    discount: "10%",
-    terms: [
-      "Berlaku untuk transaksi pertama",
-      "Minimal sewa Rp100.000",
-      "Tidak digabung promo lain",
-    ],
-    expiry: "31 Des 2026",
-    accent: "#16a34a",
-    accentLight: "#dcfce7",
-  },
-  {
-    id: "weekend-camp",
-    code: "WEEKENDSERU",
-    title: "Promo Akhir Pekan",
-    desc: "Sewa perlengkapan camping untuk keberangkatan Sabtu–Minggu dan dapatkan potongan spesial.",
-    discount: "Rp25.000",
-    terms: [
-      "Keberangkatan Sabtu atau Minggu",
-      "Minimal sewa 2 hari",
-      "Kuota terbatas per pekan",
-    ],
-    expiry: "Setiap akhir pekan",
-    accent: "#d97706",
-    accentLight: "#fef3c7",
-  },
-  {
-    id: "opentrip-5",
-    code: "TRIP5PERTAMA",
-    title: "Open Trip 5 Pendaftar Pertama",
-    desc: "Jadi 5 pendaftar pertama di setiap open trip Habema dan hemat lebih banyak untuk petualanganmu.",
-    discount: "10%",
-    terms: [
-      "5 pendaftar pertama tiap trip",
-      "Berlaku untuk semua open trip",
-      "Konfirmasi via tim Habema",
-    ],
-    expiry: "Berlaku selama kuota tersedia",
-    accent: "#0284c7",
-    accentLight: "#e0f2fe",
-  },
-  {
-    id: "campervan-weekend",
-    code: "CAMPERVAN10",
-    title: "Campervan Akhir Pekan",
-    desc: "Diskon untuk 5 penyewa campervan pertama tiap paket akhir pekan 3 hari 2 malam.",
-    discount: "10%",
-    terms: [
-      "5 penyewa pertama",
-      "Paket 3H2M akhir pekan",
-      "Belum termasuk BBM tambahan",
-    ],
-    expiry: "Kuota terbatas",
-    accent: "#dc2626",
-    accentLight: "#fee2e2",
-  },
-  {
-    id: "komunitas",
-    code: "KOMUNITASHEMA",
-    title: "Paket Komunitas & Sekolah",
-    desc: "Booking Private Camp atau Camping Keluarga untuk rombongan komunitas, sekolah, atau kampus.",
-    discount: "15%",
-    terms: [
-      "Minimal 10 peserta",
-      "Private Camp / Camping Keluarga",
-      "Reservasi H-7 sebelum acara",
-    ],
-    expiry: "31 Des 2026",
-    accent: "#7c3aed",
-    accentLight: "#ede9fe",
-  },
-  {
-    id: "referral",
-    code: "AJAKTEMAN",
-    title: "Ajak Teman Berpetualang",
-    desc: "Ajak temanmu menyewa di Habema dan kalian berdua sama-sama dapat potongan harga.",
-    discount: "Rp15.000",
-    terms: [
-      "Berlaku untuk kamu & teman",
-      "Teman harus transaksi pertama",
-      "Sebutkan kode saat booking",
-    ],
-    expiry: "Tanpa batas waktu",
-    accent: "#059669",
-    accentLight: "#d1fae5",
-  },
-];
+type PromoProduct = {
+  id: string;
+  name: string;
+  description: string;
+  image_url: string | null;
+  gallery_urls: string[] | null;
+  price_per_night: number;
+  original_price_per_night: number;
+  promo_price_per_night: number;
+  discount_percentage: number;
+  average_rating: number | null;
+  rental_count: number | null;
+  equipment_categories: { id: string; name: string } | null;
+  brand: string | null;
+  stock_quantity: number;
+  category_id: string;
+}
 
 /* ─── HOOKS ──────────────────────────────────────── */
 function useInView(threshold = 0.12) {
@@ -121,47 +71,186 @@ function useInView(threshold = 0.12) {
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) setVisible(true);
-      },
+      ([e]) => { if (e.isIntersecting) setVisible(true) },
       { threshold }
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, []);
+  }, [threshold]);
   return { ref, visible };
 }
 
-/* ─── PROMO CARD ─────────────────────────────────── */
+/* ─── PROMO PRODUCT CARD ─────────────────────────── */
+function PromoProductCard({ product, index }: { product: PromoProduct; index: number }) {
+  const { ref, visible } = useInView();
+  const rating = Number(product.average_rating || 0);
+  const rentalCount = Number(product.rental_count || 0);
+  const images: string[] = [product.image_url, ...(product.gallery_urls || [])].filter((s): s is string => !!s);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        transitionDelay: `${(index % 4) * 70}ms`,
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(20px)",
+        transitionProperty: "opacity, transform",
+        transitionDuration: "0.5s",
+        transitionTimingFunction: "ease",
+      }}
+      className="group"
+    >
+      <Link href={`/product/${product.id}`} className="block h-full">
+        <div className="relative rounded-2xl overflow-hidden bg-white border border-stone-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col h-full">
+          {/* Image */}
+          <div className="relative aspect-[4/3] bg-stone-100 overflow-hidden">
+            {images.length > 0 ? (
+              <Image
+                src={images[0]}
+                alt={product.name}
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                className="object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-stone-200 text-stone-400">
+                <span className="text-[10px] font-bold uppercase tracking-widest">No Image</span>
+              </div>
+            )}
+
+            {/* Badge Diskon */}
+            {product.discount_percentage > 0 && (
+              <span className="absolute top-3 left-3 inline-flex items-center gap-1 bg-orange-500 text-white text-xs font-black px-2.5 py-1 rounded-lg shadow-md">
+                <Percent className="w-3 h-3" />
+                {product.discount_percentage}%
+              </span>
+            )}
+
+            {/* Badge Stok */}
+            <span className={`absolute top-3 right-3 text-[10px] font-bold px-2 py-1 rounded-full shadow ${
+              product.stock_quantity > 0
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-red-100 text-red-700"
+            }`}>
+              {product.stock_quantity > 0 ? "Tersedia" : "Habis"}
+            </span>
+          </div>
+
+          {/* Content */}
+          <div className="p-4 flex flex-col flex-1 gap-2">
+            {product.equipment_categories && (
+              <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
+                {product.equipment_categories.name}
+              </span>
+            )}
+
+            <h3 className="font-bold text-stone-900 text-sm leading-snug line-clamp-2 flex-1">
+              {product.name}
+            </h3>
+
+            {/* Rating */}
+            {rating > 0 && (
+              <div className="flex items-center gap-1">
+                <div className="flex">
+                  {[...Array(5)].map((_, i) => {
+                    const filled = i < Math.floor(rating);
+                    const partial = i === Math.floor(rating) && rating % 1 >= 0.5;
+                    return (
+                      <Star
+                        key={i}
+                        className={`w-3 h-3 ${filled ? 'fill-yellow-400 text-yellow-400' : partial ? 'fill-yellow-400/50 text-yellow-400/50' : 'fill-stone-200 text-stone-200'}`}
+                      />
+                    );
+                  })}
+                </div>
+                <span className="text-[10px] font-semibold text-stone-500">{rating.toFixed(1)}</span>
+                {rentalCount > 0 && (
+                  <span className="text-[10px] text-stone-400 ml-1">| {rentalCount}x Sewa</span>
+                )}
+              </div>
+            )}
+
+            {/* Price */}
+            <div>
+              {product.discount_percentage > 0 && product.original_price_per_night > 0 && (
+                <p className="text-xs text-stone-400 line-through">
+                  Rp{product.original_price_per_night.toLocaleString("id-ID")}
+                </p>
+              )}
+              <p className="text-lg font-black text-red-600">
+                Rp{product.promo_price_per_night.toLocaleString("id-ID")}
+                <span className="text-xs text-stone-500 font-normal ml-1">/malam</span>
+              </p>
+            </div>
+
+            <button className="mt-2 w-full py-2.5 rounded-xl font-bold text-sm bg-red-500 hover:bg-red-600 text-white transition-all duration-200 active:scale-[0.98]">
+              Sewa Sekarang
+            </button>
+          </div>
+        </div>
+      </Link>
+    </div>
+  );
+}
+
+/* ─── KUPON CARD ─────────────────────────────────── */
 function PromoCard({ promo, index }: { promo: Promo; index: number }) {
   const { ref, visible } = useInView();
-  const [copied, setCopied] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [showLogin, setShowLogin] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+  const claimedDiscount = useCartStore((s) => s.claimedDiscount);
+  const setClaimedDiscount = useCartStore((s) => s.setClaimedDiscount);
+  const isClaimed = claimedDiscount?.code === promo.code;
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data?.user ?? null));
   }, []);
 
-  const handleCopy = async () => {
-    if (!user) {
+  const handleClaim = async () => {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) {
       setShowLogin(true);
       return;
     }
+    setUser(currentUser);
+    setClaiming(true);
     try {
-      await navigator.clipboard.writeText(promo.code);
+      const res = await fetch('/api/discounts/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: promo.code, userId: currentUser.id }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        toast.error(result.error || 'Gagal mengklaim diskon');
+        return;
+      }
+      const d = result.discount;
+      const claimed: ClaimedDiscount = {
+        id: d.id,
+        code: d.code,
+        description: d.description,
+        discount_type: d.discount_type as 'percentage' | 'fixed',
+        discount_value: Number(d.discount_value),
+        min_purchase: d.min_purchase ? Number(d.min_purchase) : null,
+        max_discount: d.max_discount ? Number(d.max_discount) : null,
+        applies_to: d.applies_to as 'all' | 'category' | 'equipment',
+        target_id: d.target_id,
+        claimed_at: result.claim?.claimed_at || new Date().toISOString(),
+      };
+      setClaimedDiscount(claimed);
+      toast.success(`${promo.discount} berhasil diklaim!`);
     } catch {
-      const ta = document.createElement("textarea");
-      ta.value = promo.code;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
+      toast.error('Gagal mengklaim diskon. Silakan coba lagi.');
+    } finally {
+      setClaiming(false);
     }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleUnclaim = () => {
+    setClaimedDiscount(null);
+    toast.info('Diskon dibatalkan');
   };
 
   return (
@@ -177,8 +266,7 @@ function PromoCard({ promo, index }: { promo: Promo; index: number }) {
       }}
       className="group"
     >
-      <div className="relative rounded-[28px] overflow-hidden bg-white shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 border border-stone-100 flex flex-col h-full">
-        {/* HEADER STRIP */}
+      <div className={`relative rounded-[28px] overflow-hidden bg-white shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 border flex flex-col h-full ${isClaimed ? 'border-emerald-400 ring-2 ring-emerald-200' : 'border-stone-100'}`}>
         <div
           className="relative px-5 pt-5 pb-4 flex items-start justify-between"
           style={{ background: promo.accentLight }}
@@ -189,51 +277,32 @@ function PromoCard({ promo, index }: { promo: Promo; index: number }) {
               style={{ color: promo.accent }}
             >
               <Tag className="w-3 h-3" />
-              Promo Habema
+              Diskon Habema
             </span>
-            <h3
-              className="text-lg font-black text-stone-900 leading-snug"
-            >
-              {promo.title}
-            </h3>
+            <h3 className="text-lg font-black text-stone-900 leading-snug">{promo.title}</h3>
           </div>
-          <div
-            className="text-right shrink-0 pl-3"
-            style={{ color: promo.accent }}
-          >
-            <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">
-              Hemat
-            </p>
+          <div className="text-right shrink-0 pl-3" style={{ color: promo.accent }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">Hemat</p>
             <p className="text-2xl font-black leading-none">{promo.discount}</p>
           </div>
         </div>
 
-        {/* BODY */}
         <div className="p-5 flex flex-col flex-1 gap-4">
           <p className="text-stone-500 text-sm leading-relaxed">{promo.desc}</p>
 
-          {/* terms */}
           <ul className="space-y-1 flex-1">
             {promo.terms.map((t) => (
               <li key={t} className="flex gap-2 text-sm text-stone-600">
-                <span
-                  style={{ color: promo.accent }}
-                  className="flex-shrink-0 mt-0.5 text-xs"
-                >
-                  ✦
-                </span>
+                <span style={{ color: promo.accent }} className="flex-shrink-0 mt-0.5 text-xs">✦</span>
                 {t}
               </li>
             ))}
           </ul>
 
           {promo.expiry && (
-            <p className="text-[11px] text-stone-400 font-medium">
-              Berlaku: {promo.expiry}
-            </p>
+            <p className="text-[11px] text-stone-400 font-medium">Berlaku: {promo.expiry}</p>
           )}
 
-          {/* CODE + COPY */}
           <div className="flex items-stretch gap-2">
             <div
               className="flex-1 flex items-center justify-center rounded-2xl border-2 border-dashed font-mono font-bold tracking-widest text-sm py-3 select-all"
@@ -245,113 +314,331 @@ function PromoCard({ promo, index }: { promo: Promo; index: number }) {
             >
               {promo.code}
             </div>
-            <button
-              onClick={handleCopy}
-              className="flex items-center justify-center gap-1.5 px-4 rounded-2xl font-bold text-sm text-white transition-all duration-300 hover:opacity-85 active:scale-[0.98] shadow-sm"
-              style={{ background: promo.accent }}
-              aria-label={copied ? "Kode disalin" : "Salin kode promo"}
-            >
-              {copied ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  <span className="hidden sm:inline">Tersalin</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" />
-                  <span className="hidden sm:inline">Salin</span>
-                </>
-              )}
-            </button>
+            {isClaimed ? (
+              <button
+                onClick={handleUnclaim}
+                className="flex items-center justify-center gap-1.5 px-4 rounded-2xl font-bold text-sm text-white transition-all duration-300 hover:opacity-85 active:scale-[0.98] shadow-sm bg-emerald-600"
+                aria-label="Batalkan klaim diskon"
+              >
+                <Check className="w-4 h-4" />
+                <span className="hidden sm:inline">Diklaim</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleClaim}
+                disabled={claiming}
+                className="flex items-center justify-center gap-1.5 px-4 rounded-2xl font-bold text-sm text-white transition-all duration-300 hover:opacity-85 active:scale-[0.98] shadow-sm disabled:opacity-60"
+                style={{ background: promo.accent }}
+                aria-label="Klaim diskon"
+              >
+                {claiming ? (
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Gift className="w-4 h-4" />
+                )}
+                <span className="hidden sm:inline">{claiming ? 'Memproses...' : 'Klaim'}</span>
+              </button>
+            )}
           </div>
+
+          {isClaimed && (
+            <p className="text-[11px] text-emerald-600 font-medium text-center">
+              Diskon akan otomatis dipakai saat transaksi
+            </p>
+          )}
         </div>
-        <LoginModal
-          open={showLogin}
-          onOpenChange={setShowLogin}
-        />
+        <LoginModal open={showLogin} onOpenChange={setShowLogin} />
       </div>
     </div>
   );
 }
 
+/* ─── HELPERS ────────────────────────────────────── */
+const palette = [
+  { accent: '#16a34a', accentLight: '#dcfce7' },
+  { accent: '#d97706', accentLight: '#fef3c7' },
+  { accent: '#0284c7', accentLight: '#e0f2fe' },
+  { accent: '#dc2626', accentLight: '#fee2e2' },
+  { accent: '#7c3aed', accentLight: '#ede9fe' },
+  { accent: '#059669', accentLight: '#d1fae5' },
+  { accent: '#0891b2', accentLight: '#cffafe' },
+  { accent: '#be123c', accentLight: '#ffe4e6' },
+]
+
+function discountDisplay(row: DiscountRow): string {
+  if (row.discount_type === 'percentage') return `${row.discount_value}%`
+  return `Rp${row.discount_value.toLocaleString('id-ID')}`
+}
+
+function buildTerms(row: DiscountRow): string[] {
+  const terms: string[] = []
+  if (row.min_purchase && row.min_purchase > 0) {
+    terms.push(`Min. pembelian Rp${row.min_purchase.toLocaleString('id-ID')}`)
+  }
+  if (row.max_discount && row.max_discount > 0) {
+    terms.push(`Maks. diskon Rp${row.max_discount.toLocaleString('id-ID')}`)
+  }
+  if (row.usage_limit && row.usage_limit > 0) {
+    const left = row.usage_limit - row.usage_count
+    terms.push(`Sisa ${Math.max(0, left)} dari ${row.usage_limit} pemakaian`)
+  }
+  if (row.applies_to !== 'all') {
+    terms.push('Berlaku untuk produk spesifik')
+  }
+  if (terms.length === 0) {
+    terms.push('Berlaku untuk semua produk')
+  }
+  return terms
+}
+
+function rowToPromo(row: DiscountRow, index: number): Promo {
+  const colors = palette[index % palette.length]
+  const code = row.code
+  const names: Record<string, string> = {
+    HABEMABARU: 'Diskon Pengguna Baru',
+    WEEKENDSERU: 'Promo Akhir Pekan',
+    TRIP5PERTAMA: 'Open Trip 5 Pendaftar Pertama',
+    CAMPERVAN10: 'Campervan Akhir Pekan',
+    KOMUNITASHEMA: 'Paket Komunitas & Sekolah',
+    AJAKTEMAN: 'Ajak Teman Berpetualang',
+  }
+  const title = names[code] || `Promo ${code}`
+
+  let expiry: string | undefined
+  if (row.end_date) {
+    expiry = new Date(row.end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+  } else if (row.start_date) {
+    expiry = `Mulai ${new Date(row.start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`
+  }
+
+  return {
+    id: row.id,
+    code,
+    title,
+    desc: row.description || `Nikmati diskon spesial dengan kode ${code}`,
+    discount: discountDisplay(row),
+    terms: buildTerms(row),
+    expiry,
+    ...colors,
+    discount_type: row.discount_type,
+    discount_value: row.discount_value,
+    min_purchase: row.min_purchase,
+    max_discount: row.max_discount,
+  }
+}
+
 /* ─── PAGE ───────────────────────────────────────── */
 export default function HabemaPromo() {
-  const titleRef = useInView(0.1);
+  const [promos, setPromos] = useState<Promo[]>([])
+  const [promoProducts, setPromoProducts] = useState<PromoProduct[]>([])
+  const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState<'promo' | 'kupon'>('promo')
+
+  const fetchDiscounts = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('discounts')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setPromos((data || []).map((row: any, i: number) => rowToPromo(row, i)))
+    } catch (err) {
+      console.error('Failed to fetch discounts:', err)
+    }
+  }, [])
+
+  const fetchPromoProducts = useCallback(async () => {
+    try {
+      const res = await fetch('/api/products/promo')
+      const json = await res.json()
+      if (json.success) {
+        setPromoProducts(json.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch promo products:', err)
+    }
+  }, [])
+
+  useEffect(() => {
+    Promise.all([fetchDiscounts(), fetchPromoProducts()]).finally(() => setLoading(false))
+
+    const channel = supabase
+      .channel('bundles-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'discounts' }, () => {
+        fetchDiscounts()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [fetchDiscounts, fetchPromoProducts])
 
   return (
-    <div className="min-h-screen bg-background">
-      <style>{`
-        * { box-sizing: border-box; }
-      `}</style>
+    <div className="min-h-screen bg-[#f5f5f5]">
+      <style>{`* { box-sizing: border-box; }`}</style>
 
       {/* HERO */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-950 pt-28 pb-16 md:pt-32 md:pb-20">
-        <div className="absolute inset-0 opacity-[0.06] pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] bg-[length:18px_18px]" />
-        <div className="max-w-6xl mx-auto px-4 md:px-8 relative text-center">
-          <span className="inline-flex items-center gap-2 text-xs font-bold tracking-widest text-amber-300 uppercase mb-4">
+      <section className="relative pt-28 pb-10 md:pt-32 md:pb-14 md:max-w-7xl mx-auto">
+        <div className="absolute inset-0">
+          <Image
+            src="/images/discount-banner.png"
+            alt="Promo Banner"
+            fill
+            className="object-cover"
+            priority
+          />
+          {/* <div className="absolute inset-0 bg-black/50" /> */}
+        </div>
+        {/* <div className="max-w-6xl mx-auto px-4 md:px-8 relative text-center">
+          <span className="inline-flex items-center gap-2 text-xs font-bold tracking-widest text-yellow-300 uppercase mb-4">
             <Sparkles className="w-4 h-4" />
             Promo Spesial
           </span>
-          <h1
-            className="text-4xl md:text-6xl font-black text-white leading-tight mb-4"
-          >
-            Diskuy 10-50% di{" "}
-            <span className="italic text-amber-300">Habema</span>
+          <h1 className="text-4xl md:text-6xl font-black text-white leading-tight mb-4">
+            Promo & Diskon{" "}
+            <span className="italic text-yellow-300">Habema</span>
           </h1>
-          <p className="text-emerald-100/80 text-sm md:text-base max-w-xl mx-auto leading-relaxed">
-            Login atau daftar dulu, salin kode promo, dan gunakan saat booking
-            untuk nikmati potongan harga terbaik.
+          <p className="text-white/80 text-sm md:text-base max-w-xl mx-auto leading-relaxed">
+            Dapatkan perlengkapan outdoor favoritmu dengan harga spesial.
+            Promo berlaku untuk waktu terbatas!
           </p>
-        </div>
+        </div> */}
       </section>
 
-      {/* MAIN */}
-      <main className="max-w-6xl mx-auto px-4 md:px-8 pt-12 pb-24">
-        <div
-          ref={titleRef.ref}
-          className="mb-8"
-          style={{
-            opacity: titleRef.visible ? 1 : 0,
-            transform: titleRef.visible ? "translateY(0)" : "translateY(16px)",
-            transition: "opacity 0.7s ease, transform 0.7s ease",
-          }}
-        >
-          <p className="text-xs font-bold uppercase tracking-widest text-emerald-600 mb-2">
-            Daftar Promo
-          </p>
-          <h2
-            className="text-3xl md:text-4xl font-black text-stone-900 leading-tight"
+      {/* TAB BAR */}
+      <div className="max-w-6xl mx-auto px-4 md:px-8 -mt-5 relative z-10">
+        <div className="inline-flex bg-white rounded-2xl shadow-lg border border-stone-100 p-1.5">
+          <button
+            onClick={() => setTab('promo')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-200 ${
+              tab === 'promo'
+                ? 'bg-orange-500 text-white shadow-md'
+                : 'text-stone-500 hover:text-stone-700 hover:bg-stone-50'
+            }`}
           >
-            Pilih & Salin Kodenya
-          </h2>
+            <Percent className="w-4 h-4" />
+            Promo
+          </button>
+          <button
+            onClick={() => setTab('kupon')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-200 ${
+              tab === 'kupon'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'text-stone-500 hover:text-stone-700 hover:bg-stone-50'
+            }`}
+          >
+            <Tag className="w-4 h-4" />
+            Kupon
+          </button>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {PROMOS.map((promo, i) => (
-            <PromoCard key={promo.id} promo={promo} index={i} />
-          ))}
-        </div>
+      <main className="max-w-6xl mx-auto px-4 md:px-8 pt-10 pb-24">
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <span className="w-6 h-6 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <>
+            {/* ─── TAB: PRODUK PROMO ───────────────── */}
+            {tab === 'promo' && (
+              <section>
+                {promoProducts.length === 0 ? (
+                  <div className="text-center py-20 text-stone-400">
+                    <Percent className="w-12 h-12 mx-auto mb-4 opacity-40" />
+                    <p className="text-lg font-medium text-stone-500">Belum ada produk promo</p>
+                    <p className="text-sm mt-1">Cek kembali nanti untuk promo terbaru</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {promoProducts.map((product, i) => (
+                      <PromoProductCard key={product.id} product={product} index={i} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
 
-        {/* HELP STRIP */}
-        <div className="mt-16 rounded-[32px] bg-white border border-stone-100 shadow-sm px-8 md:px-12 py-10 text-center">
-          <h3
-            className="text-2xl md:text-3xl font-black text-stone-900 leading-snug mb-3"
-          >
-            Ada pertanyaan soal promo?
-          </h3>
-          <p className="text-stone-500 text-sm mb-6 max-w-md mx-auto">
-            Tim Habema siap membantu memastikan kamu mendapatkan potongan harga
-            yang tepat.
-          </p>
-          <a
-            href="https://wa.me/6283898749357?text=Halo%20Habema%2C%20saya%20mau%20tanya%20soal%20promo"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl font-bold text-sm bg-emerald-600 hover:bg-emerald-700 text-white transition-all duration-300 shadow-lg"
-          >
-            Tanya via WhatsApp
-          </a>
-        </div>
+            {/* ─── TAB: KUPON ──────────────────────── */}
+            {tab === 'kupon' && (
+              <section>
+                {promos.length === 0 ? (
+                  <div className="text-center py-20 text-stone-400">
+                    <Tag className="w-12 h-12 mx-auto mb-4 opacity-40" />
+                    <p className="text-lg font-medium text-stone-500">Belum ada kode promo tersedia</p>
+                    <p className="text-sm mt-1">Cek kembali nanti untuk promo terbaru</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-widest text-emerald-600 mb-4">
+                      Klaim kode promo untuk mendapatkan diskon tambahan
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {promos.map((promo, i) => (
+                        <PromoCard key={promo.id} promo={promo} index={i} />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </section>
+            )}
+
+            {/* HELP STRIP */}
+            <section className="relative overflow-hidden mt-16 py-12 md:py-16 bg-gradient-to-r from-emerald-900 via-emerald-800 to-emerald-950 text-white rounded-3xl">
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute top-0 right-0 w-72 h-72 bg-amber-400 rounded-full mix-blend-multiply filter blur-3xl" />
+                <div className="absolute bottom-0 left-0 w-72 h-72 bg-amber-400 rounded-full mix-blend-multiply filter blur-3xl" />
+              </div>
+
+              <div className="relative max-w-6xl mx-auto px-6 md:px-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                  <div className="space-y-4">
+                    <h2 className="text-2xl md:text-4xl font-black leading-tight">
+                      Ada pertanyaan<br />
+                      <span className="italic text-amber-300">soal promo?</span>
+                    </h2>
+                    <p className="text-sm md:text-base text-white/80 leading-relaxed max-w-md">
+                      Tim Habema siap membantu kamu mendapatkan penawaran terbaik.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <a
+                      href="https://wa.me/6283898749357?text=Halo%20Habema%2C%20saya%20mau%20tanya%20soal%20promo"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4 md:p-5 hover:bg-white/15 transition-all"
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="text-xl mt-0.5">💬</span>
+                        <div>
+                          <h4 className="text-sm font-bold mb-0.5">Chat WhatsApp</h4>
+                          <p className="text-xs text-white/70">+62 838 9874 9357</p>
+                          <p className="text-[10px] text-white/50 mt-0.5">Respons cepat</p>
+                        </div>
+                      </div>
+                    </a>
+
+                    <a
+                      href="tel:+6283898749357"
+                      className="group bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4 md:p-5 hover:bg-white/15 transition-all"
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="text-xl mt-0.5">📞</span>
+                        <div>
+                          <h4 className="text-sm font-bold mb-0.5">Telepon</h4>
+                          <p className="text-xs text-white/70">+62 838 9874 9357</p>
+                          <p className="text-[10px] text-white/50 mt-0.5">Senin - Minggu</p>
+                        </div>
+                      </div>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </>
+        )}
       </main>
     </div>
   );

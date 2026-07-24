@@ -82,28 +82,42 @@ export default function AdminLogin() {
           .from('users')
           .select('is_vendor')
           .eq('id', data.user.id)
-          .single();
+          .maybeSingle();
 
-        // Auto-create user in users table if not exists (for admin)
-        if (profileError && profileError.code === 'PGRST116') {
+        // Jika belum ada record users (PGRST116) atau permission denied,
+        // coba auto-create dengan is_vendor=true
+        if (profileError && (profileError.code === 'PGRST116' || profileError.code === '42501')) {
           const { error: createError } = await supabase
             .from('users')
             .insert([{
               id: data.user.id,
               email: data.user.email!,
               is_vendor: true,
-              full_name: 'Admin'
-            }]);
-          
+              full_name: data.user.user_metadata?.full_name || 'Admin',
+            }])
+            .select('is_vendor')
+            .single();
+
           if (createError) {
             toast.error("Gagal membuat profil admin: " + createError.message);
             await supabase.auth.signOut();
             setIsLoading(false);
             return;
           }
+
+          toast.success("Login berhasil!");
+          router.push("/admin");
+          return;
         }
 
-        if (!profileError && !profile?.is_vendor) {
+        if (profileError && profileError.code !== 'PGRST116') {
+          toast.error("Gagal verifikasi akses: " + profileError.message);
+          await supabase.auth.signOut();
+          setIsLoading(false);
+          return;
+        }
+
+        if (!profile?.is_vendor) {
           toast.error("Akses ditolak. Hanya admin yang bisa masuk.");
           await supabase.auth.signOut();
           setIsLoading(false);

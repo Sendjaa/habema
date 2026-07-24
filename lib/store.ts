@@ -80,12 +80,26 @@ interface TransactionData {
   };
 }
 
+export interface ClaimedDiscount {
+  id: string;
+  code: string;
+  description: string;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  min_purchase: number | null;
+  max_discount: number | null;
+  applies_to: 'all' | 'category' | 'equipment';
+  target_id: string | null;
+  claimed_at: string;
+}
+
 interface CartStore {
   items: any[];
   currentTransaction: TransactionData | null;
   orders: Order[];
   identity: UserIdentity | null;
   location: LocationData | null;
+  claimedDiscount: ClaimedDiscount | null;
   addItem: (item: any) => void;
   addToCart: (item: any) => void;
   removeItem: (id: string) => void;
@@ -101,6 +115,8 @@ interface CartStore {
   setIdentity: (data: UserIdentity) => void;
   setLocation: (data: LocationData) => void;
   clearLocation: () => void;
+  setClaimedDiscount: (discount: ClaimedDiscount | null) => void;
+  clearClaimedDiscount: () => void;
   // --- FITUR BARU: Perhitungan Weight Score ---
   getTotalWeightScore: () => number;
   getRecommendedVehicle: () => 'motor' | 'car';
@@ -190,6 +206,10 @@ export const useCartStore = create<CartStore>()(
       
       // Menghapus data lokasi
       clearLocation: () => set({ location: null }),
+
+      // Klaim diskon
+      setClaimedDiscount: (discount) => set({ claimedDiscount: discount }),
+      clearClaimedDiscount: () => set({ claimedDiscount: null }),
 
       // --- FITUR BARU: Perhitungan Weight Score ---
       getTotalWeightScore: () => {

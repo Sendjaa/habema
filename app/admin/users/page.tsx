@@ -13,6 +13,7 @@ import {
   Search, 
   Filter, 
   Eye, 
+  Edit,
   Mail, 
   Calendar,
   Users,
@@ -24,7 +25,10 @@ import {
   ChevronRight,
   UserCheck,
   UserX,
-  Shield
+  Shield,
+  CheckCircle,
+  TrendingUp,
+  DollarSign,
 } from "lucide-react";
 import { toast } from "sonner";
 

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -77,67 +76,31 @@ export default function BookingManagement() {
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      
-      // Use service role client if available, fallback to regular client
-      const clientToUse = process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY !== 'dummy-key' 
-        ? supabaseAdmin 
-        : supabase;
-      
-      let query = clientToUse
-        .from("bookings")
-        .select("*", { count: "exact" });
 
-      // Apply filters
-      if (searchTerm) {
-        query = query.or(`id.ilike.%${searchTerm}%`);
-      }
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        perPage: String(itemsPerPage),
+      })
+      if (searchTerm) params.set('search', searchTerm)
+      if (statusFilter !== 'all') params.set('status', statusFilter)
+      if (userTypeFilter !== 'all') params.set('userType', userTypeFilter)
 
-      if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter);
-      }
+      const res = await fetch(`/api/admin/bookings?${params}`)
+      if (!res.ok) throw new Error('Failed to fetch bookings')
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error)
 
-      if (userTypeFilter === "anonymous") {
-        query = query.is("user_id", "null");
-      } else if (userTypeFilter === "registered") {
-        query = query.not("user_id", "is", null);
-      }
-
-      // Apply pagination
-      const from = (currentPage - 1) * itemsPerPage;
-      const to = from + itemsPerPage - 1;
-      
-      query = query
-        .order("created_at", { ascending: false })
-        .range(from, to);
-
-      const { data, error, count } = await query;
-
-      if (error) {
-        console.error("Bookings query error:", error);
-        
-        // If RLS error, show empty data
-        if (error.code === '42501') {
-          toast.warning('RLS permissions issue. Please check RLS policies.');
-          setBookings([]);
-          setTotalCount(0);
-          setTotalPages(0);
-          return;
-        }
-        
-        throw error;
-      }
-
-      setBookings(data || []);
-      setTotalCount(count || 0);
-      setTotalPages(Math.ceil((count || 0) / itemsPerPage));
+      setBookings(result.data || [])
+      setTotalCount(result.count || 0)
+      setTotalPages(result.totalPages || 1)
     } catch (error) {
-      console.error("Error fetching bookings:", error);
-      toast.error("Failed to load bookings");
-      setBookings([]);
-      setTotalCount(0);
-      setTotalPages(0);
+      console.error("Error fetching bookings:", error)
+      toast.error("Gagal memuat data booking")
+      setBookings([])
+      setTotalCount(0)
+      setTotalPages(0)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   };
 
@@ -212,24 +175,11 @@ export default function BookingManagement() {
 
   const exportBookings = async () => {
     try {
-      const clientToUse = process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY !== 'dummy-key' 
-        ? supabaseAdmin 
-        : supabase;
-        
-      const { data, error } = await clientToUse
-        .from("bookings")
-        .select(`
-          id,
-          status,
-          start_date,
-          end_date,
-          total_cost,
-          created_at,
-          user_id
-        `)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
+      const res = await fetch('/api/admin/bookings?perPage=99999')
+      if (!res.ok) throw new Error('Failed to fetch bookings')
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error)
+      const data = result.data
 
       // Convert to CSV
       const csv = [

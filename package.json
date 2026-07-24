@@ -7,7 +7,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
-    "supabase:types": "supabase gen types typescript --project-id \"$NEXT_PUBLIC_SUPABASE_URL\" --schema public > types/supabase.ts"
+    "supabase:types": "supabase gen types typescript --project-id ypbdqkfxtmkbllhezmqz --schema public > types/supabase.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

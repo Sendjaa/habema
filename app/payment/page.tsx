@@ -36,6 +36,7 @@ export default function PaymentPage() {
   const router = useRouter()
   const setTransaction = useCartStore((state) => state.setTransaction)
   const transaction = useCartStore((state) => state.currentTransaction)
+  const claimedDiscount = useCartStore((s) => s.claimedDiscount)
   
   const [selectedMethod, setSelectedMethod] = useState("midtrans")
   const [isLoading, setIsLoading] = useState(false)
@@ -46,6 +47,22 @@ export default function PaymentPage() {
     if (transaction) {
       const itemsArray = Array.isArray(transaction.items) ? transaction.items : [transaction.items]
       const firstItem = itemsArray[0]
+      const originalTotal = transaction.totalPrice || 0
+      
+      // Calculate discount from claimed discount
+      let discountAmount = 0
+      if (claimedDiscount) {
+        if (claimedDiscount.discount_type === 'percentage') {
+          discountAmount = Math.round(originalTotal * claimedDiscount.discount_value / 100)
+          if (claimedDiscount.max_discount && discountAmount > claimedDiscount.max_discount) {
+            discountAmount = claimedDiscount.max_discount
+          }
+        } else {
+          discountAmount = claimedDiscount.discount_value
+        }
+      }
+      const finalTotal = Math.max(0, originalTotal - discountAmount)
+
       return {
         product: {
           id: firstItem?.id || "default",
@@ -56,7 +73,9 @@ export default function PaymentPage() {
           category: firstItem?.category || "default"
         },
         duration: transaction.duration || 1,
-        total: transaction.totalPrice || 0
+        total: finalTotal,
+        originalTotal: originalTotal,
+        discountAmount: discountAmount,
       }
     }
     
@@ -71,11 +90,13 @@ export default function PaymentPage() {
         category: "tents"
       },
       duration: 3,
-      total: 150000
+      total: 150000,
+      originalTotal: 150000,
+      discountAmount: 0,
     }
   }
 
-  const { product: productToRent, duration, total } = getTransactionData()
+  const { product: productToRent, duration, total, originalTotal, discountAmount } = getTransactionData()
 
   useEffect(() => {
     setMounted(true)
@@ -386,6 +407,12 @@ export default function PaymentPage() {
                       <span className="text-emerald-600">Harga per hari</span>
                       <span className="font-medium text-emerald-900">Rp {productToRent.price.toLocaleString('id-ID')}</span>
                     </div>
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-emerald-600">Diskon ({claimedDiscount?.code})</span>
+                        <span className="font-medium text-red-500">-Rp {discountAmount.toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
                     <div className="border-t border-emerald-200 pt-3">
                       <div className="flex justify-between">
                         <span className="font-semibold text-emerald-900">Total</span>

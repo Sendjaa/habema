@@ -25,6 +25,7 @@ import {
   Trash2,
   History,
   AlertCircle,
+  Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,7 +59,13 @@ const layananItems = [
     label: "Open Trip",
     href: "/opentrip",
     icon: Footprints,
-    description: "Paket petualangan kami",
+    description: "Ikut trip bersama komunitas",
+  },
+  {
+    label: "Paket",
+    href: "/packages",
+    icon: Package,
+    description: "Paket bundling perlengkapan",
   },
 ];
 

@@ -304,7 +304,7 @@ export function FeaturedBundles() {
             asChild
             className="rounded-2xl border-stone-300 text-stone-700 hover:bg-stone-50 transition-all duration-300"
           >
-            <Link href="/opentrip">
+            <Link href="/packages">
               Lihat Semua Paket
               <ArrowRight className="w-4 h-4 ml-2" />
             </Link>

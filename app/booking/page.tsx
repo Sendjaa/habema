@@ -246,10 +246,24 @@ function BookingContent() {
     ? transaction.items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0) * days
     : pricePerNight * quantity * days;
 
-  const deposit = Math.round(subtotal * 0.2);
-  const tax = Math.round(subtotal * 0.1);
+  const claimedDiscount = useCartStore((s) => s.claimedDiscount);
+  let discountAmount = 0;
+  if (claimedDiscount) {
+    if (claimedDiscount.discount_type === 'percentage') {
+      discountAmount = Math.round(subtotal * claimedDiscount.discount_value / 100);
+      if (claimedDiscount.max_discount && discountAmount > claimedDiscount.max_discount) {
+        discountAmount = claimedDiscount.max_discount;
+      }
+    } else {
+      discountAmount = claimedDiscount.discount_value;
+    }
+  }
+  const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+
+  const deposit = Math.round(discountedSubtotal * 0.2);
+  const tax = Math.round(discountedSubtotal * 0.1);
   const deliveryFee = deliveryOption === 'delivery' ? (deliveryCost?.cost || 0) : 0;
-  const totalPrice = subtotal + deliveryFee;
+  const totalPrice = discountedSubtotal + deliveryFee;
   const setTransactionData = useCartStore((state) => state.setTransaction);
 
   const handleDateSelect = (start: Date, end: Date) => {
@@ -1302,6 +1316,15 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                           Rp{subtotal.toLocaleString("id-ID")}
                         </span>
                       </div>
+
+                      {discountAmount > 0 && (
+                        <div className="flex justify-between text-xs font-medium">
+                          <span className="text-emerald-600">Diskon ({claimedDiscount?.code})</span>
+                          <span className="text-emerald-600 font-bold">
+                            -Rp{discountAmount.toLocaleString("id-ID")}
+                          </span>
+                        </div>
+                      )}
 
                       <div className="flex justify-between items-end pt-2">
                         <span className="font-bold text-forest text-sm">

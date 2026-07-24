@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from "@/lib/supabaseClient"
-import { supabaseAdmin } from "@/lib/supabaseAdmin"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -24,7 +23,9 @@ import {
   AlertCircle,
   XCircle,
   Activity,
-  Bell
+  Bell,
+  Tag,
+  Percent,
 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -67,9 +68,16 @@ export default function AdminDashboard() {
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
   const [refreshing, setRefreshing] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const channelRef = useRef<any>(null)
 
   useEffect(() => {
     checkAuth()
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
+    }
   }, [router])
 
   // Helper functions
@@ -145,13 +153,33 @@ export default function AdminDashboard() {
         return
       }
 
-      const { data: profile, error } = await supabase
+      let { data: profile, error } = await supabase
         .from('users')
         .select('is_vendor')
         .eq('id', session.user.id)
-        .single()
+        .maybeSingle()
+
+      // Jika record users belum ada, coba buat otomatis
+      if (error?.code === 'PGRST116' || (!profile && !error)) {
+        const { data: newProfile, error: createError } = await supabase
+          .from('users')
+          .insert([{
+            id: session.user.id,
+            email: session.user.email!,
+            is_vendor: true,
+            full_name: session.user.user_metadata?.full_name || 'Admin',
+          }])
+          .select('is_vendor')
+          .single()
+
+        if (!createError && newProfile) {
+          profile = newProfile
+          error = null
+        }
+      }
 
       if (error || !profile?.is_vendor) {
+        console.error('Admin auth check failed:', error?.message)
         await supabase.auth.signOut()
         router.replace("/admin/login")
         return
@@ -160,8 +188,12 @@ export default function AdminDashboard() {
       // Authenticated, load dashboard data
       await loadDashboardData()
 
-      // Subscribe ke realtime notifications
-      const channel = supabase
+      // Subscribe ke realtime notifications — unsubscribe dulu jika sudah ada
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
+      channelRef.current = supabase
         .channel('admin-notifications')
         .on(
           'postgres_changes',
@@ -172,15 +204,10 @@ export default function AdminDashboard() {
               description: notif.message || 'Ada aktivitas baru di dashboard',
               duration: 5000,
             })
-            // Refresh dashboard data
             loadDashboardData()
           }
         )
         .subscribe()
-
-      return () => {
-        supabase.removeChannel(channel)
-      }
     } catch (error) {
       console.error('Auth check error:', error)
       router.replace("/admin/login")
@@ -191,154 +218,35 @@ export default function AdminDashboard() {
 
   const loadDashboardData = async () => {
     try {
-      // Use service role client if available, fallback to regular client
-      const useAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY !== 'dummy-key'
-      const clientToUse = useAdmin ? supabaseAdmin : supabase
+      const res = await fetch('/api/admin/stats')
+      if (!res.ok) throw new Error('Failed to fetch stats')
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error)
 
-      console.log('Using admin client:', useAdmin)
-      console.log('Service role key exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
-      console.log('Service role key value:', process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 10) + '...')
-
-      // Initialize default values
-      let totalBookings = 0
-      let pendingBookings = 0
-      let confirmedBookings = 0
-      let totalRevenue = 0
-      let monthlyRevenue = 0
-      let totalUsers = 0
-      let newUsersThisMonth = 0
-      let totalEquipment = 0
-      let lowStockItems = 0
-      let recentBookingsData: any[] = []
-
-      try {
-        console.log('Fetching bookings...')
-        const bookingsResult = await clientToUse
-          .from('bookings')
-          .select('id, status, total_cost, created_at')
-
-        console.log('Bookings result:', JSON.stringify(bookingsResult, null, 2))
-
-        if (bookingsResult.error) {
-          console.error('Bookings error:', bookingsResult.error)
-          console.error('Bookings error message:', bookingsResult.error.message)
-          console.error('Bookings error code:', bookingsResult.error.code)
-          console.error('Bookings error details:', bookingsResult.error.details)
-          console.error('Bookings error hint:', bookingsResult.error.hint)
-        } else if (bookingsResult.data) {
-          const bookings = bookingsResult.data
-          console.log('Bookings data count:', bookings.length)
-
-          // Calculate booking stats
-          totalBookings = bookings.length
-          pendingBookings = bookings.filter(b => b.status === 'pending').length
-          confirmedBookings = bookings.filter(b => b.status === 'confirmed').length
-          totalRevenue = bookings.reduce((sum, b) => sum + (b.total_cost || 0), 0)
-
-          // Monthly revenue
-          const firstDayOfMonth = new Date()
-          firstDayOfMonth.setDate(1)
-          firstDayOfMonth.setHours(0, 0, 0, 0)
-          monthlyRevenue = bookings
-            .filter(b => b.created_at && new Date(b.created_at) >= firstDayOfMonth)
-            .reduce((sum, b) => sum + (b.total_cost || 0), 0)
-
-          // Recent bookings - filter out null created_at and sort
-          recentBookingsData = bookings
-            .filter(b => b.created_at)
-            .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
-            .slice(0, 5)
-        }
-      } catch (bookingError) {
-        console.error('Exception fetching bookings:', bookingError)
-      }
-
-      // Fetch users stats with error handling
-      try {
-        console.log('Fetching users...')
-        const usersResult = await clientToUse
-          .from('users')
-          .select('*', { count: 'exact', head: true })
-
-        if (usersResult.error) {
-          console.error('Users count error:', usersResult.error)
-        } else {
-          totalUsers = usersResult.count || 0
-          console.log('Users count:', totalUsers)
-        }
-
-        const firstDayOfMonth = new Date()
-        firstDayOfMonth.setDate(1)
-        firstDayOfMonth.setHours(0, 0, 0, 0)
-
-        const newUsersResult = await clientToUse
-          .from('users')
-          .select('*', { count: 'exact', head: true })
-          .gte('created_at', firstDayOfMonth.toISOString())
-
-        if (newUsersResult.error) {
-          console.error('New users count error:', newUsersResult.error)
-        } else {
-          newUsersThisMonth = newUsersResult.count || 0
-          console.log('New users this month:', newUsersThisMonth)
-        }
-      } catch (userError) {
-        console.error('Exception fetching users:', userError)
-      }
-
-      // Fetch equipment stats with error handling
-      try {
-        console.log('Fetching equipment...')
-        const equipmentResult = await clientToUse
-          .from('equipment')
-          .select('id, stock_quantity')
-
-        if (equipmentResult.error) {
-          console.error('Equipment error:', equipmentResult.error)
-        } else if (equipmentResult.data) {
-          totalEquipment = equipmentResult.data.length
-          lowStockItems = equipmentResult.data.filter(e => (e.stock_quantity || 0) <= 3).length
-          console.log('Equipment count:', totalEquipment, 'Low stock:', lowStockItems)
-        }
-      } catch (equipError) {
-        console.error('Exception fetching equipment:', equipError)
-      }
-
-      console.log('Final dashboard stats:', {
-        totalBookings,
-        pendingBookings,
-        confirmedBookings,
-        totalRevenue,
-        monthlyRevenue,
-        totalUsers,
-        newUsersThisMonth,
-        totalEquipment,
-        lowStockItems
-      })
-
+      const s = result.data
       setStats({
-        totalBookings,
-        pendingBookings,
-        confirmedBookings,
-        totalRevenue,
-        monthlyRevenue,
-        totalUsers,
-        newUsersThisMonth,
-        totalEquipment,
-        lowStockItems,
+        totalBookings: s.totalBookings || 0,
+        pendingBookings: s.pendingBookings || 0,
+        confirmedBookings: s.confirmedBookings || 0,
+        totalRevenue: s.totalRevenue || 0,
+        monthlyRevenue: s.monthlyRevenue || 0,
+        totalUsers: s.totalUsers || 0,
+        newUsersThisMonth: s.newUsersThisMonth || 0,
+        totalEquipment: s.totalEquipment || 0,
+        lowStockItems: s.lowStockItems || 0,
       })
 
       // Build recent activity
-      const activities: RecentActivity[] = recentBookingsData.map((b: any) => ({
-        id: b.id,
-        type: 'booking' as const,
-        message: `Booking #${b.id.slice(0, 8)} - ${formatCurrency(b.total_cost || 0)}`,
-        timestamp: b.created_at!,
-        status: b.status || undefined,
-      }))
-      setRecentActivity(activities)
-
-      console.log('Dashboard data loaded successfully')
+      if (s.recentBookings?.length) {
+        const activities: RecentActivity[] = s.recentBookings.map((b: any) => ({
+          id: b.id,
+          type: 'booking' as const,
+          message: `Booking #${b.id.slice(0, 8)} - ${formatCurrency(b.total_cost || 0)}`,
+          timestamp: b.created_at!,
+          status: b.status || undefined,
+        }))
+        setRecentActivity(activities)
+      }
 
       // Fetch unread notifications count
       try {
@@ -350,20 +258,12 @@ export default function AdminDashboard() {
       } catch (e) {
         // ignore
       }
-
     } catch (error) {
       console.error('Error loading dashboard data:', error)
-      // Set default values on error
       setStats({
-        totalBookings: 0,
-        pendingBookings: 0,
-        confirmedBookings: 0,
-        totalRevenue: 0,
-        monthlyRevenue: 0,
-        totalUsers: 0,
-        newUsersThisMonth: 0,
-        totalEquipment: 0,
-        lowStockItems: 0,
+        totalBookings: 0, pendingBookings: 0, confirmedBookings: 0,
+        totalRevenue: 0, monthlyRevenue: 0, totalUsers: 0,
+        newUsersThisMonth: 0, totalEquipment: 0, lowStockItems: 0,
       })
     }
   }
@@ -536,7 +436,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Link href="/admin/bookings" className="group">
             <Card className="bg-white border border-stone-200 rounded-xl p-4 shadow-none hover:shadow-md hover:border-emerald-300 transition-all duration-200">
               <div className="flex items-center justify-between">
@@ -584,6 +484,40 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 <ArrowRight className="w-4 h-4 text-stone-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
+              </div>
+            </Card>
+          </Link>
+
+          <Link href="/admin/discounts" className="group">
+            <Card className="bg-white border border-stone-200 rounded-xl p-4 shadow-none hover:shadow-md hover:border-emerald-300 transition-all duration-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-rose-50 flex items-center justify-center group-hover:bg-rose-100 transition-colors">
+                    <Tag className="w-5 h-5 text-rose-700" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-stone-900 text-sm">Manajemen Diskon</h3>
+                    <p className="text-xs text-stone-400">Kelola promo & diskon</p>
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-stone-400 group-hover:text-rose-600 group-hover:translate-x-1 transition-all" />
+              </div>
+            </Card>
+          </Link>
+
+          <Link href="/admin/products-promo" className="group">
+            <Card className="bg-white border border-stone-200 rounded-xl p-4 shadow-none hover:shadow-md hover:border-orange-300 transition-all duration-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
+                    <Percent className="w-5 h-5 text-orange-700" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-stone-900 text-sm">Promo Produk</h3>
+                    <p className="text-xs text-stone-400">Kelola diskon per produk</p>
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-stone-400 group-hover:text-orange-600 group-hover:translate-x-1 transition-all" />
               </div>
             </Card>
           </Link>

@@ -69,6 +69,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/packages" className="hover:text-gold transition-colors">
+                  Paket Bundling
+                </Link>
+              </li>
+              <li>
                 <Link href="/bundles" className="hover:text-gold transition-colors">
                   Promo
                 </Link>

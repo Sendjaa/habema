@@ -221,7 +221,7 @@ export const api = {
 };
 
 // React hook for optimized fetching
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export function useOptimizedFetch<T = any>(
   url: string | null,
@@ -231,6 +231,9 @@ export function useOptimizedFetch<T = any>(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
   const execute = useCallback(async () => {
     if (!url) return;
 
@@ -238,14 +241,14 @@ export function useOptimizedFetch<T = any>(
     setError(null);
 
     try {
-      const result = await optimizedFetch.fetch<T>(url, options);
+      const result = await optimizedFetch.fetch<T>(url, optionsRef.current);
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
       setLoading(false);
     }
-  }, [url, options]);
+  }, [url]);
 
   useEffect(() => {
     execute();

@@ -2,67 +2,30 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, Phone, Mail } from 'lucide-react'
+import { ArrowRight, Phone, MessageCircle, MapPin } from 'lucide-react'
 
 export function CTA() {
   return (
-    <section className="relative overflow-hidden py-16 md:py-28 bg-gradient-to-r from-forest via-forest-dark to-forest-light text-cream">
-      {/* Decorative background */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-0 right-0 w-72 h-72 md:w-96 md:h-96 bg-gold rounded-full mix-blend-multiply filter blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 md:w-96 md:h-96 bg-gold rounded-full mix-blend-multiply filter blur-3xl" />
-      </div>
+    <section className="py-16 md:py-24 bg-stone-50">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 lg:gap-12 items-center">
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-12 items-center">
-          
-          {/* Left Content */}
-          <div className="space-y-4 md:space-y-6">
-            <h2 className="text-3xl md:text-5xl font-bold leading-tight">
-              Siap untuk Petualangan Berikutnya?
-            </h2>
-            <p className="text-xs md:text-lg text-cream/90 leading-relaxed">
-              Jangan biarkan kurangnya peralatan menghalangi petualangan Anda. Dengan Habema, semua kebutuhan outdoor Anda tersedia dengan harga terjangkau.
+          {/* Left — Teks + CTA */}
+          <div className="lg:col-span-3 space-y-4">
+            <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">
+              Mulai Petualangan
             </p>
-
-            {/* Fitur List - Text XS Mobile Optimized */}
-            <div className="pt-2 md:pt-4 space-y-3 md:space-y-4">
-              <div className="flex items-center gap-3 md:gap-4">
-                <div className="w-9 h-9 md:w-12 md:h-12 bg-gold/20 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-lg md:text-2xl">🏃</span>
-                </div>
-                <div>
-                  <h4 className="text-xs md:text-base font-bold">Cepat & Mudah</h4>
-                  <p className="text-[10px] md:text-sm text-cream/80">Proses booking hanya butuh 5 menit</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 md:gap-4">
-                <div className="w-9 h-9 md:w-12 md:h-12 bg-gold/20 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-lg md:text-2xl">🔒</span>
-                </div>
-                <div>
-                  <h4 className="text-xs md:text-base font-bold">Aman & Terpercaya</h4>
-                  <p className="text-[10px] md:text-sm text-cream/80">Verifikasi identitas dan asuransi penuh</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 md:gap-4">
-                <div className="w-9 h-9 md:w-12 md:h-12 bg-gold/20 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-lg md:text-2xl">💰</span>
-                </div>
-                <div>
-                  <h4 className="text-xs md:text-base font-bold">Harga Terbaik</h4>
-                  <p className="text-[10px] md:text-sm text-cream/80">Garansi harga terendah atau kami kembalikan selisihnya</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Tombol Action */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-4">
+            <h2 className="text-3xl md:text-5xl font-black text-stone-900 leading-tight">
+              Siap untuk<br />
+              <span className="italic text-emerald-700">Petualangan Berikutnya?</span>
+            </h2>
+            <p className="text-sm md:text-base text-stone-500 leading-relaxed max-w-md">
+              Sewa perlengkapan outdoor lengkap dengan harga terbaik. Cepat, mudah, dan terpercaya.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <Button
-                size="sm"
-                className="bg-gold text-forest hover:bg-gold-light font-bold text-xs md:text-sm py-5 md:py-6"
+                size="lg"
+                className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl"
                 asChild
               >
                 <Link href="/catalog">
@@ -71,9 +34,9 @@ export function CTA() {
                 </Link>
               </Button>
               <Button
-                size="sm"
+                size="lg"
                 variant="outline"
-                className="border-cream/30 text-cream hover:bg-cream/10 text-xs md:text-sm py-5 md:py-6"
+                className="border-stone-300 text-stone-700 hover:bg-stone-100 rounded-xl"
                 asChild
               >
                 <Link href="/contact">
@@ -83,69 +46,47 @@ export function CTA() {
             </div>
           </div>
 
-          {/* Right Content - Contact Cards (Responsive Grid) */}
-          {/* Menggunakan sm:grid-cols-2 agar di tablet/layar tanggung tidak memakan space ke bawah terlalu panjang */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-            
-            {/* Telepon */}
-            <div className="bg-white/10 backdrop-blur-sm border border-cream/20 rounded-xl p-4 md:p-6 hover:bg-white/15 transition-all">
-              <div className="flex items-start gap-3 md:gap-4">
-                <div className="w-9 h-9 md:w-12 md:h-12 bg-gold/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Phone className="w-5 h-5 text-gold" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold mb-0.5 md:mb-1">Telepon</h4>
-                  <p className="text-xs md:text-sm text-cream/90">+62 812 3456 7890</p>
-                  <p className="text-[10px] md:text-xs text-cream/70 mt-0.5">Senin - Minggu 08:00 - 20:00 WIB</p>
-                </div>
+          {/* Right — Kontak minimal */}
+          <div className="lg:col-span-2 space-y-3">
+            <a
+              href="https://wa.me/6283898749357"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-4 bg-white rounded-xl border border-stone-200 p-4 hover:border-emerald-300 hover:shadow-sm transition-all group"
+            >
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition-colors">
+                <MessageCircle className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-stone-900">Chat WhatsApp</p>
+                <p className="text-xs text-stone-500">+62 838 9874 9357</p>
+              </div>
+            </a>
+
+            <a
+              href="tel:+6283898749357"
+              className="flex items-center gap-4 bg-white rounded-xl border border-stone-200 p-4 hover:border-emerald-300 hover:shadow-sm transition-all group"
+            >
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition-colors">
+                <Phone className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-stone-900">Telepon</p>
+                <p className="text-xs text-stone-500">+62 838 9874 9357</p>
+              </div>
+            </a>
+
+            <div className="flex items-center gap-4 bg-white rounded-xl border border-stone-200 p-4">
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                <MapPin className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-stone-900">Lokasi</p>
+                <p className="text-xs text-stone-500">Jl.Kolonel Masturi, No.176, Lembang, Bandung Barat</p>
               </div>
             </div>
-
-            {/* Email */}
-            <div className="bg-white/10 backdrop-blur-sm border border-cream/20 rounded-xl p-4 md:p-6 hover:bg-white/15 transition-all">
-              <div className="flex items-start gap-3 md:gap-4">
-                <div className="w-9 h-9 md:w-12 md:h-12 bg-gold/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Mail className="w-5 h-5 text-gold" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold mb-0.5 md:mb-1">Email</h4>
-                  <p className="text-xs md:text-sm text-cream/90">info@habema.id</p>
-                  <p className="text-[10px] md:text-xs text-cream/70 mt-0.5">Kami akan merespon dalam 24 jam</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Lokasi - Diatur col-span penuh di mobile, kembali normal di grid desktop */}
-            <div className="bg-white/10 backdrop-blur-sm border border-cream/20 rounded-xl p-4 md:p-6 hover:bg-white/15 transition-all sm:col-span-2">
-              <div className="flex items-start gap-3 md:gap-4">
-                <div className="w-9 h-9 md:w-12 md:h-12 bg-gold/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <span className="text-lg md:text-2xl">📍</span>
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold mb-0.5 md:mb-1">Lokasi</h4>
-                  <p className="text-xs md:text-sm text-cream/90 leading-relaxed">
-                    Jl. Cihanjuang No.71, Cihanjuang Rahayu, Kec. Parongpong, Kabupaten Bandung Barat, Jawa Barat 40559
-                  </p>
-                  <p className="text-[10px] md:text-xs text-cream/70 mt-1">Toko fisik tersedia untuk kunjungan</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Chat WhatsApp */}
-            <div className="bg-white/10 backdrop-blur-sm border border-cream/20 rounded-xl p-4 md:p-6 hover:bg-white/15 transition-all sm:col-span-2">
-              <div className="flex items-start gap-3 md:gap-4">
-                <div className="w-9 h-9 md:w-12 md:h-12 bg-gold/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <span className="text-lg md:text-2xl">💬</span>
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold mb-0.5 md:mb-1">Chat WhatsApp</h4>
-                  <p className="text-xs md:text-sm text-cream/90">+62 812 3456 7890</p>
-                  <p className="text-[10px] md:text-xs text-cream/70 mt-0.5">Respons cepat</p>
-                </div>
-              </div>
-            </div>
-
           </div>
+
         </div>
       </div>
     </section>
