@@ -14,6 +14,7 @@ export function LayoutWrapper({
 }) {
   const pathname = usePathname()
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
   
   // Check if current page is admin page
   const isAdminPage = pathname?.startsWith('/admin')
@@ -23,6 +24,10 @@ export function LayoutWrapper({
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
 
   useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
     const checkAdmin = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -30,12 +35,11 @@ export function LayoutWrapper({
         if (!isLoginPage) {
           router.push("/admin/login");
         } else {
-          setIsAdmin(false); // Allow login page to render
+          setIsAdmin(false);
         }
         return;
       }
 
-      // Check user role (using is_vendor as admin flag)
       const { data: profile, error } = await supabase
         .from('users')
         .select('is_vendor')
@@ -47,7 +51,7 @@ export function LayoutWrapper({
         if (!isLoginPage) {
           router.push("/admin/login");
         } else {
-          setIsAdmin(false); // Allow login page to render
+          setIsAdmin(false);
         }
       } else {
         setIsAdmin(true);
@@ -57,9 +61,13 @@ export function LayoutWrapper({
     if (isAdminPage && !isLoginPage) {
       checkAdmin();
     } else if (isLoginPage) {
-      setIsAdmin(false); // Bypass check for login page
+      setIsAdmin(false);
     }
   }, [pathname, isLoginPage, router]);
+
+  if (!mounted) {
+    return <div className="min-h-screen">{children}</div>
+  }
 
   // Don't show header and footer on admin pages (except login)
   if (isAdminPage && !isLoginPage) {
