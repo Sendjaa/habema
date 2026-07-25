@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,13 +16,15 @@ import {
   AlertTriangle,
   Edit,
   Trash2,
-  Download
+  Download,
+  Mountain,
 } from "lucide-react";
 import { toast } from "sonner";
 
 interface Booking {
   id: string;
   user_id: string | null;
+  user_profile?: { email?: string } | null;
   status: string;
   start_date: string;
   end_date: string;
@@ -56,6 +56,14 @@ export default function BookingDetailsPage() {
   const [bookingItems, setBookingItems] = useState<BookingItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const statusLabels: Record<string, string> = {
+    pending: 'Menunggu',
+    confirmed: 'Terkonfirmasi',
+    picked_up: 'Dipinjam',
+    returned: 'Selesai',
+    cancelled: 'Dibatalkan',
+  }
+
   useEffect(() => {
     if (bookingId) {
       fetchBookingDetails();
@@ -65,184 +73,82 @@ export default function BookingDetailsPage() {
   const fetchBookingDetails = async () => {
     try {
       setLoading(true);
-      console.log('Fetching booking details for ID:', bookingId);
+      const res = await fetch(`/api/admin/bookings/${bookingId}`)
+      const result = await res.json()
 
-      // Validate if bookingId is a valid UUID format
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      const isValidUUID = uuidRegex.test(bookingId);
-
-      console.log('Is valid UUID:', isValidUUID, 'for ID:', bookingId);
-
-      // If not a valid UUID, use mock data immediately
-      if (!isValidUUID) {
-        console.log('Using mock data - booking ID is not a valid UUID');
-        const mockBooking: Booking = {
-          id: bookingId,
-          user_id: null,
-          status: 'pending',
-          start_date: new Date().toISOString().split('T')[0],
-          end_date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-          total_cost: 150000,
-          created_at: new Date().toISOString(),
-          rental_days: 1,
-          notes: 'Sample booking for demonstration - Mock ID format'
-        };
-        setBooking(mockBooking);
-        setBookingItems([]);
-        toast.info('Showing sample data - booking ID is not a database UUID');
-        return;
+      if (!result.success) {
+        toast.error(result.error || 'Gagal memuat detail booking')
+        return
       }
 
-      // Use service role client if available, fallback to regular client
-      const clientToUse = process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY !== 'dummy-key' 
-        ? supabaseAdmin 
-        : supabase;
-
-      // Fetch booking details only for valid UUIDs
-      const { data: bookingData, error: bookingError } = await clientToUse
-        .from("bookings")
-        .select("*")
-        .eq("id", bookingId)
-        .single();
-
-      console.log('Booking query result:', { bookingData, bookingError });
-
-      if (bookingError) {
-        console.error("Booking fetch error:", JSON.stringify(bookingError, null, 2));
-        
-        // If UUID format error or RLS error, use mock data
-        if (bookingError.code === '22P02' || bookingError.code === 'PGRST116' || bookingError.code === '42501') {
-          console.log('Using mock data due to UUID format or RLS issues');
-          const mockBooking: Booking = {
-            id: bookingId,
-            user_id: null,
-            status: 'pending',
-            start_date: new Date().toISOString().split('T')[0],
-            end_date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-            total_cost: 150000,
-            created_at: new Date().toISOString(),
-            rental_days: 1,
-            notes: 'Sample booking for demonstration - ID format not compatible with database UUID'
-          };
-          setBooking(mockBooking);
-          setBookingItems([]);
-          toast.info('Showing sample data - booking ID format not compatible with database');
-          return;
-        }
-        
-        throw bookingError;
-      }
-
-      setBooking(bookingData);
-
-      // Fetch booking items if relationship exists
-      try {
-        const { data: itemsData, error: itemsError } = await clientToUse
-          .from("booking_items")
-          .select(`
-            *,
-            equipment (
-              name,
-              description,
-              image_url
-            )
-          `)
-          .eq("booking_id", bookingId);
-
-        if (itemsError) {
-          console.log("Booking items not available:", itemsError);
-          setBookingItems([]);
-        } else {
-          setBookingItems(itemsData || []);
-        }
-      } catch (error) {
-        console.log("Could not fetch booking items:", error);
-        setBookingItems([]);
-      }
-
+      setBooking(result.data.booking)
+      setBookingItems(result.data.items || [])
     } catch (error) {
-      console.error("Error fetching booking details:", JSON.stringify(error, null, 2));
-      
-      // Use mock data as fallback
-      const mockBooking: Booking = {
-        id: bookingId,
-        user_id: null,
-        status: 'pending',
-        start_date: new Date().toISOString().split('T')[0],
-        end_date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-        total_cost: 150000,
-        created_at: new Date().toISOString(),
-        rental_days: 1,
-        notes: 'Sample booking for demonstration'
-      };
-      setBooking(mockBooking);
-      setBookingItems([]);
-      toast.info('Showing sample data due to database error');
+      console.error('Error fetching booking details:', error)
+      toast.error('Gagal memuat detail booking')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   };
 
   const updateBookingStatus = async (newStatus: string) => {
     try {
-      const clientToUse = process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY !== 'dummy-key' 
-        ? supabaseAdmin 
-        : supabase;
+      const res = await fetch(`/api/admin/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      const result = await res.json()
 
-      const { error } = await clientToUse
-        .from("bookings")
-        .update({ status: newStatus })
-        .eq("id", bookingId);
-
-      if (error) throw error;
+      if (!result.success) {
+        throw new Error(result.error)
+      }
 
       setBooking(prev => prev ? { ...prev, status: newStatus } : null);
-      toast.success(`Booking status updated to ${newStatus}`);
+      toast.success(`Status booking diubah menjadi ${statusLabels[newStatus] || newStatus}`);
     } catch (error) {
       console.error("Error updating booking status:", error);
-      toast.error("Failed to update booking status");
+      toast.error("Gagal mengubah status booking");
     }
   };
 
   const deleteBooking = async () => {
-    if (!confirm("Are you sure you want to delete this booking? This action cannot be undone.")) {
+    if (!confirm("Yakin ingin menghapus booking ini? Tindakan ini tidak dapat dibatalkan.")) {
       return;
     }
 
     try {
-      const clientToUse = process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY !== 'dummy-key' 
-        ? supabaseAdmin 
-        : supabase;
+      const res = await fetch(`/api/admin/bookings/${bookingId}`, {
+        method: 'DELETE',
+      })
+      const result = await res.json()
 
-      const { error } = await clientToUse
-        .from("bookings")
-        .delete()
-        .eq("id", bookingId);
+      if (!result.success) {
+        throw new Error(result.error)
+      }
 
-      if (error) throw error;
-
-      toast.success("Booking deleted successfully");
+      toast.success("Booking berhasil dihapus");
       router.push("/admin/bookings");
     } catch (error) {
       console.error("Error deleting booking:", error);
-      toast.error("Failed to delete booking");
+      toast.error("Gagal menghapus booking");
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-amber-50 text-amber-700 border border-amber-200";
       case "confirmed":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-50 text-blue-700 border border-blue-200";
       case "picked_up":
-        return "bg-purple-100 text-purple-800";
+        return "bg-purple-50 text-purple-700 border border-purple-200";
       case "returned":
-        return "bg-green-100 text-green-800";
+        return "bg-green-50 text-green-700 border border-green-200";
       case "cancelled":
-        return "bg-red-100 text-red-800";
+        return "bg-red-50 text-red-700 border border-red-200";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-stone-50 text-stone-700 border border-stone-200";
     }
   };
 
@@ -255,7 +161,7 @@ export default function BookingDetailsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F1EFE8] flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
       </div>
     );
@@ -263,12 +169,12 @@ export default function BookingDetailsPage() {
 
   if (!booking) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F1EFE8] flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Booking Not Found</h1>
-          <p className="text-gray-600 mb-4">The booking you're looking for doesn't exist.</p>
-          <Button onClick={() => router.push("/admin/bookings")}>
-            Back to Bookings
+          <h1 className="text-2xl font-bold text-stone-900 mb-2" style={{ fontFamily: "'Fraunces', serif" }}>Booking Tidak Ditemukan</h1>
+          <p className="text-stone-600 mb-4">Booking yang Anda cari tidak ada.</p>
+          <Button onClick={() => router.push("/admin/bookings")} className="rounded-lg">
+            Kembali ke Booking
           </Button>
         </div>
       </div>
@@ -276,122 +182,129 @@ export default function BookingDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              onClick={() => router.push("/admin/bookings")}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Bookings
+    <div className="min-h-screen bg-[#F1EFE8]">
+      {/* Header */}
+      <header className="bg-white border-b border-stone-200 sticky top-0 z-30">
+        <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={() => router.push("/admin/bookings")} className="h-8 px-2 text-xs text-stone-500 hover:text-stone-800 rounded-lg">
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Kembali
             </Button>
-            <h1 className="text-2xl font-bold text-gray-900">Booking Details</h1>
+            <div className="w-8 h-8 rounded-lg bg-emerald-800 flex items-center justify-center">
+              <Mountain className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <h1 className="text-base sm:text-lg text-stone-900 font-semibold tracking-tight" style={{ fontFamily: "'Fraunces', serif" }}>
+                Detail Booking
+              </h1>
+              <p className="text-[10px] text-stone-400 hidden sm:block">#{booking.id.slice(0, 8)}</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => router.push(`/admin/bookings/${bookingId}/edit`)}>
-              <Edit className="w-4 h-4 mr-2" />
+            <Button variant="outline" size="sm" onClick={() => router.push(`/admin/bookings/${bookingId}/edit`)} className="h-8 px-3 text-xs border-stone-200 text-stone-600 rounded-lg">
+              <Edit className="w-3.5 h-3.5 mr-1.5" />
               Edit
             </Button>
-            <Button variant="destructive" onClick={deleteBooking}>
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete
+            <Button variant="destructive" size="sm" onClick={deleteBooking} className="h-8 px-3 text-xs rounded-lg">
+              <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+              Hapus
             </Button>
           </div>
         </div>
+      </header>
 
+      <div className="px-4 sm:px-6 py-6 max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Booking Information */}
-            <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Booking Information</h2>
+            <Card className="border-stone-200 rounded-xl shadow-none p-5">
+              <h2 className="text-sm font-semibold text-stone-900 mb-4" style={{ fontFamily: "'Fraunces', serif" }}>Informasi Booking</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <span className="text-sm text-gray-600">Booking ID</span>
-                  <p className="font-mono text-sm">#{booking.id.slice(0, 8)}</p>
+                  <span className="text-xs text-stone-400">ID Booking</span>
+                  <p className="font-mono text-sm text-stone-800">#{booking.id.slice(0, 8)}</p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-600">Status</span>
+                  <span className="text-xs text-stone-400">Status</span>
                   <div className="mt-1">
-                    <Badge className={getStatusColor(booking.status)}>
-                      {booking.status.replace('_', ' ').toUpperCase()}
+                    <Badge className={`${getStatusColor(booking.status)} text-[10px]`}>
+                      {statusLabels[booking.status] || booking.status}
                     </Badge>
                   </div>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-600">Start Date</span>
-                  <p className="font-medium">{booking.start_date}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-600">End Date</span>
-                  <p className="font-medium">{booking.end_date}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-600">Rental Days</span>
-                  <p className="font-medium">{booking.rental_days} days</p>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-600">Created At</span>
-                  <p className="font-medium">
-                    {new Date(booking.created_at).toLocaleDateString('id-ID')}
+                  <span className="text-xs text-stone-400">Tanggal Mulai</span>
+                  <p className="text-sm text-stone-800 font-medium">
+                    {new Date(booking.start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </p>
-                  <p className="text-xs text-gray-500">
-                    {new Date(booking.created_at).toLocaleTimeString('id-ID', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
+                </div>
+                <div>
+                  <span className="text-xs text-stone-400">Tanggal Selesai</span>
+                  <p className="text-sm text-stone-800 font-medium">
+                    {new Date(booking.end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-xs text-stone-400">Durasi Sewa</span>
+                  <p className="text-sm text-stone-800 font-medium">{booking.rental_days} hari</p>
+                </div>
+                <div>
+                  <span className="text-xs text-stone-400">Dibuat Pada</span>
+                  <p className="text-sm text-stone-800 font-medium">
+                    {new Date(booking.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </p>
+                  <p className="text-[10px] text-stone-400">
+                    {new Date(booking.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
               </div>
               {booking.notes && (
-                <div className="mt-4">
-                  <span className="text-sm text-gray-600">Notes</span>
-                  <p className="mt-1 text-gray-800">{booking.notes}</p>
+                <div className="mt-4 p-3 bg-stone-50 rounded-lg">
+                  <span className="text-xs text-stone-400">Catatan</span>
+                  <p className="text-sm text-stone-700 mt-0.5">{booking.notes}</p>
                 </div>
               )}
             </Card>
 
             {/* Booking Items */}
-            <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Booking Items</h2>
+            <Card className="border-stone-200 rounded-xl shadow-none p-5">
+              <h2 className="text-sm font-semibold text-stone-900 mb-4" style={{ fontFamily: "'Fraunces', serif" }}>Barang yang Disewa</h2>
               {bookingItems.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {bookingItems.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
+                    <div key={item.id} className="flex items-center justify-between p-3 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors">
+                      <div className="flex items-center gap-3">
                         {item.equipment?.image_url ? (
                           <img 
                             src={item.equipment.image_url} 
                             alt={item.equipment.name}
-                            className="w-12 h-12 object-cover rounded"
+                            className="w-10 h-10 object-cover rounded-lg"
                           />
                         ) : (
-                          <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
-                            <Package className="w-6 h-6 text-gray-400" />
+                          <div className="w-10 h-10 bg-stone-100 rounded-lg flex items-center justify-center">
+                            <Package className="w-5 h-5 text-stone-400" />
                           </div>
                         )}
                         <div>
-                          <h3 className="font-medium">{item.equipment?.name || 'Unknown Item'}</h3>
+                          <h3 className="font-medium text-sm text-stone-800">{item.equipment?.name || 'Barang Tidak Diketahui'}</h3>
                           {item.equipment?.description && (
-                            <p className="text-sm text-gray-600">{item.equipment.description}</p>
+                            <p className="text-xs text-stone-400 line-clamp-1">{item.equipment.description}</p>
                           )}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-medium">{item.quantity}x</p>
-                        <p className="text-sm text-gray-600">{formatCurrency(item.unit_price)}</p>
+                      <div className="text-right shrink-0">
+                        <p className="font-medium text-sm text-stone-800">{item.quantity}x</p>
+                        <p className="text-xs text-stone-400">{formatCurrency(item.unit_price)}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Package className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                  <p>No booking items found</p>
+                <div className="text-center py-8 text-stone-400">
+                  <Package className="w-10 h-10 mx-auto mb-2 text-stone-300" />
+                  <p className="text-sm">Tidak ada barang dalam booking ini</p>
                 </div>
               )}
             </Card>
@@ -400,28 +313,28 @@ export default function BookingDetailsPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Customer Information */}
-            <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Customer Information</h2>
+            <Card className="border-stone-200 rounded-xl shadow-none p-5">
+              <h2 className="text-sm font-semibold text-stone-900 mb-4" style={{ fontFamily: "'Fraunces', serif" }}>Informasi Pelanggan</h2>
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   {booking.user_id ? (
                     <>
-                      <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
-                        <User className="w-4 h-4 text-emerald-600" />
+                      <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
+                        <User className="w-5 h-5 text-emerald-600" />
                       </div>
-                      <div>
-                        <p className="font-medium">Registered User</p>
-                        <p className="text-sm text-gray-600">ID: {booking.user_id.slice(0, 8)}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm text-stone-800 truncate">{booking.user_profile?.email || 'Pengguna Terdaftar'}</p>
+                        <p className="text-xs text-stone-400">ID: {booking.user_id.slice(0, 8)}</p>
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
-                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                      <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
+                        <AlertTriangle className="w-5 h-5 text-amber-600" />
                       </div>
                       <div>
-                        <p className="font-medium">Guest User</p>
-                        <p className="text-sm text-gray-600">Anonymous booking</p>
+                        <p className="font-medium text-sm text-stone-800">Pengguna Tamu</p>
+                        <p className="text-xs text-stone-400">Booking tanpa akun</p>
                       </div>
                     </>
                   )}
@@ -430,62 +343,49 @@ export default function BookingDetailsPage() {
             </Card>
 
             {/* Pricing Summary */}
-            <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Pricing Summary</h2>
-              <div className="space-y-3">
+            <Card className="border-stone-200 rounded-xl shadow-none p-5">
+              <h2 className="text-sm font-semibold text-stone-900 mb-4" style={{ fontFamily: "'Fraunces', serif" }}>Ringkasan Biaya</h2>
+              <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span className="font-medium">{formatCurrency(booking.total_cost)}</span>
+                  <span className="text-stone-500">Subtotal</span>
+                  <span className="font-medium text-stone-800">{formatCurrency(booking.total_cost)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Tax</span>
-                  <span className="font-medium">Rp 0</span>
+                  <span className="text-stone-500">Pajak</span>
+                  <span className="font-medium text-stone-800">Rp 0</span>
                 </div>
-                <div className="border-t pt-3">
+                <div className="border-t border-stone-200 pt-3">
                   <div className="flex justify-between">
-                    <span className="font-semibold">Total</span>
-                    <span className="font-bold text-lg">{formatCurrency(booking.total_cost)}</span>
+                    <span className="font-semibold text-stone-900">Total</span>
+                    <span className="font-bold text-base text-emerald-700">{formatCurrency(booking.total_cost)}</span>
                   </div>
                 </div>
               </div>
             </Card>
 
             {/* Status Actions */}
-            <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Status Actions</h2>
+            <Card className="border-stone-200 rounded-xl shadow-none p-5">
+              <h2 className="text-sm font-semibold text-stone-900 mb-4" style={{ fontFamily: "'Fraunces', serif" }}>Aksi Status</h2>
               <div className="space-y-2">
                 {booking.status === 'pending' && (
-                  <Button 
-                    className="w-full" 
-                    onClick={() => updateBookingStatus('confirmed')}
-                  >
+                  <Button className="w-full rounded-lg" onClick={() => updateBookingStatus('confirmed')}>
                     <CheckCircle className="w-4 h-4 mr-2" />
-                    Confirm Booking
+                    Konfirmasi Booking
                   </Button>
                 )}
                 {booking.status === 'confirmed' && (
-                  <Button 
-                    className="w-full" 
-                    onClick={() => updateBookingStatus('picked_up')}
-                  >
+                  <Button className="w-full rounded-lg" onClick={() => updateBookingStatus('picked_up')}>
                     <Package className="w-4 h-4 mr-2" />
-                    Mark as Picked Up
+                    Tandai Dipinjam
                   </Button>
                 )}
                 {booking.status === 'picked_up' && (
-                  <Button 
-                    className="w-full" 
-                    onClick={() => updateBookingStatus('returned')}
-                  >
+                  <Button className="w-full rounded-lg" onClick={() => updateBookingStatus('returned')}>
                     <CheckCircle className="w-4 h-4 mr-2" />
-                    Mark as Returned
+                    Tandai Selesai
                   </Button>
                 )}
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => router.push(`/admin/bookings/${bookingId}/edit`)}
-                >
+                <Button variant="outline" className="w-full rounded-lg border-stone-200 text-stone-600" onClick={() => router.push(`/admin/bookings/${bookingId}/edit`)}>
                   <Edit className="w-4 h-4 mr-2" />
                   Edit Booking
                 </Button>

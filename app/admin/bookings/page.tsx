@@ -22,7 +22,8 @@ import {
   Download,
   RefreshCw,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Mountain,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -187,7 +188,7 @@ export default function BookingManagement() {
         ...(data || []).map(booking => {
           return [
             booking.id.slice(0, 8),
-            booking.user_id ? "Registered User" : "Guest",
+            booking.user_profile?.email || (booking.user_id ? "Registered User" : "Guest"),
             booking.status,
             booking.start_date,
             booking.end_date,
@@ -220,20 +221,28 @@ export default function BookingManagement() {
       maximumFractionDigits: 0,
     }).format(amount);
 
+  const statusLabels: Record<string, string> = {
+    pending: 'Menunggu',
+    confirmed: 'Terkonfirmasi',
+    picked_up: 'Dipinjam',
+    returned: 'Selesai',
+    cancelled: 'Dibatalkan',
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
-        return "bg-amber-100 text-amber-800";
+        return "bg-amber-50 text-amber-700 border border-amber-200";
       case "confirmed":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-50 text-blue-700 border border-blue-200";
       case "picked_up":
-        return "bg-purple-100 text-purple-800";
+        return "bg-purple-50 text-purple-700 border border-purple-200";
       case "returned":
-        return "bg-green-100 text-green-800";
+        return "bg-green-50 text-green-700 border border-green-200";
       case "cancelled":
-        return "bg-red-100 text-red-800";
+        return "bg-red-50 text-red-700 border border-red-200";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-stone-50 text-stone-700 border border-stone-200";
     }
   };
 
@@ -253,84 +262,83 @@ export default function BookingManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F1EFE8]">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => router.push("/admin")}
+      <header className="bg-white border-b border-stone-200 sticky top-0 z-30">
+        <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-800 flex items-center justify-center">
+              <Mountain className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <h1
+                className="text-base sm:text-lg text-stone-900 font-semibold tracking-tight"
+                style={{ fontFamily: "'Fraunces', serif" }}
               >
-                <ChevronLeft className="w-4 h-4 mr-1" />
-                Back to Dashboard
-              </Button>
-              <h1 className="text-2xl font-bold text-gray-900">Booking Management</h1>
+                Manajemen Booking
+              </h1>
+              <p className="text-[10px] text-stone-400 hidden sm:block">Kelola semua penyewaan</p>
             </div>
-            <div className="flex items-center gap-3">
-              <Button variant="outline" onClick={exportBookings}>
-                <Download className="w-4 h-4 mr-2" />
-                Export CSV
-              </Button>
-              <Button variant="outline" onClick={fetchBookings}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
-            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={exportBookings} className="h-8 px-3 text-xs border-stone-200 text-stone-600 rounded-lg">
+              <Download className="w-3.5 h-3.5 mr-1.5" />
+              Export CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={fetchBookings} className="h-8 px-3 text-xs border-stone-200 text-stone-600 rounded-lg">
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+              Refresh
+            </Button>
           </div>
         </div>
       </header>
 
-      <div className="p-6">
+      <div className="px-4 sm:px-6 py-6 max-w-7xl mx-auto">
         {/* Filters */}
-        <Card className="p-4 mb-6">
+        <Card className="p-4 sm:p-5 mb-6 border-stone-200 rounded-xl shadow-none">
           <div className="space-y-4">
-            {/* Search Bar - Full Width on Mobile */}
             <div>
-              <Label htmlFor="search" className="text-sm font-medium">Search</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Label htmlFor="search" className="text-xs font-medium text-stone-600">Cari Booking</Label>
+              <div className="relative mt-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-stone-400 w-4 h-4" />
                 <Input
                   id="search"
-                  placeholder="Search by ID, email, name..."
+                  placeholder="Cari berdasarkan ID, email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 border-stone-200 rounded-lg text-sm"
                 />
               </div>
             </div>
             
-            {/* Filter Row - Responsive Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <Label htmlFor="status-filter" className="text-sm font-medium">Status</Label>
+                <Label htmlFor="status-filter" className="text-xs font-medium text-stone-600">Status</Label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger id="status-filter">
-                    <SelectValue placeholder="All Status" />
+                  <SelectTrigger id="status-filter" className="mt-1 border-stone-200 rounded-lg">
+                    <SelectValue placeholder="Semua Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="picked_up">Picked Up</SelectItem>
-                    <SelectItem value="returned">Returned</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="all">Semua Status</SelectItem>
+                    <SelectItem value="pending">Menunggu</SelectItem>
+                    <SelectItem value="confirmed">Terkonfirmasi</SelectItem>
+                    <SelectItem value="picked_up">Dipinjam</SelectItem>
+                    <SelectItem value="returned">Selesai</SelectItem>
+                    <SelectItem value="cancelled">Dibatalkan</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <Label htmlFor="user-type-filter" className="text-sm font-medium">User Type</Label>
+                <Label htmlFor="user-type-filter" className="text-xs font-medium text-stone-600">Tipe Pengguna</Label>
                 <Select value={userTypeFilter} onValueChange={setUserTypeFilter}>
-                  <SelectTrigger id="user-type-filter">
-                    <SelectValue placeholder="All Users" />
+                  <SelectTrigger id="user-type-filter" className="mt-1 border-stone-200 rounded-lg">
+                    <SelectValue placeholder="Semua Pengguna" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Users</SelectItem>
-                    <SelectItem value="registered">Registered Users</SelectItem>
-                    <SelectItem value="anonymous">Guest Users</SelectItem>
+                    <SelectItem value="all">Semua Pengguna</SelectItem>
+                    <SelectItem value="registered">Terdaftar</SelectItem>
+                    <SelectItem value="anonymous">Tamu</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -338,7 +346,8 @@ export default function BookingManagement() {
               <div className="flex items-end">
                 <Button 
                   variant="outline" 
-                  className="w-full sm:w-auto"
+                  size="sm"
+                  className="h-10 border-stone-200 text-stone-600 rounded-lg text-xs"
                   onClick={() => {
                     setSearchTerm("");
                     setStatusFilter("all");
@@ -346,8 +355,8 @@ export default function BookingManagement() {
                     setCurrentPage(1);
                   }}
                 >
-                  <Filter className="w-4 h-4 mr-2" />
-                  Clear Filters
+                  <Filter className="w-3.5 h-3.5 mr-1.5" />
+                  Hapus Filter
                 </Button>
               </div>
             </div>
@@ -355,50 +364,66 @@ export default function BookingManagement() {
         </Card>
 
         {/* Bookings Table */}
-        <Card className="p-4">
+        <Card className="border-stone-200 rounded-xl shadow-none p-4 sm:p-5">
           {/* Mobile Card View */}
           <div className="lg:hidden space-y-4">
             {bookings.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Calendar className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p>No bookings found</p>
+              <div className="text-center py-8 text-stone-400">
+                <Calendar className="w-12 h-12 mx-auto mb-2 text-stone-300" />
+                <p className="text-sm">Belum ada booking</p>
               </div>
             ) : (
               bookings.map((booking) => (
-                <Card key={booking.id} className="p-4 border border-gray-200">
+                <Card key={booking.id} className="p-4 border border-stone-200 rounded-xl shadow-none">
                   <div className="space-y-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="font-semibold text-gray-900">{booking.id}</p>
-                        <Badge className={getStatusColor(booking.status)}>
-                          {booking.status}
+                        <p className="font-mono text-xs text-stone-400">#{booking.id.slice(0, 8)}</p>
+                        <Badge className={`${getStatusColor(booking.status)} text-[10px] mt-1`}>
+                          {statusLabels[booking.status] || booking.status}
                         </Badge>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-gray-900">{formatCurrency(booking.total_cost)}</p>
+                        <p className="font-bold text-stone-900 text-sm">{formatCurrency(booking.total_cost)}</p>
                       </div>
                     </div>
                     
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <p>Customer: {booking.user_profile?.email || 'Guest User'}</p>
-                      <p>Items: {booking.booking_items?.length || 0} items</p>
-                      <p>Dates: {booking.start_date} - {booking.end_date}</p>
-                      <p>Created: {new Date(booking.created_at).toLocaleDateString('id-ID')}</p>
+                    <div className="text-xs text-stone-600 space-y-1">
+                      <p><span className="text-stone-400">Pelanggan:</span> {booking.user_profile?.email || 'Tamu'}</p>
+                      {booking.booking_items && booking.booking_items.length > 0 && (
+                        <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                          {booking.booking_items.slice(0, 3).map((item: any) => (
+                            item.equipment?.image_url ? (
+                              <img key={item.id} src={item.equipment.image_url} alt={item.equipment.name}
+                                className="w-7 h-7 object-cover rounded border border-stone-200" />
+                            ) : (
+                              <div key={item.id} className="w-7 h-7 bg-stone-100 rounded border border-stone-200 flex items-center justify-center">
+                                <Package className="w-3.5 h-3.5 text-stone-400" />
+                              </div>
+                            )
+                          ))}
+                          {booking.booking_items.length > 3 && (
+                            <span className="text-[10px] text-stone-400">+{booking.booking_items.length - 3}</span>
+                          )}
+                        </div>
+                      )}
+                      <p><span className="text-stone-400">Tanggal:</span> {formatDate(booking.start_date)} - {formatDate(booking.end_date)}</p>
+                      <p><span className="text-stone-400">Dibuat:</span> {formatDate(booking.created_at)}</p>
                     </div>
                     
-                    <div className="flex gap-2 pt-2 border-t border-gray-100">
-                      <Button size="sm" variant="outline" onClick={() => {
+                    <div className="flex gap-2 pt-2 border-t border-stone-100">
+                      <Button size="sm" variant="outline" className="h-8 text-xs border-stone-200 text-stone-600 rounded-lg" onClick={() => {
                         setSelectedBooking(booking);
                         setShowDetailModal(true);
                       }}>
-                        <Eye className="w-4 h-4 mr-1" />
-                        View
+                        <Eye className="w-3.5 h-3.5 mr-1" />
+                        Detail
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => {
+                      <Button size="sm" variant="outline" className="h-8 text-xs border-stone-200 text-stone-600 rounded-lg" onClick={() => {
                         setSelectedBooking(booking);
                         setShowEditModal(true);
                       }}>
-                        <Edit className="w-4 h-4 mr-1" />
+                        <Edit className="w-3.5 h-3.5 mr-1" />
                         Edit
                       </Button>
                     </div>
@@ -412,96 +437,94 @@ export default function BookingManagement() {
           <div className="hidden lg:block overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">ID</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Customer</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Items</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Dates</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Status</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Total</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Created</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Actions</th>
+                <tr className="border-b border-stone-200">
+                  <th className="text-left py-3 px-4 text-xs font-medium text-stone-500 uppercase tracking-wider">ID</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-stone-500 uppercase tracking-wider">Pelanggan</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-stone-500 uppercase tracking-wider">Barang</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-stone-500 uppercase tracking-wider">Tanggal Sewa</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-stone-500 uppercase tracking-wider">Status</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-stone-500 uppercase tracking-wider">Total</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-stone-500 uppercase tracking-wider">Dibuat</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-stone-500 uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {bookings.map((booking) => (
-                  <tr key={booking.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <tr key={booking.id} className="border-b border-stone-100 hover:bg-stone-50 transition-colors">
                     <td className="py-3 px-4">
-                      <span className="font-mono text-sm">#{booking.id.slice(0, 8)}</span>
+                      <span className="font-mono text-xs text-stone-500">#{booking.id.slice(0, 8)}</span>
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         {booking.user_id ? (
                           <>
-                            <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center">
-                              <Users className="w-3 h-3 text-emerald-600" />
+                            <div className="w-7 h-7 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
+                              <Users className="w-3.5 h-3.5 text-emerald-600" />
                             </div>
-                            <div className="text-sm">Registered User</div>
+                            <span className="text-sm text-stone-700 truncate max-w-40" title={booking.user_profile?.email || ''}>
+                              {booking.user_profile?.email || 'Terdaftar'}
+                            </span>
                           </>
                         ) : (
                           <>
-                            <div className="w-6 h-6 bg-amber-100 rounded-full flex items-center justify-center">
-                              <Users className="w-3 h-3 text-amber-600" />
+                            <div className="w-7 h-7 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
+                              <Users className="w-3.5 h-3.5 text-amber-600" />
                             </div>
-                            <div className="text-sm">Guest User</div>
+                            <span className="text-sm text-stone-500">Tamu</span>
                           </>
                         )}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="text-sm">
-                        {booking.booking_items?.[0]?.equipment?.name || 'Unknown'}
-                        {booking.booking_items && booking.booking_items.length > 1 && (
-                          <span className="text-gray-500"> +{booking.booking_items.length - 1}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="text-sm">
-                        <div>{formatDate(booking.start_date)}</div>
-                        <div className="text-gray-500">→ {formatDate(booking.end_date)}</div>
-                        <div className="text-xs text-gray-400">{booking.rental_days} days</div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Badge className={getStatusColor(booking.status)}>
-                        {booking.status}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4 font-medium">
-                      {formatCurrency(booking.total_cost)}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">
-                      <div className="space-y-1">
-                        <div>{formatDate(booking.created_at)}</div>
-                        <div className="text-xs text-gray-500">
-                          {new Date(booking.created_at).toLocaleTimeString('id-ID', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                        </div>
                       </div>
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => {
-                            setSelectedBooking(booking);
-                            setShowDetailModal(true);
-                          }}
-                        >
+                        {booking.booking_items?.[0]?.equipment?.image_url ? (
+                          <img src={booking.booking_items[0].equipment.image_url}
+                            alt={booking.booking_items[0].equipment.name}
+                            className="w-8 h-8 object-cover rounded border border-stone-200 shrink-0" />
+                        ) : (
+                          <div className="w-8 h-8 bg-stone-100 rounded border border-stone-200 flex items-center justify-center shrink-0">
+                            <Package className="w-4 h-4 text-stone-400" />
+                          </div>
+                        )}
+                        <div className="text-sm text-stone-700 min-w-0">
+                          <span className="truncate block max-w-28">{booking.booking_items?.[0]?.equipment?.name || '-'}</span>
+                          {booking.booking_items && booking.booking_items.length > 1 && (
+                            <span className="text-stone-400 text-xs">+{booking.booking_items.length - 1} lainnya</span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="text-sm text-stone-700">
+                        <div>{formatDate(booking.start_date)}</div>
+                        <div className="text-stone-400 text-xs">→ {formatDate(booking.end_date)}</div>
+                        <div className="text-[10px] text-stone-400">{booking.rental_days} hari</div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <Badge className={`${getStatusColor(booking.status)} text-[10px]`}>
+                        {statusLabels[booking.status] || booking.status}
+                      </Badge>
+                    </td>
+                    <td className="py-3 px-4 font-medium text-sm text-stone-800">
+                      {formatCurrency(booking.total_cost)}
+                    </td>
+                    <td className="py-3 px-4 text-xs text-stone-500">
+                      <div>{formatDate(booking.created_at)}</div>
+                      <div className="text-[10px] text-stone-400">
+                        {new Date(booking.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-stone-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg"
+                          onClick={() => { setSelectedBooking(booking); setShowDetailModal(true); }}
+                          title="Lihat detail">
                           <Eye className="w-4 h-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => {
-                            setSelectedBooking(booking);
-                            setShowEditModal(true);
-                          }}
-                        >
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-stone-400 hover:text-blue-700 hover:bg-blue-50 rounded-lg"
+                          onClick={() => { setSelectedBooking(booking); setShowEditModal(true); }}
+                          title="Edit">
                           <Edit className="w-4 h-4" />
                         </Button>
                       </div>
@@ -512,36 +535,28 @@ export default function BookingManagement() {
             </table>
             
             {bookings.length === 0 && !loading && (
-              <div className="text-center py-8 text-gray-500">
-                <Calendar className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p>No bookings found</p>
+              <div className="text-center py-12 text-stone-400">
+                <Calendar className="w-12 h-12 mx-auto mb-2 text-stone-300" />
+                <p className="text-sm">Belum ada booking</p>
               </div>
             )}
           </div>
 
           {/* Mobile Pagination */}
           <div className="lg:hidden mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="text-sm text-gray-600">
-              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} bookings
+            <div className="text-xs text-stone-500">
+              Menampilkan {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalCount)} dari {totalCount} booking
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
+              <Button variant="outline" size="sm" className="h-8 border-stone-200 text-stone-600 rounded-lg"
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-              >
+                disabled={currentPage === 1}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <span className="px-3 py-1 text-sm font-medium">
-                {currentPage} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
+              <span className="px-3 py-1 text-sm font-medium text-stone-600">{currentPage} / {totalPages}</span>
+              <Button variant="outline" size="sm" className="h-8 border-stone-200 text-stone-600 rounded-lg"
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-              >
+                disabled={currentPage === totalPages}>
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
@@ -549,29 +564,21 @@ export default function BookingManagement() {
           
           {/* Desktop Pagination */}
           <div className="hidden lg:flex mt-6 justify-between items-center">
-            <div className="text-sm text-gray-600">
-              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} bookings
+            <div className="text-xs text-stone-500">
+              Menampilkan {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalCount)} dari {totalCount} booking
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
+              <Button variant="outline" size="sm" className="h-8 border-stone-200 text-stone-600 rounded-lg text-xs"
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-              >
+                disabled={currentPage === 1}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
-                Previous
+                Sebelumnya
               </Button>
-              <span className="px-3 py-1 text-sm font-medium">
-                {currentPage} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
+              <span className="px-3 py-1 text-sm font-medium text-stone-600">{currentPage} / {totalPages}</span>
+              <Button variant="outline" size="sm" className="h-8 border-stone-200 text-stone-600 rounded-lg text-xs"
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-              >
-                Next
+                disabled={currentPage === totalPages}>
+                Selanjutnya
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
@@ -581,104 +588,120 @@ export default function BookingManagement() {
 
       {/* Detail Modal */}
       {showDetailModal && selectedBooking && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border-stone-200 shadow-lg">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold">Booking Details</h2>
-                <Button variant="ghost" size="sm" onClick={() => setShowDetailModal(false)}>
-                  ×
+                <h2 className="text-lg font-semibold text-stone-900" style={{ fontFamily: "'Fraunces', serif" }}>Detail Booking</h2>
+                <Button variant="ghost" size="sm" className="text-stone-400 hover:text-stone-600 rounded-lg" onClick={() => setShowDetailModal(false)}>
+                  ✕
                 </Button>
               </div>
               
               <div className="space-y-6">
                 {/* Booking Info */}
                 <div>
-                  <h3 className="font-semibold mb-3">Booking Information</h3>
+                  <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Informasi Booking</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="text-gray-600">Booking ID:</span>
-                      <p className="font-mono">#{selectedBooking.id.slice(0, 8)}</p>
+                      <span className="text-stone-400 text-xs">ID Booking</span>
+                      <p className="font-mono text-stone-800">#{selectedBooking.id.slice(0, 8)}</p>
                     </div>
                     <div>
-                      <span className="text-gray-600">Status:</span>
-                      <Badge className={getStatusColor(selectedBooking.status)}>
-                        {selectedBooking.status}
-                      </Badge>
+                      <span className="text-stone-400 text-xs">Status</span>
+                      <div className="mt-1">
+                        <Badge className={`${getStatusColor(selectedBooking.status)} text-[10px]`}>
+                          {statusLabels[selectedBooking.status] || selectedBooking.status}
+                        </Badge>
+                      </div>
                     </div>
                     <div>
-                      <span className="text-gray-600">Customer:</span>
-                      <p>{selectedBooking.user_id ? "Registered User" : "Guest User"}</p>
+                      <span className="text-stone-400 text-xs">Pelanggan</span>
+                      <p className="text-stone-800">{selectedBooking.user_profile?.email || (selectedBooking.user_id ? 'Terdaftar' : 'Tamu')}</p>
                     </div>
                     <div>
-                      <span className="text-gray-600">Created:</span>
-                      <p>{formatDate(selectedBooking.created_at)}</p>
+                      <span className="text-stone-400 text-xs">Dibuat</span>
+                      <p className="text-stone-800">{formatDate(selectedBooking.created_at)}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Rental Period */}
                 <div>
-                  <h3 className="font-semibold mb-3">Rental Period</h3>
+                  <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Periode Sewa</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="text-gray-600">Start Date:</span>
-                      <p>{formatDate(selectedBooking.start_date)}</p>
+                      <span className="text-stone-400 text-xs">Tanggal Mulai</span>
+                      <p className="text-stone-800">{formatDate(selectedBooking.start_date)}</p>
                     </div>
                     <div>
-                      <span className="text-gray-600">End Date:</span>
-                      <p>{formatDate(selectedBooking.end_date)}</p>
+                      <span className="text-stone-400 text-xs">Tanggal Selesai</span>
+                      <p className="text-stone-800">{formatDate(selectedBooking.end_date)}</p>
                     </div>
                     <div>
-                      <span className="text-gray-600">Duration:</span>
-                      <p>{selectedBooking.rental_days} days</p>
+                      <span className="text-stone-400 text-xs">Durasi</span>
+                      <p className="text-stone-800">{selectedBooking.rental_days} hari</p>
                     </div>
                     <div>
-                      <span className="text-gray-600">Total Cost:</span>
-                      <p className="font-semibold">{formatCurrency(selectedBooking.total_cost)}</p>
+                      <span className="text-stone-400 text-xs">Total Biaya</span>
+                      <p className="font-semibold text-stone-900">{formatCurrency(selectedBooking.total_cost)}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Items */}
                 <div>
-                  <h3 className="font-semibold mb-3">Rented Items</h3>
+                  <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Barang yang Disewa</h3>
                   <div className="space-y-2">
-                    {selectedBooking.booking_items?.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                        <div>
-                          <p className="font-medium">{item.equipment.name}</p>
-                          <p className="text-sm text-gray-600">{formatCurrency(item.unit_price)} × {item.quantity}</p>
+                    {selectedBooking.booking_items?.map((item: any) => (
+                      <div key={item.id} className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {item.equipment?.image_url ? (
+                            <img src={item.equipment.image_url} alt={item.equipment.name}
+                              className="w-9 h-9 object-cover rounded border border-stone-200 shrink-0" />
+                          ) : (
+                            <div className="w-9 h-9 bg-stone-100 rounded border border-stone-200 flex items-center justify-center shrink-0">
+                              <Package className="w-4 h-4 text-stone-400" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm text-stone-800 truncate max-w-40">{item.equipment?.name || 'Barang'}</p>
+                            <p className="text-xs text-stone-400">{formatCurrency(item.unit_price)} × {item.quantity}</p>
+                          </div>
                         </div>
-                        <p className="font-semibold">{formatCurrency(item.subtotal)}</p>
+                        <p className="font-semibold text-sm text-stone-900 shrink-0">{formatCurrency(item.subtotal)}</p>
                       </div>
                     ))}
+                    {(!selectedBooking.booking_items || selectedBooking.booking_items.length === 0) && (
+                      <p className="text-sm text-stone-400 text-center py-4">Tidak ada barang</p>
+                    )}
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-3 pt-4 border-t">
+                <div className="flex items-center gap-3 pt-4 border-t border-stone-200">
                   <Select onValueChange={(value) => updateBookingStatus(selectedBooking.id, value)}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Update Status" />
+                    <SelectTrigger className="w-48 border-stone-200 rounded-lg text-sm">
+                      <SelectValue placeholder="Ubah Status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="confirmed">Confirmed</SelectItem>
-                      <SelectItem value="picked_up">Picked Up</SelectItem>
-                      <SelectItem value="returned">Returned</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="pending">Menunggu</SelectItem>
+                      <SelectItem value="confirmed">Terkonfirmasi</SelectItem>
+                      <SelectItem value="picked_up">Dipinjam</SelectItem>
+                      <SelectItem value="returned">Selesai</SelectItem>
+                      <SelectItem value="cancelled">Dibatalkan</SelectItem>
                     </SelectContent>
                   </Select>
                   
                   <Button 
                     variant="destructive" 
                     size="sm"
+                    className="rounded-lg text-xs h-9"
                     onClick={() => deleteBooking(selectedBooking.id)}
                     disabled={updating}
                   >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete
+                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                    Hapus
                   </Button>
                 </div>
               </div>
