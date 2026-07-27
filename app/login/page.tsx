@@ -137,8 +137,8 @@ function AuthPageContent() {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // Redirect ke home page setelah OAuth, bukan /auth
-          redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/`,
+          // Redirect ke auth callback untuk proses PKCE code exchange
+          redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,
           queryParams: {
             prompt: 'consent',
             access_type: 'online',

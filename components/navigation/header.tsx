@@ -118,10 +118,14 @@ export function Header() {
     setIsClient(true);
 
     const getSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
+      } catch {
+        setUser(null);
+      }
     };
     getSession();
     const { data: authListener } = supabase.auth.onAuthStateChange(

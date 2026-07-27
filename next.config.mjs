@@ -33,7 +33,7 @@ const nextConfig = {
     optimizeServerReact: true,
   },
   // Move deprecated experimental keys to top level
-  serverExternalPackages: ['@supabase/supabase-js'],
+  serverExternalPackages: ['@supabase/supabase-js', '@supabase/ssr'],
   // Image optimization - modern formats
   images: {
     formats: ['image/webp', 'image/avif'],

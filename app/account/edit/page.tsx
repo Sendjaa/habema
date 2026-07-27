@@ -25,22 +25,24 @@ export default function EditProfilePage() {
 
   useEffect(() => {
   const getProfile = async () => {
-    // 1. Ambil session aktif
-    const { data: { session }, error } = await supabase.auth.getSession();
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
 
-    if (error || !session) {
+      if (!session) {
+        router.replace("/login");
+        return;
+      }
+
+      const user = session.user;
+
+      setFullName(user.user_metadata?.full_name || "");
+      setPhone(user.user_metadata?.phone || "");
+      setEmail(user.email || "");
+      setAvatarUrl(user.user_metadata?.avatar_url || null);
+      setLoading(false);
+    } catch {
       router.replace("/login");
-      return;
     }
-
-    const user = session.user;
-
-    // 2. Set state dari metadata
-    setFullName(user.user_metadata?.full_name || "");
-    setPhone(user.user_metadata?.phone || "");
-    setEmail(user.email || "");
-    setAvatarUrl(user.user_metadata?.avatar_url || null);
-    setLoading(false);
   };
 
   getProfile();

@@ -1,12 +1,9 @@
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import { createBrowserClient } from '@supabase/ssr'
+import type { Database } from '@/types/supabase'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabasePublicKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabasePublicKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-// Deteksi dini bila env belum termuat (mis. dev server belum di-restart setelah
-// mengisi .env). Tanpa ini, request auth akan gagal dengan "Failed to fetch"
-// yang menyesatkan alih-alih menunjukkan akar masalah konfigurasi.
 if (!supabaseUrl || !supabasePublicKey) {
   const missing = [
     !supabaseUrl && "NEXT_PUBLIC_SUPABASE_URL",
@@ -20,13 +17,4 @@ if (!supabaseUrl || !supabasePublicKey) {
   );
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabasePublicKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce',
-  },
-});
-
-export { createClient };
+export const supabase = createBrowserClient<Database>(supabaseUrl, supabasePublicKey)

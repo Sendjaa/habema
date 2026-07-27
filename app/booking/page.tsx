@@ -119,8 +119,12 @@ function BookingContent() {
   // ==================== EFFECTS ====================
   useEffect(() => {
     const checkUser = async () => {
-      const { data } = await supabase.auth.getSession();
-      setUser(data.session?.user || null);
+      try {
+        const { data } = await supabase.auth.getSession();
+        setUser(data.session?.user || null);
+      } catch {
+        setUser(null);
+      }
     };
     checkUser();
   }, []);

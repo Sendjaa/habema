@@ -22,19 +22,22 @@ export default function AdminLogin() {
   // Check if already logged in
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        // Check if user is admin
-        const { data: profile, error } = await supabase
-          .from('users')
-          .select('is_vendor')
-          .eq('id', session.user.id)
-          .single();
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          const { data: profile, error } = await supabase
+            .from('users')
+            .select('is_vendor')
+            .eq('id', session.user.id)
+            .single();
 
-        if (!error && profile?.is_vendor) {
-          router.push("/admin");
+          if (!error && profile?.is_vendor) {
+            router.push("/admin");
+          }
         }
+      } catch {
+        // ignore - stale session will be cleaned up by middleware
       }
     };
 

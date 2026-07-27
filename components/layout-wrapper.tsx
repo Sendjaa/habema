@@ -29,32 +29,38 @@ export function LayoutWrapper({
 
   useEffect(() => {
     const checkAdmin = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        if (!isLoginPage) {
-          router.push("/admin/login");
-        } else {
-          setIsAdmin(false);
-        }
-        return;
-      }
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
 
-      const { data: profile, error } = await supabase
-        .from('users')
-        .select('is_vendor')
-        .eq('id', session.user.id)
-        .single();
-
-      if (error || !profile?.is_vendor) {
-        await supabase.auth.signOut();
-        if (!isLoginPage) {
-          router.push("/admin/login");
-        } else {
-          setIsAdmin(false);
+        if (!session) {
+          if (!isLoginPage) {
+            router.push("/admin/login");
+          } else {
+            setIsAdmin(false);
+          }
+          return;
         }
-      } else {
-        setIsAdmin(true);
+
+        const { data: profile, error } = await supabase
+          .from('users')
+          .select('is_vendor')
+          .eq('id', session.user.id)
+          .single();
+
+        if (error || !profile?.is_vendor) {
+          await supabase.auth.signOut();
+          if (!isLoginPage) {
+            router.push("/admin/login");
+          } else {
+            setIsAdmin(false);
+          }
+        } else {
+          setIsAdmin(true);
+        }
+      } catch {
+        if (mounted && !isLoginPage) {
+          router.push("/admin/login");
+        }
       }
     };
 
