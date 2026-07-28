@@ -309,6 +309,7 @@ export default function AdminLogin() {
           <div className="flex justify-center">
             <Turnstile
               siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
+              options={{ size: 'normal' }}
               onSuccess={(token) => setTurnstileToken(token)}
               onExpire={() => setTurnstileToken("")}
               onError={() => setTurnstileToken("")}
@@ -318,7 +319,7 @@ export default function AdminLogin() {
           <div className="space-y-3">
             <Button
               type="submit"
-              disabled={isLoading || !turnstileToken}
+              disabled={isLoading}
               className="w-full bg-slate-900 hover:bg-slate-800 text-white"
             >
               {isLoading ? "Mengirim OTP..." : "Masuk"}

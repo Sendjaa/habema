@@ -6,8 +6,13 @@ export async function GET() {
     try {
       const mod = await import('@/lib/supabaseAdmin')
       supabaseAdmin = mod.supabaseAdmin
-    } catch {
+    } catch (e: any) {
+      console.error('Import error:', e?.message)
       return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
+    }
+
+    if (!supabaseAdmin) {
+      return NextResponse.json({ error: 'supabaseAdmin is null' }, { status: 500 })
     }
 
     const now = new Date()
@@ -25,7 +30,10 @@ export async function GET() {
       .lt('created_at', endOfDay.toISOString())
       .order('created_at', { ascending: false })
 
-    if (error) throw error
+    if (error) {
+      console.error('Query1 error:', error)
+      throw error
+    }
 
     // All active bookings for user list
     const { data: activeBookings, error: activeError } = await supabaseAdmin
@@ -34,7 +42,10 @@ export async function GET() {
       .in('status', ['pending', 'confirmed', 'picked_up'])
       .order('created_at', { ascending: false })
 
-    if (activeError) throw activeError
+    if (activeError) {
+      console.error('Query2 error:', activeError)
+      throw activeError
+    }
 
     // Fetch user profiles for all bookings that have user_id
     const userIds = [...new Set((activeBookings || []).map((b: any) => b.user_id).filter(Boolean))]
@@ -73,8 +84,8 @@ export async function GET() {
       success: true,
       data: { pending, pickedUp, confirmed, activeBookings: enriched, unreadCount: unreadCount ?? 0 },
     })
-  } catch (error) {
-    console.error('Dashboard API Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  } catch (error: any) {
+    console.error('Dashboard API Error:', error?.message || error, JSON.stringify(error))
+    return NextResponse.json({ error: error?.message || 'Internal server error' }, { status: 500 })
   }
 }

@@ -545,6 +545,7 @@ function AuthPageContent() {
                 <div className="flex justify-center my-3">
                   <Turnstile
                     siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''}
+                    options={{ size: 'normal' }}
                     onSuccess={(token) => setTurnstileToken(token)}
                     onExpire={() => setTurnstileToken('')}
                     onError={() => setTurnstileToken('')}
@@ -555,7 +556,7 @@ function AuthPageContent() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || googleLoading || ((mode === 'login' || mode === 'register') && !turnstileToken)}
+                disabled={loading || googleLoading}
                 className="w-full h-11 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white text-sm transition-colors mt-1"
                 style={{ fontFamily: "'Fraunces', serif", fontSize: '15px' }}
               >
