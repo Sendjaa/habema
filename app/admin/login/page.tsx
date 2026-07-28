@@ -1,8 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { Turnstile } from "@marsidev/react-turnstile";
+import OtpVerifyStep from "@/components/auth/otp-verify-step";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +20,12 @@ export default function AdminLogin() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // ── OTP & Turnstile state ──
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [otpStep, setOtpStep] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [otpLoading, setOtpLoading] = useState(false);
 
   // Check if already logged in
   useEffect(() => {
@@ -56,47 +64,85 @@ export default function AdminLogin() {
         return;
       }
 
-      // Validate password
+      if (!turnstileToken) {
+        toast.error("Harap selesaikan verifikasi keamanan (Turnstile)!");
+        setIsLoading(false);
+        return;
+      }
+
       if (!password || password.length < 6) {
         toast.error("Password minimal 6 karakter");
         setIsLoading(false);
         return;
       }
 
-      // Attempt login with Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+      // Send OTP
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password, turnstileToken, type: "login" }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Gagal mengirim kode OTP");
+      }
+
+      setOtpStep(true);
+      setOtpError(null);
+      setTurnstileToken("");
+      toast.success("Kode OTP telah dikirim ke email admin");
+    } catch (error: any) {
+      toast.error(error.message || "Gagal mengirim OTP");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = useCallback(async (otp: string) => {
+    setOtpLoading(true);
+    setOtpError(null);
+    try {
+      const res = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), otp, type: "login", password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Kode OTP salah");
+      }
+
+      // OTP verified - sign in on the client to establish session
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
         password,
       });
 
-      if (error) {
-        if (error.message.includes("Invalid login credentials")) {
-          toast.error("Email atau password salah.");
-        } else {
-          toast.error("Login gagal: " + error.message);
-        }
-        setIsLoading(false);
-        return;
+      if (signInError) {
+        throw new Error(signInError.message);
       }
 
-      if (data.user) {
-        // Check if user is admin (using is_vendor as admin flag)
+      const session = signInData.session;
+      
+      if (session) {
         const { data: profile, error: profileError } = await supabase
           .from('users')
           .select('is_vendor')
-          .eq('id', data.user.id)
+          .eq('id', session.user.id)
           .maybeSingle();
 
-        // Jika belum ada record users (PGRST116) atau permission denied,
-        // coba auto-create dengan is_vendor=true
         if (profileError && (profileError.code === 'PGRST116' || profileError.code === '42501')) {
           const { error: createError } = await supabase
             .from('users')
             .insert([{
-              id: data.user.id,
-              email: data.user.email!,
+              id: session.user.id,
+              email: session.user.email!,
               is_vendor: true,
-              full_name: data.user.user_metadata?.full_name || 'Admin',
+              full_name: session.user.user_metadata?.full_name || 'Admin',
             }])
             .select('is_vendor')
             .single();
@@ -104,7 +150,6 @@ export default function AdminLogin() {
           if (createError) {
             toast.error("Gagal membuat profil admin: " + createError.message);
             await supabase.auth.signOut();
-            setIsLoading(false);
             return;
           }
 
@@ -116,25 +161,47 @@ export default function AdminLogin() {
         if (profileError && profileError.code !== 'PGRST116') {
           toast.error("Gagal verifikasi akses: " + profileError.message);
           await supabase.auth.signOut();
-          setIsLoading(false);
           return;
         }
 
         if (!profile?.is_vendor) {
           toast.error("Akses ditolak. Hanya admin yang bisa masuk.");
           await supabase.auth.signOut();
-          setIsLoading(false);
           return;
         }
 
         toast.success("Login berhasil!");
         router.push("/admin");
       }
-    } catch (error: any) {
-      toast.error(error.message || "Login gagal. Silakan coba lagi.");
+    } catch (err: any) {
+      setOtpError(err.message || "Verifikasi gagal");
     } finally {
-      setIsLoading(false);
+      setOtpLoading(false);
     }
+  }, [email, password, router]);
+
+  const handleResendOtp = useCallback(async () => {
+    setOtpError(null);
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password, turnstileToken: "", type: "login" }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Gagal mengirim ulang OTP");
+      }
+      toast.success("Kode OTP telah dikirim ulang");
+    } catch (err: any) {
+      setOtpError(err.message || "Gagal mengirim ulang");
+    }
+  }, [email, password]);
+
+  const handleOtpBack = () => {
+    setOtpStep(false);
+    setOtpError(null);
   };
 
   const handleResetPassword = async () => {
@@ -161,6 +228,31 @@ export default function AdminLogin() {
       setIsLoading(false);
     }
   };
+
+  if (otpStep) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md p-8 shadow-xl">
+          <div className="text-center mb-8">
+            <div className="mx-auto w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mb-4">
+              <Shield className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900">Verifikasi OTP</h1>
+            <p className="text-slate-600 mt-2">Masukkan kode OTP yang dikirim ke email admin</p>
+          </div>
+          <OtpVerifyStep
+            email={email.trim()}
+            type="login"
+            onVerify={handleVerifyOtp}
+            onResend={handleResendOtp}
+            onBack={handleOtpBack}
+            loading={otpLoading}
+            error={otpError}
+          />
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
@@ -213,13 +305,23 @@ export default function AdminLogin() {
             </div>
           </div>
 
+          {/* Turnstile */}
+          <div className="flex justify-center">
+            <Turnstile
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
+              onSuccess={(token) => setTurnstileToken(token)}
+              onExpire={() => setTurnstileToken("")}
+              onError={() => setTurnstileToken("")}
+            />
+          </div>
+
           <div className="space-y-3">
             <Button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !turnstileToken}
               className="w-full bg-slate-900 hover:bg-slate-800 text-white"
             >
-              {isLoading ? "Masuk..." : "Masuk"}
+              {isLoading ? "Mengirim OTP..." : "Masuk"}
             </Button>
 
             <Button

@@ -17,7 +17,6 @@ import {
   Edit,
   Trash2,
   Download,
-  Mountain,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -191,9 +190,7 @@ export default function BookingDetailsPage() {
               <ArrowLeft className="w-4 h-4 mr-1" />
               Kembali
             </Button>
-            <div className="w-8 h-8 rounded-lg bg-emerald-800 flex items-center justify-center">
-              <Mountain className="w-4 h-4 text-white" />
-            </div>
+            <span className="w-px h-4 bg-stone-200" />
             <div>
               <h1 className="text-base sm:text-lg text-stone-900 font-semibold tracking-tight" style={{ fontFamily: "'Fraunces', serif" }}>
                 Detail Booking

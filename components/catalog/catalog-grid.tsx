@@ -19,11 +19,13 @@ function ProductCard({
   categoryLabel: string;
   index: number;
 }) {
-  const price = Number(product.price_per_night || product.price || 0);
+  const price = Number(product.price || product.price_per_night || 0);
   const rating = Number(product.average_rating || product.rating || 0);
-  const rentalCount = Number(product.rental_count || 0);
+  const soldCount = Number(product.sold_count || product.rental_count || 0);
   const hasDiscount = product.discount && product.discount > 0;
-  const stockStatus = product.stock_quantity && product.stock_quantity > 0 ? "tersedia" : "habis";
+  const stockQty = product.stock ?? product.stock_quantity ?? 0;
+  const stockStatus = stockQty > 0 ? "tersedia" : "habis";
+  const isShop = product.price !== undefined && product.price_per_night === undefined;
 
   const images = [product.image_url, ...(product.gallery_urls || [])].filter(Boolean);
   const [imgIndex, setImgIndex] = useState(0);
@@ -173,7 +175,7 @@ function ProductCard({
               <span className="text-lg font-black text-forest">
                 Rp{price.toLocaleString("id-ID")}
               </span>
-              {product.price_per_night && (
+              {!isShop && (
                 <span className="text-xs text-stone-500 ml-1">/hari</span>
               )}
             </div>
@@ -193,7 +195,7 @@ function ProductCard({
                 </div>
                 <span className="font-semibold text-stone-700">{rating.toFixed(1)}</span>
               </div>
-              <span className="text-stone-400 md:text-nowrap text-[10px]">Tersewa {rentalCount}x</span>
+              <span className="text-stone-400 md:text-nowrap text-[10px]">{isShop ? `Terjual ${soldCount}x` : `Tersewa ${soldCount}x`}</span>
             </div>
           </div>
         </Card>
@@ -214,7 +216,7 @@ export function CatalogGrid({
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
       {equipment.map((product, index) => {
-        const categoryLabel = dbCategories.find(cat => cat.value === product.category_id)?.label || "Uncategorized";
+        const categoryLabel = dbCategories.find(cat => cat.value === product.category_id)?.label || product.category || "Uncategorized";
         return (
           <ProductCard
             key={product.id}

@@ -23,7 +23,10 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  Mountain,
+  Clock,
+  CheckCircle,
+  XCircle,
+  TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -57,6 +60,7 @@ export default function BookingManagement() {
   const router = useRouter();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ totalBookings: 0, pendingBookings: 0, confirmedBookings: 0, totalRevenue: 0, monthlyRevenue: 0 });
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [userTypeFilter, setUserTypeFilter] = useState("all");
@@ -72,7 +76,25 @@ export default function BookingManagement() {
 
   useEffect(() => {
     fetchBookings();
+    fetchStats();
   }, [currentPage, searchTerm, statusFilter, userTypeFilter]);
+
+  const fetchStats = async () => {
+    try {
+      const res = await fetch('/api/admin/stats')
+      if (!res.ok) return
+      const result = await res.json()
+      if (!result.success) return
+      const s = result.data
+      setStats({
+        totalBookings: s.totalBookings || 0,
+        pendingBookings: s.pendingBookings || 0,
+        confirmedBookings: s.confirmedBookings || 0,
+        totalRevenue: s.totalRevenue || 0,
+        monthlyRevenue: s.monthlyRevenue || 0,
+      })
+    } catch {}
+  }
 
   const fetchBookings = async () => {
     try {
@@ -266,19 +288,14 @@ export default function BookingManagement() {
       {/* Header */}
       <header className="bg-white border-b border-stone-200 sticky top-0 z-30">
         <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-emerald-800 flex items-center justify-center">
-              <Mountain className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <h1
-                className="text-base sm:text-lg text-stone-900 font-semibold tracking-tight"
-                style={{ fontFamily: "'Fraunces', serif" }}
-              >
-                Manajemen Booking
-              </h1>
-              <p className="text-[10px] text-stone-400 hidden sm:block">Kelola semua penyewaan</p>
-            </div>
+          <div>
+            <h1
+              className="text-base sm:text-lg text-stone-900 font-semibold tracking-tight"
+              style={{ fontFamily: "'Fraunces', serif" }}
+            >
+              Manajemen Booking
+            </h1>
+            <p className="text-[10px] text-stone-400 hidden sm:block">Kelola semua penyewaan</p>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={exportBookings} className="h-8 px-3 text-xs border-stone-200 text-stone-600 rounded-lg">
@@ -294,6 +311,54 @@ export default function BookingManagement() {
       </header>
 
       <div className="px-4 sm:px-6 py-6 max-w-7xl mx-auto">
+        {/* Stats Keseluruhan */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <Card className="bg-white border border-stone-200 rounded-xl p-4 shadow-none">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center">
+                <Calendar className="w-4 h-4 text-stone-600" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-stone-900">{stats.totalBookings}</p>
+                <p className="text-[10px] text-stone-500">Total Booking</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="bg-white border border-stone-200 rounded-xl p-4 shadow-none">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center">
+                <DollarSign className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-stone-900">{formatCurrency(stats.totalRevenue)}</p>
+                <p className="text-[10px] text-stone-500">Total Pendapatan</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="bg-white border border-stone-200 rounded-xl p-4 shadow-none">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center">
+                <Clock className="w-4 h-4 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-stone-900">{stats.pendingBookings}</p>
+                <p className="text-[10px] text-stone-500">Perlu Diproses</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="bg-white border border-stone-200 rounded-xl p-4 shadow-none">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-stone-900">{formatCurrency(stats.monthlyRevenue)}</p>
+                <p className="text-[10px] text-stone-500">Pendapatan Bulan Ini</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
         {/* Filters */}
         <Card className="p-4 sm:p-5 mb-6 border-stone-200 rounded-xl shadow-none">
           <div className="space-y-4">

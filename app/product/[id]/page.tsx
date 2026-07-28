@@ -27,6 +27,7 @@ import {
   TrendingUp,
   X,
   MessageSquare,
+  Package,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { LoginModal } from "@/components/auth/login-modal";
@@ -65,6 +66,7 @@ export default function ProductDetailPage({
   const [replyText, setReplyText] = useState("");
   const [submittingReply, setSubmittingReply] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(0);
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<string>("Semua");
 
@@ -332,6 +334,7 @@ export default function ProductDetailPage({
   const inventory = getInventoryStatus(product.id);
   const isAvailable = inventory.availableUnits > 0;
   const pricePerNight = Number(product.price_per_night || 0);
+  const allImages = [product.image_url, ...(product.gallery_urls || [])].filter(Boolean);
 
   return (
     <div className="min-h-screen bg-[#F0F2F5] pb-15 md:pb-16">
@@ -729,29 +732,43 @@ export default function ProductDetailPage({
           <div className="lg:w-1/3">
             <div className="bg-white md:rounded-xl overflow-hidden sticky md:top-24 shadow-sm border border-slate-100">
               <div className="relative aspect-square">
-                <Image
-                  src={product.image_url}
-                  alt={product.name}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <div className="p-4 hidden md:flex gap-2 border-t">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="w-20 h-20 border rounded-lg overflow-hidden cursor-pointer hover:border-[#1B4332] transition-all"
-                  >
-                    <Image
-                      src={product.image_url}
-                      alt="thumbnail"
-                      width={80}
-                      height={80}
-                      className="object-cover opacity-50 hover:opacity-100"
-                    />
+                {allImages.length > 0 ? (
+                  <Image
+                    src={allImages[selectedImage]}
+                    alt={product.name}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-stone-100">
+                    <Package className="w-16 h-16 text-stone-300" />
                   </div>
-                ))}
+                )}
               </div>
+              {allImages.length > 1 && (
+                <div className="p-4 hidden md:flex gap-2 border-t flex-wrap">
+                  {allImages.map((url, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setSelectedImage(i)}
+                      className={`w-20 h-20 border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${
+                        selectedImage === i
+                          ? 'border-[#1B4332] opacity-100'
+                          : 'border-transparent opacity-50 hover:opacity-100'
+                      }`}
+                    >
+                      <Image
+                        src={url}
+                        alt={`${product.name} ${i + 1}`}
+                        width={80}
+                        height={80}
+                        className="object-cover w-full h-full"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

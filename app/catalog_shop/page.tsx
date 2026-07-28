@@ -34,25 +34,22 @@ export function ShopContent() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const { data: catData } = await supabase.from("equipment_categories").select("id, name");
-        if (catData) {
-          setDbCategories(catData.map((c: any) => ({ value: String(c.id), label: c.name })));
-        }
-
-        const { data: prodData } = await supabase.from("equipment").select("*");
+        const { data: prodData } = await supabase.from("shop_products").select("*");
         if (prodData) {
           setProducts(
             prodData.map((item: any) => ({
               ...item,
               dailyPrice: item.price || 0,
-              category_id: item.category_id ? String(item.category_id) : null,
+              category_id: item.category || null,
               stock: item.stock ?? 0,
               original_price: item.original_price ?? null,
-              discount: item.discount ?? null,
+              discount: null,
               rating: item.rating ?? null,
               review_count: item.review_count ?? 0,
             })),
           );
+          const cats = [...new Set(prodData.map((p: any) => p.category).filter(Boolean))];
+          setDbCategories(cats.map((c: string) => ({ value: c, label: c })));
         }
       } catch (err) {
         console.error(err);

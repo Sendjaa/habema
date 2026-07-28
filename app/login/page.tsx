@@ -1,7 +1,9 @@
 'use client'
-import { useState, Suspense, useEffect } from 'react';
+import { useState, Suspense, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Turnstile } from '@marsidev/react-turnstile';
+import OtpVerifyStep from '@/components/auth/otp-verify-step';
 export const dynamic = "force-dynamic"
 
 type Mode = 'login' | 'register' | 'forgot' | 'reset'
@@ -67,60 +69,140 @@ function AuthPageContent() {
   const [showPassword, setShowPassword] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   
+  // ── OTP & Turnstile state ──
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [otpStep, setOtpStep] = useState(false)
+  const [otpType, setOtpType] = useState<'register' | 'login'>('login')
+  const [otpError, setOtpError] = useState<string | null>(null)
+  const [otpLoading, setOtpLoading] = useState(false)
+  
   const copy = COPY[mode]
 
   const clearMessage = () => setMessage(null)
 
   // ─────────────────────────────────────────
-  // Email/Password Auth
+  // Turnstile + OTP Auth
   // ─────────────────────────────────────────
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault()
     clearMessage()
-    
+
+    if (mode === 'register' && !firstName.trim()) {
+      setMessage({ type: 'error', text: 'Nama depan wajib diisi!' })
+      return
+    }
+
     if (password.length < 6) {
       setMessage({ type: 'error', text: 'Password minimal 6 karakter!' })
       return
     }
 
+    if (!turnstileToken) {
+      setMessage({ type: 'error', text: 'Harap selesaikan verifikasi keamanan (Turnstile)!' })
+      return
+    }
+
     setLoading(true)
     try {
-      if (mode === 'register') {
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/`,
-            data: { full_name: `${firstName} ${lastName}`.trim() },
-          },
-        })
-        if (error) throw error
-        
-        if (data.user && !data.session) {
-          setMessage({ 
-            type: 'success', 
-            text: 'Akun berhasil dibuat! Cek email mu untuk konfirmasi.' 
-          })
-          setTimeout(() => setMode('login'), 2000)
-        } else if (data.session) {
-          router.replace('/')
-        }
-      } else if (mode === 'login') {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        })
-        if (error) throw error
-        router.replace(redirectTo)
+      const type = mode === 'register' ? 'register' : 'login'
+      const body: Record<string, string> = {
+        email: email.trim(),
+        password,
+        turnstileToken,
+        type,
       }
+      if (mode === 'register') {
+        body.firstName = firstName.trim()
+        body.lastName = lastName.trim()
+      }
+
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal mengirim kode OTP')
+      }
+
+      setOtpType(type)
+      setOtpStep(true)
+      setOtpError(null)
+      setTurnstileToken('')
     } catch (err: any) {
-      setMessage({ 
-        type: 'error', 
-        text: err.message || 'Terjadi kesalahan saat login' 
+      setMessage({
+        type: 'error',
+        text: err.message || 'Terjadi kesalahan',
       })
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleVerifyOtp = useCallback(async (otp: string) => {
+    setOtpLoading(true)
+    setOtpError(null)
+    try {
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), otp, type: otpType, password }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Kode OTP salah')
+      }
+
+      // OTP verified - now sign in on the client to establish the session
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      })
+
+      if (signInError) {
+        throw new Error(signInError.message)
+      }
+
+      router.replace(redirectTo)
+    } catch (err: any) {
+      setOtpError(err.message || 'Verifikasi gagal')
+    } finally {
+      setOtpLoading(false)
+    }
+  }, [email, otpType, password, router, redirectTo])
+
+  const handleResendOtp = useCallback(async () => {
+    setOtpError(null)
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          turnstileToken: '',
+          type: otpType,
+          ...(otpType === 'register' ? { firstName: firstName.trim(), lastName: lastName.trim() } : {}),
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal mengirim ulang OTP')
+      }
+    } catch (err: any) {
+      setOtpError(err.message || 'Gagal mengirim ulang')
+    }
+  }, [email, password, otpType, firstName, lastName])
+
+  const handleOtpBack = () => {
+    setOtpStep(false)
+    setOtpError(null)
   }
 
   // ─────────────────────────────────────────
@@ -350,13 +432,24 @@ function AuthPageContent() {
             )}
 
             {/* Form */}
+            {otpStep ? (
+              <OtpVerifyStep
+                email={email.trim()}
+                type={otpType}
+                onVerify={handleVerifyOtp}
+                onResend={handleResendOtp}
+                onBack={handleOtpBack}
+                loading={otpLoading}
+                error={otpError}
+              />
+            ) : (
             <form
               onSubmit={
                 mode === 'forgot'
                   ? handleForgotPassword
                   : mode === 'reset'
                   ? handleResetPassword
-                  : handleAuth
+                  : handleSendOTP
               }
               className="space-y-2.5"
             >
@@ -447,16 +540,29 @@ function AuthPageContent() {
                 </>
               )}
 
+              {/* ── TURNSTILE (login & register only) ── */}
+              {!otpStep && (mode === 'login' || mode === 'register') && (
+                <div className="flex justify-center my-3">
+                  <Turnstile
+                    siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''}
+                    onSuccess={(token) => setTurnstileToken(token)}
+                    onExpire={() => setTurnstileToken('')}
+                    onError={() => setTurnstileToken('')}
+                  />
+                </div>
+              )}
+
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || googleLoading}
+                disabled={loading || googleLoading || ((mode === 'login' || mode === 'register') && !turnstileToken)}
                 className="w-full h-11 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white text-sm transition-colors mt-1"
                 style={{ fontFamily: "'Fraunces', serif", fontSize: '15px' }}
               >
                 {loading ? 'Memproses...' : copy.cta}
               </button>
             </form>
+            )}
 
             {/* Forgot Password Link */}
             {mode === 'login' && (

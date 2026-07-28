@@ -1085,6 +1085,114 @@ export type Database = {
         }
         Relationships: []
       }
+      shop_products: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          price: number
+          original_price: number | null
+          stock: number
+          category: string | null
+          image_url: string | null
+          gallery_urls: Json
+          brand: string | null
+          specifications: Json
+          weight_kg: number | null
+          dimensions: string | null
+          material: string | null
+          is_available: boolean
+          is_featured: boolean
+          is_new: boolean
+          rating: number
+          review_count: number
+          sold_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          price?: number
+          original_price?: number | null
+          stock?: number
+          category?: string | null
+          image_url?: string | null
+          gallery_urls?: Json
+          brand?: string | null
+          specifications?: Json
+          weight_kg?: number | null
+          dimensions?: string | null
+          material?: string | null
+          is_available?: boolean
+          is_featured?: boolean
+          is_new?: boolean
+          rating?: number
+          review_count?: number
+          sold_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          price?: number
+          original_price?: number | null
+          stock?: number
+          category?: string | null
+          image_url?: string | null
+          gallery_urls?: Json
+          brand?: string | null
+          specifications?: Json
+          weight_kg?: number | null
+          dimensions?: string | null
+          material?: string | null
+          is_available?: boolean
+          is_featured?: boolean
+          is_new?: boolean
+          rating?: number
+          review_count?: number
+          sold_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      otp_codes: {
+        Row: {
+          id: string
+          email: string
+          otp: string
+          type: string
+          expires_at: string
+          attempts: number | null
+          verified: boolean | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          email: string
+          otp: string
+          type: string
+          expires_at: string
+          attempts?: number | null
+          verified?: boolean | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          email?: string
+          otp?: string
+          type?: string
+          expires_at?: string
+          attempts?: number | null
+          verified?: boolean | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,14 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Search, Plus, Edit, Trash2, Tag, X, ChevronLeft, AlertTriangle } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Tag, X, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 
 // ── Types ──────────────────────────────────────────────────────
@@ -457,7 +456,6 @@ function DiscountCard({
 
 // ── Main Page ──────────────────────────────────────────────────
 export default function DiscountManagement() {
-  const router = useRouter()
   const [discounts, setDiscounts] = useState<Discount[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -580,34 +578,7 @@ export default function DiscountManagement() {
 
   return (
     <div className="min-h-screen bg-[#F1EFE8] font-body">
-      {/* ── Header ── */}
-      <header className="bg-white border-b border-stone-200 sticky top-0 z-20">
-        <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <Button
-              variant="ghost" size="sm"
-              onClick={() => router.push('/admin')}
-              className="h-8 px-2.5 text-xs text-stone-500 hover:text-stone-800 rounded-lg gap-1.5"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" /> Kembali
-            </Button>
-            <span className="w-px h-4 bg-stone-200" />
-            <h1 className="text-base text-stone-900 font-medium tracking-tight" style={{ fontFamily: "'Fraunces', serif" }}>
-              Manajemen Diskon
-            </h1>
-          </div>
-          <Button
-            size="sm" onClick={openAdd}
-            className="h-8 px-3 text-xs bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg shadow-none gap-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Tambah Diskon</span>
-            <span className="sm:hidden">Tambah</span>
-          </Button>
-        </div>
-      </header>
-
-      <div className="px-4 sm:px-6 py-6 space-y-5 max-w-[1400px] mx-auto">
+      <div className="px-4 sm:px-6 py-6 space-y-5 max-w-[1400px] mx-auto mt-4">
         {/* ── Search & filter bar ── */}
         <Card className="px-4 py-3 bg-white border-stone-200 rounded-xl shadow-none">
           <div className="flex items-center gap-3 flex-wrap">
