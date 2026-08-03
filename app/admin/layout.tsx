@@ -45,6 +45,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     router.replace("/admin/login");
   };
 
+  // Halaman login tidak memakai sidebar/chrome admin.
+  if (pathname === "/admin/login") {
+    return <div className="min-h-screen bg-[#F1EFE8] font-body">{children}</div>;
+  }
+
   return (
     <div className="min-h-screen bg-[#F1EFE8] font-body flex">
       {/* Mobile overlay */}
