@@ -65,17 +65,36 @@ export async function POST(req: Request) {
     }
 
     if (type === 'login') {
-      if (!password) {
-        return NextResponse.json({ error: 'Password wajib diisi' }, { status: 400 });
-      }
+      if (password) {
+        const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+          email: normalizedEmail,
+          password,
+        });
 
-      const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
-        email: normalizedEmail,
-        password,
-      });
+        if (signInError) {
+          return NextResponse.json({ error: 'Email atau password salah' }, { status: 401 });
+        }
+      } else {
+        // Passwordless: untuk user yang di-invite tanpa password (mis. via Supabase Invite).
+        // Pastikan email benar-benar terdaftar di Supabase Auth sebelum mengirim OTP.
+        // Jika query auth.users gagal (RLS/schema), jangan blokir — verifikasi final
+        // dilakukan di verify-otp.
+        try {
+          const { data: authUser, error: userError } = await (supabaseAdmin as any)
+            .from('auth.users')
+            .select('id')
+            .eq('email', normalizedEmail)
+            .maybeSingle();
 
-      if (signInError) {
-        return NextResponse.json({ error: 'Email atau password salah' }, { status: 401 });
+          if (!userError && !authUser) {
+            return NextResponse.json({ error: 'Email tidak terdaftar' }, { status: 401 });
+          }
+          if (userError) {
+            console.warn('auth.users check failed, proceeding without it:', userError.message);
+          }
+        } catch (checkError: any) {
+          console.warn('auth.users check threw, proceeding without it:', checkError?.message);
+        }
       }
 
       await invalidatePreviousOTPs(normalizedEmail, 'login');

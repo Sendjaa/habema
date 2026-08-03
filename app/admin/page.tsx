@@ -62,11 +62,16 @@ export default function AdminDashboard() {
   const [activeBookings, setActiveBookings] = useState<ActiveBooking[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const loadDashboardData = async () => {
+    setLoadError(null)
     try {
       const res = await fetch('/api/admin/dashboard')
-      if (!res.ok) throw new Error('Failed to fetch dashboard data')
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body?.error || `HTTP ${res.status}`)
+      }
       const result = await res.json()
       if (!result.success) throw new Error(result.error)
 
@@ -76,7 +81,9 @@ export default function AdminDashboard() {
       setActiveBookings(result.data.activeBookings || [])
       setUnreadCount(result.data.unreadCount ?? 0)
     } catch (err: any) {
-      console.error('Error loading dashboard data:', err?.message || err)
+      const msg = err?.message || 'Gagal memuat data dashboard'
+      console.error('Error loading dashboard data:', msg)
+      setLoadError(msg)
     }
   }
 
@@ -95,7 +102,7 @@ export default function AdminDashboard() {
         .eq('id', session.user.id)
         .maybeSingle()
 
-      if (error?.code === 'PGRST116' || (!profile && !error)) {
+      if (error?.code === 'PGRST116' || error?.code === '42501' || (!profile && !error)) {
         const { data: newProfile, error: createError } = await supabase
           .from('users')
           .insert([{
@@ -131,6 +138,24 @@ export default function AdminDashboard() {
   useEffect(() => {
     checkAuth()
   }, [router])
+
+  // Muat ulang data saat halaman kembali mendapat fokus (mis. setelah
+  // menghapus/ubah booking di halaman lain lalu kembali ke dashboard).
+  useEffect(() => {
+    const refreshData = () => {
+      if (!loading) loadDashboardData()
+    }
+    window.addEventListener("focus", refreshData)
+    document.addEventListener("visibilitychange", refreshData)
+    window.addEventListener("pageshow", refreshData)
+    window.addEventListener("popstate", refreshData)
+    return () => {
+      window.removeEventListener("focus", refreshData)
+      document.removeEventListener("visibilitychange", refreshData)
+      window.removeEventListener("pageshow", refreshData)
+      window.removeEventListener("popstate", refreshData)
+    }
+  }, [loading])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -178,6 +203,17 @@ export default function AdminDashboard() {
         </div>
       </header>
 
+      {loadError && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-50 border border-red-200 text-red-700 px-5 py-3 rounded-xl shadow-lg text-sm flex items-center gap-3 max-w-xl">
+          <span>⚠️ Gagal memuat data: {loadError}</span>
+          <button
+            onClick={handleRefresh}
+            className="ml-auto shrink-0 text-xs font-semibold text-red-600 hover:text-red-800 underline"
+          >
+            Coba Lagi
+          </button>
+        </div>
+      )}
       <main className="px-4 sm:px-6 py-6 max-w-6xl mx-auto space-y-6">
         <div>
           <h1 className="text-xl font-semibold text-stone-900" style={{ fontFamily: "'Fraunces', serif" }}>

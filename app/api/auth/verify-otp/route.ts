@@ -22,31 +22,91 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: result.message }, { status: 400 });
     }
 
-    if (!password) {
-      return NextResponse.json({ error: 'Password diperlukan untuk membuat sesi' }, { status: 400 });
+    let sessionData: any = null;
+    let passwordless = false;
+
+    // Untuk register, user dibuat dengan email_confirm: false di send-otp.
+    // Konfirmasi email via admin API terlebih dahulu (OTP sudah membuktikan
+    // kepemilikan email) supaya signInWithPassword di bawah tidak ditolak.
+    if (type === 'register') {
+      try {
+        const { data: authUsers, error: listError } =
+          await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+        const target = authUsers?.users?.find(
+          (u: any) => u.email?.toLowerCase() === normalizedEmail,
+        );
+        if (!listError && target) {
+          await supabaseAdmin.auth.admin.updateUserById(target.id, {
+            email_confirm: true,
+          });
+        }
+      } catch (err: any) {
+        console.warn('verify-otp: gagal pre-confirm email:', err?.message);
+      }
     }
 
-    const { data: signInData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
-      email: normalizedEmail,
-      password,
-    });
+    if (password) {
+      const { data: signInData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
 
-    if (signInError) {
-      return NextResponse.json({ error: 'Gagal membuat sesi. Silakan login ulang.' }, { status: 500 });
+      if (signInError) {
+        return NextResponse.json({ error: 'Gagal membuat sesi. Silakan login ulang.' }, { status: 500 });
+      }
+      sessionData = signInData;
+    } else {
+      // Passwordless: user di-invite tanpa password. Buat sesi via magic link
+      // menggunakan admin API lalu redeem token-nya untuk mendapatkan session.
+      passwordless = true;
+
+      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'magiclink',
+        email: normalizedEmail,
+      });
+
+      const token = linkData?.properties?.hashed_token;
+
+      if (linkError || !token) {
+        return NextResponse.json({ error: 'Gagal membuat sesi. Silakan login ulang.' }, { status: 500 });
+      }
+
+      const { data, error: verifyError } = await supabaseAdmin.auth.verifyOtp({
+        email: normalizedEmail,
+        token,
+        type: 'magiclink',
+      });
+
+      if (verifyError || !data?.session) {
+        return NextResponse.json({ error: 'Gagal membuat sesi. Silakan login ulang.' }, { status: 500 });
+      }
+      sessionData = data;
     }
 
     // For register: confirm user email via admin API
-    if (type === 'register' && signInData.user) {
-      await supabaseAdmin.auth.admin.updateUserById(signInData.user.id, {
+    if (type === 'register' && sessionData.user) {
+      await supabaseAdmin.auth.admin.updateUserById(sessionData.user.id, {
         email_confirm: true,
       });
     }
+
+    const session = sessionData?.session;
 
     return NextResponse.json({
       success: true,
       message: type === 'register'
         ? 'Akun berhasil dibuat dan diverifikasi!'
         : 'Login berhasil!',
+      ...(passwordless && session
+        ? {
+            passwordless: true,
+            session: {
+              access_token: session.access_token,
+              refresh_token: session.refresh_token,
+              expires_in: session.expires_in,
+            },
+          }
+        : {}),
     });
   } catch (error: any) {
     console.error('verify-otp error:', error);

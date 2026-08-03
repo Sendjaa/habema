@@ -159,40 +159,24 @@ export default function BookingManagement() {
     }
 
     try {
-      console.log('Deleting booking:', bookingId);
-      
-      // Delete booking items first
-      const { error: itemsError } = await supabase
-        .from("booking_items")
-        .delete()
-        .eq("booking_id", bookingId);
+      const res = await fetch(`/api/admin/bookings/${bookingId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
 
-      if (itemsError) {
-        console.error('Error deleting booking items:', itemsError);
-        throw itemsError;
+      const result = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(result?.error || `HTTP ${res.status}`);
       }
 
-      console.log('Booking items deleted successfully');
-
-      // Delete booking
-      const { error: bookingError } = await supabase
-        .from("bookings")
-        .delete()
-        .eq("id", bookingId);
-
-      if (bookingError) {
-        console.error('Error deleting booking:', bookingError);
-        throw bookingError;
-      }
-
-      console.log('Booking deleted successfully');
       toast.success("Booking deleted successfully");
       fetchBookings();
       setShowDetailModal(false);
       setSelectedBooking(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting booking:", error);
-      toast.error("Failed to delete booking");
+      toast.error(error?.message || "Failed to delete booking");
     }
   };
 

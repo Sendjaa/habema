@@ -2,176 +2,173 @@
 
 ## 📋 Deskripsi Aplikasi
 
-Habema Outdoor adalah platform sewa peralatan outdoor dan camping premium yang dirancang untuk memudahkan petualangan Anda. Aplikasi ini menyediakan berbagai perlengkapan outdoor berkualitas dengan sistem pemesanan yang mudah dan aman.
+Habema Outdoor adalah platform sewa peralatan outdoor dan camping premium yang dirancang untuk memudahkan petualangan Anda. Aplikasi ini menyediakan berbagai perlengkapan outdoor berkualitas dengan sistem pemesanan yang mudah dan aman, mencakup layanan **sewa (rental)** dan **pembelian (shop)**.
 
 ---
 
-## 🏠 Fitur Utama
+## 🏠 Halaman Utama
 
-### 1. **Halaman Beranda (Home)**
-- **Hero Section**: Tampilan menarik dengan informasi utama tentang layanan
+### 1. **Halaman Beranda (`/`)**
+- **Hero Section**: Tampilan menarik dengan formulir pencarian (nama produk + pilihan tanggal sewa)
 - **Produk Unggulan**: Menampilkan peralatan terpopuler
-- **Kategori Peralatan**: Navigasi mudah berdasarkan jenis peralatan
-- **Testimoni Pengguna**: Review dari pelanggan sebelumnya
-- **Statistik Layanan**: Informasi mengenai ketersediaan dan rating
+- **Paket Bundel Unggulan**: Promosi paket hemat
+- **Audience Splitter**: Navigasi berdasarkan target pengguna (rental/shop)
 
-### 2. **Katalog Produk**
+### 2. **Katalog Sewa (`/catalog_rental`)**
 - **Grid Tampilan Produk**: Layout responsif untuk desktop dan mobile
-- **Filter Pencarian**: 
+- **Filter & Pencarian**:
   - Pencarian berdasarkan nama
   - Filter berdasarkan kategori
-  - Filter berdasarkan harga
-- **Detail Produk**:
-  - Gambar produk berkualitas tinggi
-  - Spesifikasi lengkap
-  - Harga per malam
-  - Ketersediaan stok
-  - Rating dan review
-- **Sistem Booking**: Integrasi langsung ke halaman pemesanan
+  - Filter berdasarkan rentang harga
+  - Sortir berdasarkan nama, harga (rendah/tinggi), dan rating
+  - Filter ketersediaan berdasarkan tanggal (`startDate`/`endDate`)
+- **Detail Produk (`/product/[id]`)**: Gambar, spesifikasi lengkap, harga per hari/malam, stok, rating & review, tombol wishlist, produk terkait
 
-### 3. **Sistem Pemesanan (Booking)**
-- **Pemilihan Tanggal**: Calendar picker untuk tanggal sewa
-- **Perhitungan Otomatis**: 
-  - Total harga berdasarkan durasi
-  - Biaya deposit (20% dari subtotal)
-  - Estimasi biaya tambahan
-- **Opsi Pengambilan**:
-  - **Ambil di Tempat**: Gratis
-  - **Diantar**: *Fitur Mendatang* (saat ini dinonaktifkan)
-- **Form Data Pemesanan**:
-  - Informasi kontak
-  - Catatan khusus (opsional)
-- **Verifikasi Identitas**: Upload KTP/SIM untuk keamanan
+### 3. **Katalog Beli (`/catalog_shop`)**
+- Produk jual dengan harga, stok, brand, kategori, `is_featured`/`is_new`, dan rating
+- Filter harga hingga Rp5.000.000, sortir termasuk "terbaru"
 
-### 4. **Sistem Pembayaran**
-- **Metode Pembayaran**:
-  - Transfer Bank (BCA, Mandiri, BNI, BRI)
-  - E-Wallet (GoPay, OVO, Dana)
-  - *Pesan via WhatsApp* (untuk bantuan admin)
-- **Integrasi WhatsApp**: Notifikasi otomatis ke admin
-- **Konfirmasi Pembayaran**: Status tracking real-time
+### 4. **Bundel & Paket**
+- **Promo (`/bundles`)**: Daftar kode diskon dan bundel, klaim kode diskon, refresh real-time
+- **Paket (`/packages`)**: Kartu paket bundel dengan detail include/exclude
+- **Open Trip (`/opentrip`)**: Paket perjalanan (Open Trip, Camping Keluarga, Private Camp, Campervan) dengan pemesanan via WhatsApp
 
-### 5. **Pusat Bantuan (Guide)**
-- **Panduan Lengkap**: 
-  - Cara pemesanan
-  - Panduan pembayaran
-  - Prosedur pengembalian
-  - Syarat & ketentuan
-- **FAQ**: Jawaban pertanyaan umum
-- **Kategori Panduan**: 
-  - Pemula
-  - Menengah
-  - Lanjutan
-- **Kontak Support**: Live chat, email, dan telepon
+### 5. **Pusat Bantuan (`/guide`, `/help`, `/faq`)**
+- **Panduan (`/guide`)**: Kategori (booking, pembayaran, pengiriman, akun, keamanan), tingkat kesulitan, fitur sorot
+- **FAQ (`/help`)**: Pencarian, kategori (Pemesanan, Pengiriman & Pengambilan, Pembayaran), tombol WhatsApp Support
+- **FAQ Statis (`/faq`)**: Syarat (KTP/SIM, deposit, min 1 hari/maks 30 hari, diskon sewa >7 hari)
+- **Halaman lain**: Kontak, Tentang, Karier, Kebijakan Privasi, Syarat & Ketentuan, Kebijakan Rental, Kebijakan Pengembalian
+
+---
+
+## 🔄 Alur Pemesanan (Booking)
+
+### 1. **Langkah Pemesanan (`/booking`)**
+1. **Pilih Tanggal**: DateRangePicker, tanggal terisi otomatis dari parameter URL (hero/katalog)
+2. **Syarat & Ketentuan**: Checklist persetujuan yang tersimpan di localStorage
+3. **Verifikasi Identitas**: Upload KTP/SIM + nomor + foto, tersimpan ke tabel `user_identity` (status `pending`)
+4. **Metode Pembayaran**: Transfer Bank, QRIS, atau WhatsApp Konfirmasi
+5. **Opsi Pengambilan**:
+   - **Ambil di Tempat**: Gratis (default)
+   - **Diantar**: Pilihan lokasi Leaflet, ongkir otomatis (jarak + durasi + volume), area Bandung & KBB, tipe lokasi (standar/camping/outdoor/remote/emergency) dengan biaya tambahan 25%/20%/35%/50%
+
+### 2. **Perhitungan Harga**
+- Subtotal = Σ(harga × qty) × hari
+- Diskon dari kode yang diklaim (persentase dengan `max_discount` atau nominal tetap)
+- **Deposit 20%** dari subtotal setelah diskon
+- Total = subtotal diskon + ongkir
+
+### 3. **Pembayaran**
+- **Transfer Bank** (BCA, Mandiri, BNI, BRI): *wajib login*, verifikasi manual 10-30 menit
+- **QRIS** (GoPay, OVO, Dana): *wajib login*, instan
+- **Midtrans Snap**: Popup pembayaran (kartu kredit, transfer, e-wallet, QRIS sesuai konfigurasi Midtrans) + webhook dengan verifikasi signature (sha512)
+- **WhatsApp Konfirmasi**: Tersedia untuk tamu dan pengguna terdaftar; membuka `wa.me` dengan ringkasan pesanan
+
+### 4. **Guest Checkout (Sebagian)**
+- Tamu **bisa** membuat pemesanan (`user_id: null`) tetapi **hanya** melalui metode WhatsApp Konfirmasi
+- Transfer Bank dan QRIS menampilkan notifikasi untuk login terlebih dahulu
+
+### 5. **Setelah Pembayaran**
+- **Konfirmasi Pesanan (`/order-confirmation`)**: Unduh invoice (PNG) hasil canvas
+- **Halaman status pembayaran**: `/payment/finish`, `/payment/pending`, `/payment/error`
+- **Riwayat Pemesanan (`/orders` dan `/bookings/[id]`)**: Status booking, detail item, rincian harga, tombol "Bayar Sekarang"
 
 ---
 
 ## 👤 Fitur Pengguna
 
-### 1. **Autentikasi**
-- **Login/Logout**: Sistem keamanan berlapis
-- **Registrasi**: Pendaftaran pengguna baru
-- **Guest Checkout**: Pemesanan tanpa login (fitur anonim)
-- **Profil Pengguna**: Kelola informasi pribadi
+### 1. **Autentikasi (`/login`)**
+- Login/register dengan email & password
+- **Verifikasi OTP via email** (Resend) untuk registrasi dan login
+- **Google OAuth** (`/auth/callback`)
+- **Cloudflare Turnstile** sebagai proteksi bot
+- Reset & lupa password
+- **Diskon pengguna baru** (10-50%) via kode diskon
 
-### 2. **Dashboard Pengguna**
-- **Riwayat Pemesanan**: Lihat semua booking sebelumnya
-- **Status Booking**: Track pesanan aktif
-- **Notifikasi**: Update status pesanan
-- **Favorit**: Simpan produk favorit
+### 2. **Dashboard Akun (`/account`)**
+- Tab **Pesanan**: riwayat booking dengan tanggal ambil, durasi, pembatalan
+- Tab **Alamat**: CRUD alamat pengiriman (label, penerima, telepon, provinsi, kota, kode pos, default)
+- Tab **Profil**: Informasi pribadi
+- Tab **Notifikasi**: Preferensi notifikasi (toggle)
+- **Edit Profil (`/account/edit`)**: Nama, telepon, email, upload avatar (Supabase Storage)
 
-### 3. **Manajemen Akun**
-- **Edit Profil**: Update informasi pribadi
-- **Verifikasi Identitas**: Upload dokumen verifikasi
-- **Riwayat Aktivitas**: Log aktivitas pengguna
-
----
-
-## 🏪 Fitur Vendor (Mendatang)
-
-### 1. **Dashboard Vendor**
-- **Manajemen Produk**: Tambah/edit peralatan
-- **Inventaris**: Track ketersediaan stok
-- **Pesanan Masuk**: Kelola booking dari pelanggan
-- **Laporan Penjualan**: Analisis pendapatan
-
-### 2. **Sistem Komisi**
-- **Pembagian Revenue**: Otomatis split pendapatan
-- **Withdrawal**: Penarikan dana vendor
-- **Laporan Keuangan**: Detail transaksi
+### 3. **Fitur Tambahan**
+- **Wishlist / Favorit**: Toggle pada halaman produk (tersimpan per pengguna)
+- **Review**: Rating 1-5, komentar, filter (semua/dengan foto/bintang 5/bintang 4), balasan review, lapor review
+- **Download Invoice**: Hasil canvas PNG pada halaman konfirmasi
 
 ---
 
-## 🔧 Fitur Teknis
+## 🏪 Fitur Admin (`/admin`)
 
-### 1. **Performa & Optimasi**
-- **Loading Cepat**: Optimasi gambar dan kode
-- **Responsive Design**: Tampilan optimal di semua perangkat
-- **PWA Support**: Aplikasi web progresif
-- **SEO Friendly**: Optimasi mesin pencari
+### 1. **Dashboard**
+- Ringkasan booking hari ini (pending/confirmed/picked_up)
+- Daftar booking aktif dengan info pelanggan
+- Jumlah notifikasi belum dibaca
 
-### 2. **Keamanan**
-- **Error Handling**: Sistem penanganan error komprehensif
-- **Data Validation**: Validasi input pengguna
-- **Row Level Security**: Keamanan database Supabase
-- **HTTPS**: Enkripsi koneksi
+### 2. **Manajemen Perlengkapan (`/admin/equipment`)**
+- CRUD lengkap: nama, kategori, brand, deskripsi, harga per hari/malam, stok, kapasitas, berat, dimensi, material, spesifikasi, upload gambar/gallery, status promo
 
-### 3. **Monitoring & Analytics**
-- **Performance Monitoring**: Track kecepatan aplikasi
-- **Error Logging**: Sistem logging error otomatis
-- **User Analytics**: Analisis perilaku pengguna
-- **Vercel Analytics**: Monitoring produksi
+### 3. **Manajemen Booking (`/admin/bookings`)**
+- Statistik (total/pending/confirmed/revenue)
+- Pencarian, filter status, filter tamu/terdaftar, pagination, ekspor
+- Detail booking: aksi status pending → confirmed → picked_up → returned, edit, hapus
 
----
+### 4. **Manajemen Pengguna (`/admin/users`)**
+- Pencarian, filter status & tanggal, pagination
+- Detail: alamat, jumlah booking, total belanja
 
-## 📱 Fitur Mobile
+### 5. **Diskon (`/admin/discounts`)**
+- CRUD kode diskon: tipe persentase/fixed, min purchase, max discount, berlaku untuk (semua/kategori/peralatan), rentang tanggal, batas pemakaian
 
-### 1. **Mobile Responsiveness**
-- **Touch Friendly**: UI optimal untuk sentuhan
-- **Mobile Navigation**: Menu hamburger yang intuitif
-- **Swipe Gestures**: Navigasi dengan gesture
-- **Mobile Forms**: Form yang mudah diisi di mobile
+### 6. **Promo Produk (`/admin/products-promo`)**
+- Toggle `is_promo`, persentase diskon, harga promo otomatis, tanggal mulai/selesai, tab (Semua/Aktif/Akan Datang/Berakhir)
 
-### 2. **Fitur Khusus Mobile**
-- **GPS Integration**: Lokasi pengguna untuk pengantaran
-- **Push Notifications**: Notifikasi real-time
-- **Camera Access**: Upload foto dokumen
-- **Share Function**: Bagikan produk ke media sosial
+### 7. **Katalog Shop (`/admin/catalog-shop`)**
+- CRUD produk jual: harga, harga asli, stok, kategori, brand, is_featured/is_new, gallery, spesifikasi JSON
+
+### 8. **Analisis (`/admin/analisis`)**
+- Revenue per status, revenue harian, tren bulanan 6 bulan, revenue per kategori, jumlah pengguna, stok menipis
+
+### 9. **Autentikasi Admin (`/admin/login`)**
+- Email/password + Turnstile + OTP, pintu masuk berdasarkan flag `users.is_vendor`
 
 ---
 
-## 🎯 Fitur Premium (Mendatang)
+## 🔔 Notifikasi
 
-### 1. **Membership**
-- **Tier System**: Bronze, Silver, Gold membership
-- **Diskon Eksklusif**: Harga khusus member
-- **Priority Support**: Layanan prioritas
-- **Early Access**: Akses produk baru
-
-### 2. **Layanan Tambahan**
-- **Insurance**: Asuransi peralatan
-- **Guide Service**: Pemandu outdoor profesional
-- **Package Deals**: Paket hemat untuk grup
-- **Custom Bundle**: Buat paket personal
+- **Notifikasi Admin**: Tabel `notifications` (jenis `new_booking`, `id_verification`), panel notifikasi admin, jumlah belum dibaca di dashboard
+- Preferensi notifikasi pengguna (order confirmation, reminder, promo, WhatsApp, email mingguan)
 
 ---
 
-## 🔄 Alur Kerja (Workflow)
+## 🔌 Integrasi & API
 
-### 1. **Alur Pemesanan Standar**
-```
-Pilih Produk → Pilih Tanggal → Isi Data → Verifikasi Identitas → Pembayaran → Konfirmasi → Ambil Barang
-```
+### Integrasi Eksternal
+- **Supabase**: Backend-as-a-Service (PostgreSQL, Row Level Security, Storage, Auth)
+- **Midtrans Snap**: Pembayaran online (popup + redirect + webhook)
+- **WhatsApp**: Metode pembayaran "WhatsApp Konfirmasi" dan tautan bantuan (wa.me)
+- **Google OAuth**: Login dengan akun Google
+- **Resend**: Pengiriman email (OTP)
+- **Cloudflare Turnstile**: Proteksi bot
+- **Leaflet**: Pemilih lokasi & perhitungan ongkir
 
-### 2. **Alur Guest Checkout**
-```
-Pilih Produk → Pilih Tanggal → Isi Data Kontak → Pembayaran → Konfirmasi Admin → Ambil Barang
-```
-
-### 3. **Alur Pengembalian**
-```
-Selesaikan Sewa → Inspek Barang → Konfirmasi Pengembalian → Deposit Dikembalikan → Rating
-```
+### API Routes (`app/api/*`)
+| Route | Fungsi |
+|-------|--------|
+| `/api/auth/send-otp` | Kirim OTP (register/login) via email |
+| `/api/auth/verify-otp` | Verifikasi OTP & login |
+| `/api/bookings/create` | Buat booking + item + notifikasi (mendukung tamu) |
+| `/api/midtrans/create-transaction` | Buat transaksi Midtrans |
+| `/api/midtrans/webhook` | Notifikasi status pembayaran (verifikasi signature) |
+| `/api/discounts/claim` | Klaim kode diskon |
+| `/api/user-discounts` | Daftar diskon yang diklaim pengguna |
+| `/api/identity/upsert` | Simpan verifikasi identitas (KTP/SIM) |
+| `/api/products`, `/api/categories`, `/api/bundles` | Data produk, kategori, bundel |
+| `/api/admin/dashboard`, `/api/admin/stats` | Data dashboard & analisis |
+| `/api/admin/bookings`, `/api/admin/catalog-shop` | Kelola booking & katalog shop |
+| `/api/track` | Pixel pelacakan 1×1 |
+| `/api/placeholder` | Gambar placeholder |
 
 ---
 
@@ -179,41 +176,54 @@ Selesaikan Sewa → Inspek Barang → Konfirmasi Pengembalian → Deposit Dikemb
 
 | Fitur | Status | Prioritas |
 |-------|--------|-----------|
-| Booking System | ✅ Aktif | Tinggi |
-| Payment Gateway | ✅ Aktif | Tinggi |
-| User Authentication | ✅ Aktif | Tinggi |
-| Product Catalog | ✅ Aktif | Tinggi |
-| Help Center | ✅ Aktif | Sedang |
-| Delivery Service | 🚧 Mendatang | Sedang |
-| Vendor Dashboard | 📋 Rencana | Rendah |
-| Membership System | 📋 Rencana | Rendah |
-| Mobile App | 📋 Rencana | Rendah |
+| Booking System (multi-step) | ✅ Aktif | Tinggi |
+| Payment (Midtrans + offline) | ✅ Aktif | Tinggi |
+| WhatsApp Konfirmasi | ✅ Aktif | Tinggi |
+| User Authentication (OTP/OAuth) | ✅ Aktif | Tinggi |
+| Katalog Sewa & Beli | ✅ Aktif | Tinggi |
+| Bundel, Paket, Open Trip | ✅ Aktif | Sedang |
+| Diskon & Promo | ✅ Aktif | Sedang |
+| Review & Wishlist | ✅ Aktif | Sedang |
+| Verifikasi Identitas (KTP/SIM) | ✅ Aktif (manual review) | Sedang |
+| Pengiriman & Ongkir Otomatis | ✅ Aktif (Bandung & KBB) | Sedang |
+| Push Notifications | ❌ Belum Ada | Rendah |
+| Membership / Loyalty Program | ❌ Belum Ada | Rendah |
+| Vendor Dashboard | ❌ Belum Ada | Rendah |
+| PWA / Offline | 📋 Sebagian (manifest saja, tanpa service worker) | Rendah |
 
 ---
 
 ## 🛠️ Teknologi yang Digunakan
 
 ### Frontend
-- **Next.js 14**: React framework dengan App Router
+- **Next.js 19** (App Router): React framework dengan routing
 - **TypeScript**: Type safety dan better development
 - **Tailwind CSS**: Utility-first CSS framework
+- **React 19**: Library UI
+- **Zustand**: State management (cart, order, identity, location)
+- **Radix / shadcn-style UI**: Komponen UI
 - **Lucide React**: Icon system
 - **Sonner**: Toast notifications
+- **Framer Motion**: Animasi
 
 ### Backend & Database
 - **Supabase**: Backend-as-a-Service dengan PostgreSQL
 - **Row Level Security**: Keamanan data tingkat baris
-- **Real-time Subscriptions**: Update real-time
+- **Supabase Storage**: Upload avatar dan foto dokumen
+- **22 tabel database**: bookings, booking_items, equipment, shop_products, bundles, discounts, user_identity, reviews, dll.
 
 ### Deployment & Monitoring
 - **Vercel**: Platform hosting dan deployment
-- **Vercel Analytics**: Monitoring performa
 - **Error Boundaries**: Penanganan error React
+- **Vercel Analytics**: Monitoring produksi
 
 ### Integrasi
-- **WhatsApp Business API**: Notifikasi otomatis
-- **Payment Gateways**: Integrasi pembayaran
-- **Email Service**: Notifikasi email
+- **Midtrans Snap**: Payment gateway
+- **WhatsApp**: Notifikasi dan konfirmasi pesanan
+- **Resend**: Email (OTP)
+- **Google OAuth**: Login
+- **Cloudflare Turnstile**: Keamanan formulir
+- **Leaflet**: Pemetaan lokasi
 
 ---
 
@@ -234,35 +244,46 @@ Selesaikan Sewa → Inspek Barang → Konfirmasi Pengembalian → Deposit Dikemb
 
 ## 📈 Roadmap Pengembangan
 
-### Q2 2024
-- ✅ Error handling system
-- ✅ Responsive design improvements
-- ✅ Database schema optimization
-- 🚧 Delivery service implementation
-- 📋 Mobile app development
+### Selesai
+- ✅ Booking system multi-step
+- ✅ Pembayaran online (Midtrans) + offline (transfer/QRIS/WhatsApp)
+- ✅ Autentikasi dengan OTP email + Google OAuth
+- ✅ Katalog sewa & beli dengan filter/sortir
+- ✅ Bundel, paket, open trip, diskon & promo
+- ✅ Verifikasi identitas (KTP/SIM)
+- ✅ Pengiriman dengan ongkir otomatis (Bandung & KBB)
+- ✅ Review, wishlist, download invoice
+- ✅ Admin dashboard, manajemen booking/equipment/user/discount/promo/analisis
+- ✅ Notifikasi admin
 
-### Q3 2024
-- 📋 Vendor dashboard
-- 📋 Advanced analytics
-- 📋 Loyalty program
-- 📋 Insurance integration
-
-### Q4 2024
-- 📋 Mobile app launch
-- 📋 Expansion to new locations
-- 📋 Partnership programs
-- 📋 AI recommendations
+### Berikutnya
+- 🚧 Push notifications
+- 🚧 Service worker / PWA offline
+- 🚧 Membership / loyalty program
+- 🚧 Vendor dashboard
+- 🚧 Integrasi kurir untuk pengembalian
+- 📋 Automasi validasi dokumen identitas (OCR)
+- 📋 Ekspansi area pengiriman
 
 ---
 
 ## 🔗 Link Penting
 
-- **Produk**: `/catalog`
+- **Beranda**: `/`
+- **Katalog Sewa**: `/catalog_rental`
+- **Katalog Beli**: `/catalog_shop`
+- **Detail Produk**: `/product/{id}`
+- **Promo**: `/bundles`
+- **Paket**: `/packages`
+- **Open Trip**: `/opentrip`
+- **Keranjang**: `/cart`
 - **Booking**: `/booking?id={productId}`
-- **Bantuan**: `/guide`
-- **Profil**: `/profile`
-- **Riwayat**: `/history`
+- **Pembayaran**: `/payment`
+- **Riwayat**: `/orders`
+- **Akun**: `/account`
+- **Bantuan**: `/guide`, `/help`, `/faq`
+- **Admin**: `/admin`
 
 ---
 
-*Update terakhir: 28 April 2026*
+*Update terakhir: 3 Agustus 2026*

@@ -12,7 +12,7 @@ export async function GET() {
     }
 
     if (!supabaseAdmin) {
-      return NextResponse.json({ error: 'supabaseAdmin is null' }, { status: 500 })
+      return NextResponse.json({ error: 'Koneksi database gagal (supabaseAdmin null)' }, { status: 500 })
     }
 
     const now = new Date()

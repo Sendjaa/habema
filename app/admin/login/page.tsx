@@ -12,7 +12,14 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Eye, EyeOff, Shield } from "lucide-react";
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "";
+// Dukung banyak admin: pisahkan email dengan koma, mis. "a@x.com, b@x.com"
+const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+
+const isAdminEmail = (email: string) =>
+  ADMIN_EMAILS.length === 0 || ADMIN_EMAILS.includes(email.trim().toLowerCase());
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -58,7 +65,7 @@ export default function AdminLogin() {
 
     try {
       // Validate admin email
-      if (ADMIN_EMAIL && email !== ADMIN_EMAIL) {
+      if (!isAdminEmail(email)) {
         toast.error("Email tidak diizinkan untuk akses admin");
         setIsLoading(false);
         return;
@@ -70,7 +77,7 @@ export default function AdminLogin() {
         return;
       }
 
-      if (!password || password.length < 6) {
+      if (password && password.length < 6) {
         toast.error("Password minimal 6 karakter");
         setIsLoading(false);
         return;
@@ -116,33 +123,47 @@ export default function AdminLogin() {
         throw new Error(data.error || "Kode OTP salah");
       }
 
-      // OTP verified - sign in on the client to establish session
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+      // OTP verified - build a session. Untuk user yang di-invite tanpa password
+      // (passwordless), pakai session dari server; selain itu login dengan password.
+      let sessionUser: any = null;
 
-      if (signInError) {
-        throw new Error(signInError.message);
+      if (data.passwordless && data.session) {
+        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+
+        if (sessionError) {
+          throw new Error(sessionError.message);
+        }
+        sessionUser = sessionData.user;
+      } else {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+
+        if (signInError) {
+          throw new Error(signInError.message);
+        }
+        sessionUser = signInData.user;
       }
 
-      const session = signInData.session;
-      
-      if (session) {
+      if (sessionUser) {
         const { data: profile, error: profileError } = await supabase
           .from('users')
           .select('is_vendor')
-          .eq('id', session.user.id)
+          .eq('id', sessionUser.id)
           .maybeSingle();
 
         if (profileError && (profileError.code === 'PGRST116' || profileError.code === '42501')) {
           const { error: createError } = await supabase
             .from('users')
             .insert([{
-              id: session.user.id,
-              email: session.user.email!,
+              id: sessionUser.id,
+              email: sessionUser.email!,
               is_vendor: true,
-              full_name: session.user.user_metadata?.full_name || 'Admin',
+              full_name: sessionUser.user_metadata?.full_name || 'Admin',
             }])
             .select('is_vendor')
             .single();
@@ -205,7 +226,7 @@ export default function AdminLogin() {
   };
 
   const handleResetPassword = async () => {
-    if (ADMIN_EMAIL && email !== ADMIN_EMAIL) {
+    if (!isAdminEmail(email)) {
       toast.error("Email tidak diizinkan untuk akses admin");
       return;
     }
@@ -291,9 +312,8 @@ export default function AdminLogin() {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Masukkan password"
+                placeholder="Masukkan password (kosongkan jika akun di-invite tanpa password)"
                 className="w-full pr-10"
-                required
               />
               <button
                 type="button"
@@ -303,6 +323,9 @@ export default function AdminLogin() {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            <p className="text-xs text-slate-400">
+              Akun yang dibuat via Supabase Invite (tanpa password) cukup biarkan kosong, lalu gunakan kode OTP.
+            </p>
           </div>
 
           {/* Turnstile */}

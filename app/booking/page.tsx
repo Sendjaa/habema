@@ -251,8 +251,10 @@ function BookingContent() {
     : pricePerNight * quantity * days;
 
   const claimedDiscount = useCartStore((s) => s.claimedDiscount);
+  // Diskon hanya berlaku untuk user yang sudah login.
+  const discountEligible = !!user;
   let discountAmount = 0;
-  if (claimedDiscount) {
+  if (claimedDiscount && discountEligible) {
     if (claimedDiscount.discount_type === 'percentage') {
       discountAmount = Math.round(subtotal * claimedDiscount.discount_value / 100);
       if (claimedDiscount.max_discount && discountAmount > claimedDiscount.max_discount) {
@@ -285,6 +287,22 @@ function BookingContent() {
       } = await supabase.auth.getUser();
 
       if (!productId) throw new Error("ID Produk tidak ditemukan.");
+      if (!product) throw new Error("Produk tidak ditemukan.");
+
+      // Item yang akan dipesan. Prioritaskan item dari keranjang (transaction),
+      // fallback ke produk tunggal dari URL bila halaman dibuka langsung dari katalog.
+      const sourceItems =
+        transaction?.items && transaction.items.length > 0
+          ? transaction.items
+          : [{
+              id: product.id,
+              name: product.name,
+              price: Number(product.price_per_night),
+              quantity: Number(quantity),
+              category: product.equipment_categories?.name || "Equipment",
+              image_url: product.image_url,
+            }];
+
       const orderData = {
         user_id: user?.id || null, // null for anonymous users
         start_date: startDate?.toISOString() || '',
@@ -325,7 +343,7 @@ function BookingContent() {
         };
 
         // Save anonymous booking via server API — kirim semua item dari keranjang
-        const anonItems = (transaction?.items ?? []).map((item: any) => ({
+        const anonItems = sourceItems.map((item: any) => ({
           equipment_id: item.id,
           quantity: Number(item.quantity),
           unit_price: Number(item.price),
@@ -368,7 +386,7 @@ function BookingContent() {
         // Spread transaction dulu agar items dari keranjang tidak hilang
         setTransactionData({
           ...transaction,
-          items: transaction?.items ?? [],
+          items: sourceItems,
           orderId: newBooking.id,
           days: Number(days),
           duration: Number(days),
@@ -423,7 +441,7 @@ Mohon konfirmasi pesanan saya ya!`;
       }
 
       // For authenticated users, save to database via server API — kirim semua item
-      const authItems = (transaction?.items ?? []).map((item: any) => ({
+      const authItems = sourceItems.map((item: any) => ({
         equipment_id: item.id,
         quantity: Number(item.quantity),
         unit_price: Number(item.price),
@@ -449,7 +467,7 @@ Mohon konfirmasi pesanan saya ya!`;
       // Spread transaction dulu agar items dari keranjang tidak hilang
       setTransactionData({
         ...transaction,
-        items: transaction?.items ?? [],
+        items: sourceItems,
         orderId: newBooking.id,
         days: Number(days),
         duration: Number(days),
@@ -678,9 +696,18 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
         // Try using redirect URL if available, otherwise use Snap popup
         if (result.redirect_url) {
           console.log('Using redirect URL:', result.redirect_url);
-          window.open(result.redirect_url, '_blank');
           setIsProcessingPayment(false);
-          router.push('/order-confirmation');
+
+          // Mock mode (non-produksi): pembayaran simulasi dianggap selesai.
+          if (result.mock) {
+            router.push('/order-confirmation');
+            return;
+          }
+
+          // Real mode: arahkan ke halaman pembayaran Midtrans di tab yang sama.
+          // Order-confirmation hanya dicapai lewat callback Midtrans
+          // (/payment/finish) setelah transaksi benar-benar selesai.
+          window.location.href = result.redirect_url;
         } else {
           console.log('Using Snap popup with token:', result.token);
           // Open Midtrans Snap popup
@@ -1248,7 +1275,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
           </div>
 
           {/* Right Column: Order Summary */}
-          <aside className="lg:col-span-1 lg:sticky lg:top-6">
+          <aside className="lg:col-span-1 lg:sticky lg:top-23">
             <Card className="rounded-xl border border-stone-200 bg-white shadow-sm">
               <div className="p-4 border-b border-stone-200">
                 <h3 className="font-black uppercase tracking-tight text-forest text-sm">
