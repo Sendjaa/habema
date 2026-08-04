@@ -47,7 +47,7 @@ export interface Order {
   image_url?: string;
 }
 
-interface TransactionData {
+export interface TransactionData {
   items: any[];
   duration: number;
   days: number;
@@ -134,6 +134,7 @@ export const useCartStore = create<CartStore>()(
       orders: [],
       identity: null,
       location: null,
+      claimedDiscount: null,
 
       // Menambahkan item ke keranjang
       addItem: (item) =>

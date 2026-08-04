@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -775,7 +774,6 @@ function EquipmentCard({
 }
 
 export default function EquipmentManagement() {
-  const router = useRouter()
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -788,12 +786,10 @@ export default function EquipmentManagement() {
   const fetchEquipment = useCallback(async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('equipment')
-        .select('*')
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      setEquipment(data ?? [])
+      const res = await fetch('/api/admin/equipment')
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error)
+      setEquipment(json.data ?? [])
     } catch (err: any) {
       toast.error(err.message ?? 'Gagal memuat data produk')
     } finally {
@@ -803,12 +799,10 @@ export default function EquipmentManagement() {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('equipment_categories')
-        .select('id, name, description')
-        .order('display_order', { ascending: true })
-      if (error) throw error
-      setCategories(data ?? [])
+      const res = await fetch('/api/admin/equipment?type=categories')
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error)
+      setCategories(json.data ?? [])
     } catch {
       setCategories([])
     }
@@ -858,17 +852,24 @@ export default function EquipmentManagement() {
         promo_end_date: form.promo_end_date ? new Date(form.promo_end_date).toISOString() : null,
       }
 
+      let res: Response
       if (editingItem) {
-        const { error } = await supabase.from('equipment').update(payload).eq('id', editingItem.id)
-        if (error) throw error
-        toast.success('Produk berhasil diperbarui!')
+        res = await fetch('/api/admin/equipment', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: editingItem.id, ...payload }),
+        })
       } else {
-        payload.created_at = new Date().toISOString()
-        payload.updated_at = new Date().toISOString()
-        const { error } = await supabase.from('equipment').insert(payload)
-        if (error) throw error
-        toast.success('Produk berhasil ditambahkan!')
+        res = await fetch('/api/admin/equipment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
       }
+
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error)
+      toast.success(editingItem ? 'Produk berhasil diperbarui!' : 'Produk berhasil ditambahkan!')
 
       setShowModal(false)
       setEditingItem(null)
@@ -888,8 +889,9 @@ export default function EquipmentManagement() {
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Hapus "${name}"? Tindakan ini tidak dapat dibatalkan.`)) return
     try {
-      const { error } = await supabase.from('equipment').delete().eq('id', id)
-      if (error) throw error
+      const res = await fetch(`/api/admin/equipment?id=${id}`, { method: 'DELETE' })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error)
       toast.success('Produk berhasil dihapus!')
       fetchEquipment()
     } catch (err: any) {

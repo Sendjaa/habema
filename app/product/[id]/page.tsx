@@ -87,6 +87,7 @@ export default function ProductDetailPage({
   const [helpfulCount, setHelpfulCount] = useState([12, 8, 5, 2, 1]);
   const [isLiked, setIsLiked] = useState([false, false, false, false, false]);
   const addToCart = useCartStore((state) => state.addToCart);
+  const setTransaction = useCartStore((state) => state.setTransaction);
   const unsplashLoader = ({ src, width, quality }: any) => {
     return `${src}?auto=format&fit=crop&w=${width}&q=${quality || 75}`;
   };
@@ -331,6 +332,28 @@ export default function ProductDetailPage({
     });
   };
 
+  // Sewa Langsung: tulis item ke transaction sebelum menuju booking agar ringkasan
+  // selalu menampilkan produk yang diklik (bukan sisa transaction dari sesi lama).
+  const handleDirectBooking = () => {
+    setTransaction({
+      items: [
+        {
+          id: product.id,
+          name: product.name,
+          price: Number(product.price_per_night),
+          quantity: Math.max(1, Number(quantity)),
+          category: product.equipment_categories?.name || "Equipment",
+          image_url: product.image_url,
+        },
+      ],
+      duration: 0,
+      days: 0,
+      totalPrice: Number(pricePerNight) * Math.max(1, Number(quantity)),
+      payment: { method: "" },
+    });
+    router.push(`/booking?id=${id}&quantity=${quantity}${dateQuery}`);
+  };
+
   const inventory = getInventoryStatus(product.id);
   const isAvailable = inventory.availableUnits > 0;
   const pricePerNight = Number(product.price_per_night || 0);
@@ -358,7 +381,7 @@ export default function ProductDetailPage({
       </nav>
 
       {/* Mobile Top Nav */}
-      <div className="hidden md:flex bg-white items-center p-2 sticky top-0 md:z-0 shadow-sm border-b ps-35">
+      <div className="hidden md:flex bg-white items-center p-2 top-0 md:z-0 shadow-sm border-b ps-55">
         <button
           onClick={() => router.back()}
           className="group flex items-center justify-center w-10 h-5"
@@ -483,10 +506,19 @@ export default function ProductDetailPage({
           {/* TOMBOL AKSI UTAMA */}
           <div className="p-3 flex gap-3">
             <Button
+              asChild
               variant="outline"
               className="flex-1 border-slate-200 text-slate-600 font-bold h-12 rounded-lg"
             >
-              <MessageCircle className="w-5 h-5 mr-1" /> Chat
+              <a
+                href={`https://wa.me/6283898749357?text=${encodeURIComponent(
+                  `Halo Habema Outdoor, saya mau tanya soal produk *${product.name}* (${id}).`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <MessageCircle className="w-5 h-5 mr-1" /> Chat
+              </a>
             </Button>
 
             {!showSelection ? (
@@ -498,12 +530,10 @@ export default function ProductDetailPage({
               </Button>
             ) : (
               <Button
-                asChild
+                onClick={handleDirectBooking}
                 className="flex-2 bg-[#1B4332] hover:bg-[#143326] font-bold h-12 rounded-lg text-white shadow-lg"
               >
-                <Link href={`/booking?id=${id}&quantity=${quantity}${dateQuery}`}>
-                  Konfirmasi Sewa
-                </Link>
+                Konfirmasi Sewa
               </Button>
             )}
           </div>
@@ -886,12 +916,10 @@ export default function ProductDetailPage({
                   Masuk Keranjang
                 </Button>
                 <Button
-                  asChild
+                  onClick={handleDirectBooking}
                   className="w-full bg-[#1B4332] hover:bg-[#143326] font-bold py-6 rounded-xl shadow-lg transition-all"
                 >
-                  <Link href={`/booking?id=${id}&quantity=${quantity}${dateQuery}`}>
-                    Sewa Langsung
-                  </Link>
+                  Sewa Langsung
                 </Button>
               </div>
 

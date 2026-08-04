@@ -122,49 +122,100 @@ export async function POST(request: NextRequest) {
         paymentStatus = transaction_status || 'unknown'
     }
 
-    // 3) Update booking di database
-    const updateData: Partial<Booking> = {
-      payment_status: paymentStatus,
-      ...(payment_type ? { payment_method: payment_type } : {}),
-    }
-    if (bookingStatus) {
-      updateData.status = bookingStatus
-    }
-
-    const { data: booking, error: fetchError } = await supabaseAdmin
-      .from('bookings')
-      .select('id, user_id')
-      .eq('midtrans_order_id', order_id)
-      .single()
+    // 3) Update booking di database — dengan guard idempotensi.
+    // Midtrans mengirim notifikasi berulang (retry). Agar efek samping
+    // (status paid + increment rental_count) hanya terjadi SEKALI,
+    // update sukses memakai kondisi atomik `payment_status <> paid`
+    // (compare-and-swap). Jika dua notifikasi datang bersamaan, hanya
+    // satu yang berhasil meng-update baris (RETURNING), yang lain tidak
+    // mendapat baris dan diabaikan → rental_count tidak pernah ganda.
+    const successEvents = ['capture', 'settlement']
+    const isSuccess = successEvents.includes(transaction_status)
 
     let bookingId: string | null = null
 
+    const { data: booking, error: fetchError } = await supabaseAdmin
+      .from('bookings')
+      .select('id')
+      .eq('midtrans_order_id', order_id)
+      .maybeSingle()
+
     if (!booking && fetchError) {
       console.warn('[webhook] Booking not found for order_id:', order_id, '- trying by id')
+    }
+
+    if (!booking) {
       const { data: byId } = await supabaseAdmin
         .from('bookings')
-        .select('id, user_id')
+        .select('id')
         .eq('id', order_id)
-        .single()
+        .maybeSingle()
 
       if (byId) {
         bookingId = byId.id
-        await supabaseAdmin
-          .from('bookings')
-          .update(updateData)
-          .eq('id', bookingId)
       }
-    } else if (booking) {
+    } else {
       bookingId = booking.id
-      await supabaseAdmin
-        .from('bookings')
-        .update(updateData)
-        .eq('id', bookingId)
     }
 
-    // 4) Increment rental_count jika payment berhasil
-    if (bookingId && (transaction_status === 'capture' || transaction_status === 'settlement')) {
-      await incrementRentalCount(bookingId)
+    if (bookingId) {
+      if (isSuccess) {
+        const { data: updated, error: updateErr } = await supabaseAdmin
+          .from('bookings')
+          .update({
+            payment_status: 'paid',
+            status: bookingStatus,
+            ...(payment_type ? { payment_method: payment_type } : {}),
+          })
+          .eq('id', bookingId)
+          .neq('payment_status', 'paid')
+          .select('id')
+          .maybeSingle()
+
+        if (updateErr) {
+          console.error('[webhook] Gagal update booking paid:', updateErr.message)
+        } else if (updated) {
+          console.log('[webhook] Booking', bookingId, 'ditandai paid (pertama kali)')
+          // Efek samping HANYA di sini — tepat sekali per booking.
+          await incrementRentalCount(bookingId)
+        } else {
+          console.log('[webhook] Booking', bookingId, 'sudah berstatus paid, dilewati (idempotent)')
+        }
+      } else if (transaction_status === 'refund') {
+        // ── Refund: transisi lanjut yang sah dari paid → refunded ──
+        // Nilai status idempoten; boleh menimpa paid. Tidak meng-increment.
+        await supabaseAdmin
+          .from('bookings')
+          .update({
+            payment_status: 'refunded',
+            status: bookingStatus || 'cancelled',
+            ...(payment_type ? { payment_method: payment_type } : {}),
+          })
+          .eq('id', bookingId)
+      } else {
+        // ── Status lain (pending/deny/cancel/expire) ──
+        // Jangan pernah menimpa booking yang sudah final (paid/refunded),
+        // sehingga notifikasi lama tidak menurunkan status.
+        const { data: updated, error: updateErr } = await supabaseAdmin
+          .from('bookings')
+          .update({
+            payment_status: paymentStatus,
+            ...(bookingStatus ? { status: bookingStatus } : {}),
+            ...(payment_type ? { payment_method: payment_type } : {}),
+          })
+          .eq('id', bookingId)
+          .or(
+            'payment_status.is.null,payment_status.eq.pending,payment_status.eq.failed,payment_status.eq.cancelled,payment_status.eq.expired,payment_status.eq.unknown'
+          )
+          .select('id')
+          .maybeSingle()
+
+        if (updateErr) {
+          console.error('[webhook] Gagal update booking:', updateErr.message)
+        } else if (!updated) {
+          console.log('[webhook] Booking', bookingId, 'sudah final, status', transaction_status, 'dilewati')
+        }
+      }
     }
 
     return NextResponse.json({ message: 'Webhook received and processed' }, { status: 200 })

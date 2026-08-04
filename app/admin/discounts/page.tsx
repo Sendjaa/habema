@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -467,12 +466,10 @@ export default function DiscountManagement() {
   const fetchDiscounts = useCallback(async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('discounts')
-        .select('*')
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      setDiscounts(data ?? [])
+      const res = await fetch('/api/admin/discounts')
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error)
+      setDiscounts(json.data ?? [])
     } catch (err: any) {
       toast.error(err.message ?? 'Gagal memuat data diskon')
     } finally {
@@ -500,22 +497,24 @@ export default function DiscountManagement() {
         usage_limit: form.usage_limit ? parseInt(form.usage_limit) : null,
       }
 
+      let res: Response
       if (editingItem) {
-        const { error } = await supabase.from('discounts').update(payload).eq('id', editingItem.id)
-        if (error) throw error
-        toast.success('Diskon berhasil diperbarui!')
+        res = await fetch('/api/admin/discounts', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: editingItem.id, ...payload }),
+        })
       } else {
-        const { error } = await supabase.from('discounts').insert(payload)
-        if (error) {
-          if (error.message?.includes('discounts_code_key')) {
-            toast.error('Kode diskon sudah digunakan. Gunakan kode lain.')
-          } else {
-            throw error
-          }
-          return
-        }
-        toast.success('Diskon berhasil ditambahkan!')
+        res = await fetch('/api/admin/discounts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
       }
+
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error)
+      toast.success(editingItem ? 'Diskon berhasil diperbarui!' : 'Diskon berhasil ditambahkan!')
 
       setShowModal(false)
       setEditingItem(null)
@@ -535,8 +534,9 @@ export default function DiscountManagement() {
   const handleDelete = async (id: string, code: string) => {
     if (!confirm(`Hapus diskon "${code}"? Tindakan ini tidak dapat dibatalkan.`)) return
     try {
-      const { error } = await supabase.from('discounts').delete().eq('id', id)
-      if (error) throw error
+      const res = await fetch(`/api/admin/discounts?id=${id}`, { method: 'DELETE' })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error)
       toast.success('Diskon berhasil dihapus!')
       fetchDiscounts()
     } catch (err: any) {

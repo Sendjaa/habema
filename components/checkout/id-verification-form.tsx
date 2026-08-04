@@ -43,7 +43,6 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
 
   // Camera permission states
   const [cameraPermission, setCameraPermission] = useState<'prompt' | 'granted' | 'denied' | 'error'>('prompt');
-  const [showManualUpload, setShowManualUpload] = useState(false);
   const [currentCamera, setCurrentCamera] = useState<'user' | 'environment'>('user');
 
   // Function to check if identity already exists
@@ -457,19 +456,15 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         setCameraPermission('denied');
         toast.error("Izin kamera ditolak. Gunakan opsi upload manual.");
-        setShowManualUpload(true);
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
         setCameraPermission('error');
         toast.error("Tidak ada kamera yang terdeteksi. Gunakan opsi upload manual.");
-        setShowManualUpload(true);
       } else if (err.message === 'Camera API not supported') {
         setCameraPermission('error');
         toast.error("Browser tidak mendukung kamera. Gunakan opsi upload manual.");
-        setShowManualUpload(true);
       } else {
         setCameraPermission('error');
         toast.error("Gagal mengakses kamera. Gunakan opsi upload manual.");
-        setShowManualUpload(true);
       }
     }
   };
@@ -724,7 +719,7 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
         </Label>
 
         <div
-          className={`relative min-h-[16rem] rounded-2xl border-2 border-dashed transition-all duration-200 flex flex-col items-center justify-center overflow-hidden ${
+          className={`relative min-h-52 rounded-2xl border-2 border-dashed transition-all duration-200 overflow-hidden ${
             errors.photo
               ? "border-red-500 bg-red-50/30"
               : "border-slate-200 bg-slate-50/50"
@@ -787,57 +782,24 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
               </button>
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center w-full px-6 py-8 gap-5">
-              {/* ID Positioning Guide */}
-              <div className="text-center">
-                <div className="w-28 h-16 mx-auto mb-3 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center bg-slate-50">
-                  <div className="text-center">
-                    <div className="text-[10px] font-semibold text-slate-500 tracking-wide">ID CARD</div>
-                    <div className="text-[9px] text-slate-400 mt-0.5">Position Here</div>
-                  </div>
-                </div>
-                <ul className="text-[11px] text-slate-500 space-y-0.5">
-                  <li>• Pastikan teks terbaca jelas</li>
-                  <li>• Hindari pantulan cahaya</li>
-                  <li>• Foto seluruh bagian ID</li>
-                </ul>
-              </div>
-
-              {/* Camera CTA */}
-              <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center justify-center w-full px-4 py-8 gap-3">
+              <Camera className="w-7 h-7 text-slate-400" />
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     startCamera();
                     if (errors.photo) setErrors({ ...errors, photo: "" });
                   }}
-                  className={`w-16 h-16 rounded-2xl bg-white border flex items-center justify-center shadow-sm transition-all ${
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 text-xs font-bold transition-all ${
                     errors.photo
-                      ? "border-red-300"
-                      : "border-slate-200 hover:border-slate-400"
+                      ? "border-red-300 text-red-500"
+                      : "border-slate-200 text-slate-600 hover:border-slate-400"
                   }`}
                 >
-                  <Camera
-                    className={`w-7 h-7 transition-colors ${
-                      errors.photo
-                        ? "text-red-400"
-                        : "text-slate-400 group-hover:text-slate-600"
-                    }`}
-                  />
+                  <Camera className="w-4 h-4" />
+                  Ambil Foto
                 </button>
-                <span
-                  className={`text-xs font-bold tracking-wide ${errors.photo ? "text-red-500" : "text-slate-600"}`}
-                >
-                  AMBIL FOTO DENGAN KAMERA
-                </span>
-                <p className="text-[11px] text-slate-400 text-center max-w-[15rem] leading-relaxed">
-                  Untuk keamanan dan validasi, foto harus diambil langsung melalui kamera
-                </p>
-              </div>
-
-              {/* File Upload Option */}
-              <div className="w-full flex flex-col items-center gap-2 pt-5 border-t border-slate-200">
-                <p className="text-[11px] text-slate-500 text-center">Atau upload file dari perangkat</p>
                 <input
                   type="file"
                   id="id-upload"
@@ -847,53 +809,19 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
                 />
                 <label
                   htmlFor="id-upload"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer transition-colors"
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 text-xs font-bold cursor-pointer transition-all ${
+                    errors.photo
+                      ? "border-red-300 text-red-500"
+                      : "border-slate-200 text-slate-600 hover:border-slate-400"
+                  }`}
                 >
-                  <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                   </svg>
-                  <span className="text-xs font-medium text-slate-700">Upload File</span>
+                  Pilih File
                 </label>
-                <p className="text-[10px] text-slate-400 text-center">Maksimal 5MB (JPG, PNG)</p>
               </div>
-              
-              {/* Manual Upload Fallback */}
-              {showManualUpload && (
-                <div className="mt-4 p-3 bg-yellow-50 rounded-xl border border-yellow-200">
-                  <div className="flex flex-col items-center gap-2">
-                    <p className="text-[9px] text-yellow-800 text-center">
-                      Kamera tidak tersedia? Gunakan opsi upload manual
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = 'image/*';
-                        input.onchange = (e) => {
-                          const file = (e.target as HTMLInputElement).files?.[0];
-                          if (file) {
-                            if (file.size > 5 * 1024 * 1024) {
-                              toast.error("File terlalu besar (Maksimal 5MB)");
-                              return;
-                            }
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              setPhotoPreview(reader.result as string);
-                              setShowManualUpload(false);
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        };
-                        input.click();
-                      }}
-                      className="text-[9px] bg-yellow-600 text-white px-3 py-1.5 rounded-lg hover:bg-yellow-700 transition-colors"
-                    >
-                      UPLOAD MANUAL
-                    </button>
-                  </div>
-                </div>
-              )}
+              <p className="text-[10px] text-slate-400">JPG / PNG, maksimal 5MB</p>
             </div>
           )}
         </div>

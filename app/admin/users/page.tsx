@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +12,6 @@ import {
   Search, 
   Filter, 
   Eye, 
-  Edit,
   Mail, 
   Calendar,
   Users,
@@ -79,93 +77,19 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      console.log('Fetching users data...');
-      
-      // Use simpler query first to avoid relationship issues
-      let query = supabase
-        .from("users")
-        .select("*", { count: "exact" });
+      const params = new URLSearchParams({ page: String(currentPage), perPage: String(itemsPerPage) });
+      if (searchTerm) params.set("search", searchTerm);
+      if (dateFilter !== "all") params.set("date", dateFilter);
 
-      // Apply search filter
-      if (searchTerm) {
-        query = query.or(`
-          email.ilike.%${searchTerm}%, 
-          full_name.ilike.%${searchTerm}%
-        `);
-      }
+      const res = await fetch(`/api/admin/users?${params.toString()}`);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
 
-      // Apply date filter
-      if (dateFilter === "today") {
-        const today = new Date().toISOString().split('T')[0];
-        query = query.gte("created_at", today);
-      } else if (dateFilter === "week") {
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        query = query.gte("created_at", weekAgo.toISOString());
-      } else if (dateFilter === "month") {
-        const monthAgo = new Date();
-        monthAgo.setMonth(monthAgo.getMonth() - 1);
-        query = query.gte("created_at", monthAgo.toISOString());
-      }
-
-      // Apply pagination
-      const from = (currentPage - 1) * itemsPerPage;
-      const to = from + itemsPerPage - 1;
-      
-      query = query
-        .order("created_at", { ascending: false })
-        .range(from, to);
-
-      const { data, error, count } = await query;
-
-      console.log('Users query result:', { data, error, count });
-
-      if (error) {
-        console.error('Users query error:', JSON.stringify(error, null, 2));
-        
-        // If RLS error, show empty data
-        if (error.code === '42501') {
-          toast.warning('RLS permissions issue. Please check RLS policies for users table.');
-          setUsers([]);
-          setTotalPages(0);
-          return;
-        }
-        
-        throw error;
-      }
-
-      // Fetch booking stats for each user (with error handling)
-      const usersWithStats = await Promise.all(
-        (data || []).map(async (user) => {
-          try {
-            const { data: bookings, count: bookingCount } = await supabase
-              .from("bookings")
-              .select("total_cost", { count: "exact" })
-              .eq("user_id", user.id);
-
-            const totalSpent = bookings?.reduce((sum, booking) => sum + (booking.total_cost || 0), 0) || 0;
-
-            return {
-              ...user,
-              booking_count: bookingCount || 0,
-              total_spent: totalSpent,
-            };
-          } catch (bookingError) {
-            console.error('Error fetching booking stats for user:', user.id, bookingError);
-            return {
-              ...user,
-              booking_count: 0,
-              total_spent: 0,
-            };
-          }
-        })
-      );
-
-      setUsers(usersWithStats);
-      setTotalPages(Math.ceil((count || 0) / itemsPerPage));
-    } catch (error) {
-      console.error("Error fetching users:", JSON.stringify(error, null, 2));
-      toast.error("Failed to load users");
+      setUsers(json.data || []);
+      setTotalPages(json.totalPages || 0);
+    } catch (error: any) {
+      console.error("Error fetching users:", error);
+      toast.error(error?.message || "Failed to load users");
       setUsers([]);
       setTotalPages(0);
     } finally {
@@ -175,46 +99,10 @@ export default function UserManagement() {
 
   const fetchUserStats = async () => {
     try {
-      // Get total users
-      const { count: totalUsers } = await supabase
-        .from("users")
-        .select("*", { count: "exact", head: true });
-
-      // Get active users (signed in last 30 days)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
-      const { count: activeUsers } = await supabase
-        .from("users")
-        .select("*", { count: "exact", head: true })
-        .gte("last_sign_in_at", thirtyDaysAgo.toISOString());
-
-      // Get new users this month
-      const firstDayOfMonth = new Date();
-      firstDayOfMonth.setDate(1);
-      firstDayOfMonth.setHours(0, 0, 0, 0);
-      
-      const { count: newUsersThisMonth } = await supabase
-        .from("users")
-        .select("*", { count: "exact", head: true })
-        .gte("created_at", firstDayOfMonth.toISOString());
-
-      // Get total bookings and revenue from all users
-      const { data: allBookings } = await supabase
-        .from("bookings")
-        .select("total_cost")
-        .not("user_id", "is", null);
-
-      const totalBookings = allBookings?.length || 0;
-      const totalRevenue = allBookings?.reduce((sum, booking) => sum + (booking.total_cost || 0), 0) || 0;
-
-      setStats({
-        totalUsers: totalUsers || 0,
-        activeUsers: activeUsers || 0,
-        newUsersThisMonth: newUsersThisMonth || 0,
-        totalBookings,
-        totalRevenue,
-      });
+      const res = await fetch("/api/admin/users?mode=stats");
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+      setStats(json.data);
     } catch (error) {
       console.error("Error fetching user stats:", error);
     }
@@ -222,23 +110,14 @@ export default function UserManagement() {
 
   const exportUsers = async () => {
     try {
-      const { data, error } = await supabase
-        .from("users")
-        .select(`
-          email,
-          full_name,
-          phone,
-          created_at,
-          last_sign_in_at
-        `)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
+      const res = await fetch("/api/admin/users?mode=export");
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
 
       // Convert to CSV
       const csv = [
         "Email,Full Name,Phone,Created At,Last Sign In",
-        ...(data || []).map(user => [
+        ...(json.data || []).map((user: any) => [
           user.email,
           user.full_name || "",
           user.phone || "",
@@ -500,20 +379,19 @@ export default function UserManagement() {
                     
                     <div className="text-sm text-gray-600 space-y-1">
                       <p>Phone: {user.phone || "Not provided"}</p>
-                      <p>Bookings: {user.bookingStats?.totalBookings || 0}</p>
-                      <p>Revenue: {formatCurrency(user.bookingStats?.totalRevenue || 0)}</p>
+                      <p>Bookings: {user.booking_count || 0}</p>
+                      <p>Revenue: {formatCurrency(user.total_spent || 0)}</p>
                       <p>Joined: {new Date(user.created_at).toLocaleDateString('id-ID')}</p>
                       <p>Last Active: {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString('id-ID') : "Never"}</p>
                     </div>
                     
                     <div className="flex gap-2 pt-2 border-t border-gray-100">
-                      <Button size="sm" variant="outline" onClick={() => viewUser(user.id)}>
+                      <Button size="sm" variant="outline" onClick={() => {
+                        setSelectedUser(user);
+                        setShowDetailModal(true);
+                      }}>
                         <Eye className="w-4 h-4 mr-1" />
                         View
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => editUser(user.id)}>
-                        <Edit className="w-4 h-4 mr-1" />
-                        Edit
                       </Button>
                     </div>
                   </div>

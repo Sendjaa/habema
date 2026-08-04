@@ -4,11 +4,12 @@
 import { useState, Suspense, useEffect, lazy, useRef } from "react";
 import type { User } from "@supabase/supabase-js";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/booking/date-range-picker";
 import { calculateDaysBetween } from "@/lib/booking-utils";
-import { CheckCircle, Loader2, MapPin, Calculator, AlertCircle } from "lucide-react";
+import { CheckCircle, Loader2, MapPin, Calculator, AlertCircle, Ticket } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { LoginModal } from "@/components/auth/login-modal";
 import type { Database } from "@/types/supabase";
@@ -46,7 +47,11 @@ import {
   RentalConditionsChecklist,
   ConditionChecklistData,
 } from "@/components/checkout/rental-conditions-checklist";
-import { useCartStore } from "@/lib/store";
+import {
+  useCartStore,
+  type ClaimedDiscount,
+  type TransactionData,
+} from "@/lib/store";
 import { toast } from "sonner";
 
 // ==================== MAIN COMPONENT ====================
@@ -116,6 +121,10 @@ function BookingContent() {
   const [deliveryTime, setDeliveryTime] = useState<'morning' | 'afternoon' | 'evening' | 'flexible'>('flexible');
   const [accessibilityNotes, setAccessibilityNotes] = useState('');
 
+  // Kupon yang sudah diklaim user
+  const [myCoupons, setMyCoupons] = useState<any[]>([]);
+  const [loadingCoupons, setLoadingCoupons] = useState(false);
+
   // ==================== EFFECTS ====================
   useEffect(() => {
     const checkUser = async () => {
@@ -149,6 +158,63 @@ function BookingContent() {
     };
     fetchProduct();
   }, [productId]);
+
+  // Selaraskan transaksi dengan produk yang diklik dari halaman produk/katalog.
+  // currentTransaction terpersistensi di localStorage, sehingga tanpa ini ringkasan
+  // akan menampilkan item lama dari sesi sebelumnya (dan bisa duplikat).
+  useEffect(() => {
+    if (!productId || !product || loading) return;
+
+    const urlItem = {
+      id: product.id,
+      name: product.name,
+      price: Number(product.price_per_night),
+      quantity: Math.max(1, Number(quantity)),
+      category: product.equipment_categories?.name || "Equipment",
+      image_url: product.image_url,
+    };
+
+    const current = useCartStore.getState().currentTransaction;
+    const items = Array.isArray(current?.items) ? current.items : [];
+
+    // Dedup by id: gabungkan qty agar item duplikat tidak pernah tampil dua kali.
+    const deduped = items.reduce((acc: any[], item: any) => {
+      const found = acc.find((x: any) => String(x.id) === String(item.id));
+      if (found) {
+        found.quantity = Number(found.quantity || 1) + Number(item.quantity || 1);
+        if (!found.image_url && item.image_url) found.image_url = item.image_url;
+      } else {
+        acc.push({ ...item });
+      }
+      return acc;
+    }, []);
+
+    const hasProduct = deduped.some((item: any) => String(item.id) === String(productId));
+
+    // Dari halaman produk: reset ke produk yang diklik agar sesi lama tidak bocor.
+    // Dari keranjang (item sudah memuat produk URL): pertahankan semua item.
+    const nextItems = hasProduct ? deduped : [urlItem];
+    const next: TransactionData = hasProduct
+      ? { ...current!, items: nextItems }
+      : {
+          items: nextItems,
+          duration: current?.duration || 0,
+          days: current?.days || 0,
+          totalPrice:
+            current?.totalPrice || Number(urlItem.price) * urlItem.quantity,
+          delivery: current?.delivery,
+          orderId: undefined,
+          payment: { method: "", bank: "" },
+          dates: undefined,
+        };
+
+    const same =
+      JSON.stringify(items.map((i: any) => [String(i.id), i.quantity])) ===
+      JSON.stringify(nextItems.map((i: any) => [String(i.id), i.quantity]));
+    if (!same) {
+      useCartStore.getState().setTransaction(next);
+    }
+  }, [product, productId, quantity, loading]);
 
   // Lengkapi gambar item transaksi yang tidak punya image_url (mis. transaksi
   // lama dari localStorage) dengan mengambilnya langsung dari tabel equipment.
@@ -240,6 +306,29 @@ function BookingContent() {
     loadExistingIdentityData();
   }, [user, startDate, endDate, conditionData]);
 
+  // Ambil daftar kupon yang sudah diklaim oleh user yang login
+  useEffect(() => {
+    const fetchMyCoupons = async () => {
+      if (!user) {
+        setMyCoupons([]);
+        return;
+      }
+      setLoadingCoupons(true);
+      try {
+        const res = await fetch(`/api/user-discounts?userId=${encodeURIComponent(user.id)}`);
+        const result = await res.json();
+        if (res.ok && result.success) {
+          setMyCoupons(result.data || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch claimed coupons:', err);
+      } finally {
+        setLoadingCoupons(false);
+      }
+    };
+    fetchMyCoupons();
+  }, [user]);
+
   // ==================== CALCULATIONS ====================
   const days =
     startDate && endDate ? Math.max(1, calculateDaysBetween(startDate, endDate)) : 0;
@@ -255,16 +344,55 @@ function BookingContent() {
   const discountEligible = !!user;
   let discountAmount = 0;
   if (claimedDiscount && discountEligible) {
-    if (claimedDiscount.discount_type === 'percentage') {
-      discountAmount = Math.round(subtotal * claimedDiscount.discount_value / 100);
-      if (claimedDiscount.max_discount && discountAmount > claimedDiscount.max_discount) {
-        discountAmount = claimedDiscount.max_discount;
+    const meetsMinPurchase =
+      !claimedDiscount.min_purchase || subtotal >= claimedDiscount.min_purchase;
+    if (meetsMinPurchase) {
+      if (claimedDiscount.discount_type === 'percentage') {
+        discountAmount = Math.round(subtotal * claimedDiscount.discount_value / 100);
+        if (claimedDiscount.max_discount && discountAmount > claimedDiscount.max_discount) {
+          discountAmount = claimedDiscount.max_discount;
+        }
+      } else {
+        discountAmount = claimedDiscount.discount_value;
       }
-    } else {
-      discountAmount = claimedDiscount.discount_value;
     }
   }
   const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+
+  // Cek apakah sebuah kupon bisa dipakai untuk booking ini
+  const getCouponEligibility = (d: any) => {
+    if (!d) return { eligible: false, reason: 'Kupon tidak valid' };
+    if (d.min_purchase && subtotal < Number(d.min_purchase)) {
+      return {
+        eligible: false,
+        reason: `Min. belanja Rp${Number(d.min_purchase).toLocaleString('id-ID')}`,
+      };
+    }
+    return { eligible: true, reason: '' };
+  };
+
+  const applyCoupon = (discount: any) => {
+    if (!discount) return;
+    const claimed: ClaimedDiscount = {
+      id: discount.id,
+      code: discount.code,
+      description: discount.description,
+      discount_type: discount.discount_type as 'percentage' | 'fixed',
+      discount_value: Number(discount.discount_value),
+      min_purchase: discount.min_purchase ? Number(discount.min_purchase) : null,
+      max_discount: discount.max_discount ? Number(discount.max_discount) : null,
+      applies_to: discount.applies_to as 'all' | 'category' | 'equipment',
+      target_id: discount.target_id,
+      claimed_at: new Date().toISOString(),
+    };
+    useCartStore.getState().setClaimedDiscount(claimed);
+    toast.success(`Kupon ${discount.code} berhasil diterapkan!`);
+  };
+
+  const clearCoupon = () => {
+    useCartStore.getState().clearClaimedDiscount();
+    toast.info('Kupon dibatalkan');
+  };
 
   const deposit = Math.round(discountedSubtotal * 0.2);
   const tax = Math.round(discountedSubtotal * 0.1);
@@ -1275,7 +1403,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
           </div>
 
           {/* Right Column: Order Summary */}
-          <aside className="lg:col-span-1 lg:sticky lg:top-23">
+          <aside className="lg:col-span-1 lg:sticky lg:top-24">
             <Card className="rounded-xl border border-stone-200 bg-white shadow-sm">
               <div className="p-4 border-b border-stone-200">
                 <h3 className="font-black uppercase tracking-tight text-forest text-sm">
@@ -1434,6 +1562,95 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                 )}
               </div>
             </Card>
+
+            {/* Kupon Saya */}
+            <Card className="mt-4 rounded-xl border border-stone-200 bg-white shadow-sm">
+              <div className="p-4 border-b border-stone-200">
+                <h3 className="font-black uppercase tracking-tight text-forest text-sm flex items-center gap-2">
+                  <Ticket className="w-4 h-4 text-forest" />
+                  Kupon Saya
+                </h3>
+              </div>
+              <div className="p-4 space-y-3">
+                {!user ? (
+                  <p className="text-xs text-stone-500 font-medium">
+                    Silakan{" "}
+                    <Link
+                      href="/login"
+                      className="underline font-bold text-emerald-700"
+                    >
+                      login
+                    </Link>{" "}
+                    untuk melihat &amp; menggunakan kupon Anda.
+                  </p>
+                ) : loadingCoupons ? (
+                  <div className="flex items-center gap-2 text-xs text-stone-500 font-medium">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Memuat kupon...
+                  </div>
+                ) : myCoupons.length === 0 ? (
+                  <div className="text-xs text-stone-500 font-medium space-y-1">
+                    <p>Belum ada kupon yang diklaim.</p>
+                    <Link
+                      href="/bundles"
+                      className="text-emerald-700 font-bold underline"
+                    >
+                      Lihat promo &amp; klaim kupon
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {myCoupons.map((claim) => {
+                      const d = claim?.discount;
+                      if (!d) return null;
+                      const isActive = claimedDiscount?.id === d.id;
+                      const elig = getCouponEligibility(d);
+                      return (
+                        <button
+                          key={claim.id}
+                          type="button"
+                          disabled={!elig.eligible}
+                          onClick={() => (isActive ? clearCoupon() : applyCoupon(d))}
+                          className={`w-full p-3 rounded-xl border-2 text-left transition-all ${
+                            isActive
+                              ? "border-emerald-600 bg-emerald-50"
+                              : elig.eligible
+                                ? "border-stone-200 bg-white hover:border-emerald-300"
+                                : "border-stone-200 bg-stone-50 opacity-60 cursor-not-allowed"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-xs font-black text-forest uppercase tracking-wide">
+                                {d.code}
+                              </p>
+                              <p className="text-[10px] text-stone-500 font-medium line-clamp-2">
+                                {d.description}
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              {isActive ? (
+                                <span className="text-[10px] font-bold text-emerald-600 uppercase">
+                                  Terpakai
+                                </span>
+                              ) : !elig.eligible ? (
+                                <span className="text-[10px] font-bold text-stone-400 uppercase">
+                                  {elig.reason}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-emerald-600 uppercase">
+                                  Pakai
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </Card>
           </aside>
         </div>
       </div>
@@ -1461,7 +1678,7 @@ function StepCard({
 }: any) {
   return (
     <div className="rounded-xl border border-stone-200 bg-white shadow-sm">
-      <div className="p-4 sm:p-5">
+      <div className="p-4 sm:p-4">
         <div className="flex items-center gap-3 mb-4">
           <div
             className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${completed ? "bg-forest text-white" : "bg-stone-200 text-stone-500"}`}
@@ -1471,11 +1688,11 @@ function StepCard({
           <h3 className="font-bold text-forest text-sm">{title}</h3>
         </div>
         {disabled ? (
-          <div className="pl-10 text-xs text-stone-400 font-medium italic">
+          <div className="pl-0 sm:pl-10 text-xs text-stone-400 font-medium italic">
             Lengkapi bagian sebelumnya terlebih dahulu
           </div>
         ) : (
-          <div className="pl-10">{children}</div>
+          <div className="pl-0 sm:pl-10">{children}</div>
         )}
       </div>
     </div>
