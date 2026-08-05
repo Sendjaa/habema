@@ -24,6 +24,7 @@ const NAV_ITEMS = [
   { href: "/admin/bookings", label: "Booking", icon: ShoppingCart },
   { href: "/admin/equipment", label: "Produk Rental", icon: Package },
   { href: "/admin/catalog-shop", label: "Katalog Toko", icon: Store },
+  { href: "/admin/orders-shop", label: "Order Toko", icon: ShoppingCart },
   { href: "/admin/users", label: "Pengguna", icon: Users },
   { href: "/admin/discounts", label: "Diskon", icon: Tag },
   { href: "/admin/products-promo", label: "Promo Produk", icon: Percent },
