@@ -17,4 +17,15 @@ if (!supabaseUrl || !supabasePublicKey) {
   );
 }
 
-export const supabase = createBrowserClient<Database>(supabaseUrl, supabasePublicKey)
+export const supabase = createBrowserClient<Database>(supabaseUrl, supabasePublicKey, {
+  auth: {
+    // Default 5s terlalu pendek saat banyak komponen (header, navUserControl,
+    // katalog, checkout) menginisialisasi auth bersamaan di awal page load.
+    // Timer yang meletus membuat auth-js mencuri lock (steal: true) yang sedang
+    // dipakai komponen lain, membatalkan fetch refresh token ("Failed to fetch")
+    // dan query katalog ("Lock broken by another request with the 'steal' option").
+    lockAcquireTimeout: 20000,
+    // Field ini ada di GoTrueClientOptions runtime, tapi belum dideklarasikan
+    // di tipe SupabaseClientOptions@2.104.1.
+  } as any,
+})

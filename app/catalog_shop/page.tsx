@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, Suspense } from "react";
 import { CatalogFilters } from "@/components/catalog/catalog-filters";
-import { CatalogGrid } from "@/components/catalog/catalog-grid";
+import { ShopGrid } from "@/components/catalog/shop-grid";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -101,7 +101,7 @@ export function ShopContent() {
   return (
     <>
       {/* STICKY BREADCRUMB BAR (desktop) — modern dengan transparansi */}
-      <div className="hidden mx-auto md:flex bg-white/80 backdrop-blur-lg items-center p-2 sticky top-0 z-30 shadow-sm border-b border-stone-200/50">
+      <div className="hidden mx-auto md:flex bg-white/80 backdrop-blur-lg items-center p-2 ps-36 sticky top-0 z-30 shadow-sm border-b border-stone-200/50">
         <button
           onClick={() => router.back()}
           className="group flex items-center justify-center w-10 h-5"
@@ -138,7 +138,7 @@ export function ShopContent() {
             src="/images/background_catalog_shop.jpeg"
             fill
             priority
-            alt="Shop Banner"
+            alt="Shop Banner" 
             className="object-cover object-bottom"
           />
         </div>
@@ -199,7 +199,7 @@ export function ShopContent() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Sidebar Filter — modern dengan backdrop blur */}
-            <aside className="lg:w-64 shrink-0">
+            {/* <aside className="lg:w-64 shrink-0">
               <div className="sticky top-31">
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
@@ -220,7 +220,7 @@ export function ShopContent() {
                   />
                 </motion.div>
               </div>
-            </aside>
+            </aside> */}
 
             {/* Grid — modern dengan animasi */}
             <main className="flex-1">
@@ -260,7 +260,7 @@ export function ShopContent() {
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <CatalogGrid equipment={filteredProducts} dbCategories={dbCategories} />
+                  <ShopGrid products={filteredProducts} />
                 </motion.div>
               ) : (
                 <motion.div

@@ -73,48 +73,11 @@ export async function GET(request: Request) {
         });
       }
       
-      // Return fallback products if database fails and no cache
-      const fallbackProducts = [
-        {
-          id: '1',
-          name: 'Tenda Arpenaz 4.1',
-          price_per_night: 75000,
-          image_url: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=500',
-          equipment_categories: { name: 'Tenda' },
-          rental_count: 25,
-          average_rating: 4.7
-        },
-        {
-          id: '2',
-          name: 'Sleeping Bag Premium',
-          price_per_night: 45000,
-          image_url: 'https://images.unsplash.com/photo-1544283093-1e76c3eca3a8?q=80&w=500',
-          equipment_categories: { name: 'Sleeping Bag' },
-          rental_count: 18,
-          average_rating: 4.9
-        },
-        {
-          id: '3',
-          name: 'Carrier 60L',
-          price_per_night: 55000,
-          image_url: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=500',
-          equipment_categories: { name: 'Carrier' },
-          rental_count: 32,
-          average_rating: 4.8
-        },
-        {
-          id: '4',
-          name: 'Matras Camping',
-          price_per_night: 25000,
-          image_url: 'https://images.unsplash.com/photo-1596468138838-2b4a3296b24a?q=80&w=500',
-          equipment_categories: { name: 'Matras' },
-          rental_count: 41,
-          average_rating: 4.6
-        }
-      ]
+      // Return empty list — jangan pakai fallback id palsu ('1', '2', ...)
+      // yang tidak ada di tabel equipment (menghasilkan dead-link ke /product/1).
       return NextResponse.json({
         success: true,
-        data: fallbackProducts,
+        data: [],
         fallback: true
       })
     }

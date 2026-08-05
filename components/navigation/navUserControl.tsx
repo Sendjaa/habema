@@ -15,13 +15,7 @@ function NavbarUserControlInner() {
     
     const initializeAuth = async () => {
       try {
-        let session = null;
-        for (let i = 0; i < 3; i++) {
-          const result = await supabase.auth.getSession();
-          session = result.data.session;
-          if (session) break;
-          if (i < 2) await new Promise(resolve => setTimeout(resolve, 300));
-        }
+        const { data: { session } } = await supabase.auth.getSession();
 
         if (mounted) {
           setUser(session?.user ?? null);

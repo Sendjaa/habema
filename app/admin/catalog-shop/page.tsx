@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { OptimizedImage } from '@/components/optimized-image'
+import { MarkdownEditor } from '@/components/ui/markdown-editor'
 import {
   Package, Plus, Search, Edit, Trash2, X, ImagePlus,
-  ChevronDown, Upload, Link, Loader2,
+  ChevronDown, ChevronLeft, ChevronRight, Link,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -25,6 +26,7 @@ interface ShopProduct {
   gallery_urls: string[]
   brand?: string
   specifications: Record<string, string>
+  rating_label?: string
   weight_kg?: number
   dimensions?: string
   material?: string
@@ -46,6 +48,7 @@ type FormData = {
   stock: string
   category: string
   brand: string
+  rating_label: string
   image_url: string
   gallery_urls: string[]
   weight_kg: string
@@ -59,10 +62,12 @@ type FormData = {
 
 const EMPTY_FORM: FormData = {
   name: '', description: '', price: '', original_price: '', stock: '0',
-  category: '', brand: '', image_url: '', gallery_urls: [],
+  category: '', brand: '', rating_label: '', image_url: '', gallery_urls: [],
   weight_kg: '', dimensions: '', material: '', specifications: '',
   is_available: true, is_featured: false, is_new: false,
 }
+
+const RATING_LABELS = ['Perlu Dioptimalkan', 'Sedang', 'Bagus', 'Bagus Sekali']
 
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
@@ -81,6 +86,11 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
   )
 }
 
+function FieldError({ children }: { children?: string }) {
+  if (!children) return null
+  return <p className="text-[11px] text-red-500 font-medium mt-1">{children}</p>
+}
+
 function ProductModal({
   open, onClose, onSubmit, editingItem, loading,
 }: {
@@ -93,8 +103,9 @@ function ProductModal({
   const [form, setForm] = useState<FormData>(EMPTY_FORM)
   const [galleryInput, setGalleryInput] = useState('')
   const [uploading, setUploading] = useState(false)
-  const [imageTab, setImageTab] = useState<'url' | 'file'>('url')
-  const [galleryTab, setGalleryTab] = useState<'url' | 'file'>('url')
+  const [weightUnit, setWeightUnit] = useState<'kg' | 'g'>('kg')
+  const [selectedMedia, setSelectedMedia] = useState(0)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (editingItem) {
@@ -106,6 +117,7 @@ function ProductModal({
         stock: editingItem.stock.toString(),
         category: editingItem.category ?? '',
         brand: editingItem.brand ?? '',
+        rating_label: editingItem.rating_label ?? '',
         image_url: editingItem.image_url ?? '',
         gallery_urls: editingItem.gallery_urls ?? [],
         weight_kg: editingItem.weight_kg?.toString() ?? '',
@@ -120,12 +132,17 @@ function ProductModal({
       setForm(EMPTY_FORM)
     }
     setGalleryInput('')
+    setSelectedMedia(0)
   }, [editingItem, open])
 
   if (!open) return null
 
-  const set = (key: keyof FormData, val: string | boolean | string[]) =>
+  const set = (key: keyof FormData, val: string | boolean | string[]) => {
     setForm((f) => ({ ...f, [key]: val }))
+    setErrors((prev) => (prev[key as string] ? { ...prev, [key as string]: '' } : prev))
+  }
+
+  const weightNum = parseFloat(form.weight_kg) || 0
 
   const uploadFile = async (file: File, path: string): Promise<string | null> => {
     setUploading(true)
@@ -146,36 +163,63 @@ function ProductModal({
     }
   }
 
-  const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const url = await uploadFile(file, 'main')
-    if (url) set('image_url', url)
-    e.target.value = ''
+  const mediaImages = [form.image_url, ...form.gallery_urls].filter(Boolean)
+  const activeMediaIdx = Math.min(selectedMedia, Math.max(0, mediaImages.length - 1))
+
+  const setMedia = (list: string[]) => {
+    const [main, ...rest] = list
+    setForm((f) => ({ ...f, image_url: main ?? '', gallery_urls: rest }))
   }
 
-  const handleGalleryFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const url = await uploadFile(file, `gallery-${form.gallery_urls.length}`)
-    if (url) set('gallery_urls', [...form.gallery_urls, url])
-    e.target.value = ''
-  }
-
-  const addGalleryUrl = () => {
-    const url = galleryInput.trim()
-    if (url && /^https?:\/\//.test(url)) {
-      set('gallery_urls', [...form.gallery_urls, url])
-      setGalleryInput('')
+  const handleMediaFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    for (const file of Array.from(files)) {
+      const url = await uploadFile(file, `media-${Date.now()}`)
+      if (url) setForm((f) => ({ ...f, gallery_urls: [...f.gallery_urls, url] }))
     }
   }
 
-  const removeGalleryUrl = (idx: number) => {
-    set('gallery_urls', form.gallery_urls.filter((_, i) => i !== idx))
+  const addMediaUrl = () => {
+    const url = galleryInput.trim()
+    if (url && /^https?:\/\//.test(url)) {
+      setMedia([...mediaImages, url])
+      setGalleryInput('')
+    } else {
+      toast.error('Masukkan URL gambar yang valid (https://...)')
+    }
+  }
+
+  const removeMedia = (idx: number) => {
+    setMedia(mediaImages.filter((_, i) => i !== idx))
+  }
+
+  const moveMedia = (idx: number, dir: -1 | 1) => {
+    const next = idx + dir
+    if (next < 0 || next >= mediaImages.length) return
+    const list = [...mediaImages]
+    ;[list[idx], list[next]] = [list[next], list[idx]]
+    setMedia(list)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    const errs: Record<string, string> = {}
+    if (!form.name.trim()) errs.name = 'Nama produk wajib diisi'
+    if (!form.price.trim() || parseFloat(form.price) <= 0) errs.price = 'Harga jual wajib diisi'
+    if (form.stock === '' || form.stock == null) errs.stock = 'Stok wajib diisi'
+    if (!form.category.trim()) errs.category = 'Kategori wajib diisi'
+    if (!form.brand.trim()) errs.brand = 'Brand wajib diisi'
+    if (!form.rating_label.trim()) errs.rating_label = 'Penilaian wajib dipilih'
+    if (mediaImages.length === 0) errs.media = 'Minimal tambahkan 1 gambar produk'
+
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs)
+      toast.error('Lengkapi semua kolom yang wajib diisi sebelum menyimpan')
+      return
+    }
+
+    setErrors({})
     await onSubmit(form)
   }
 
@@ -184,7 +228,7 @@ function ProductModal({
       className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 sm:pt-12 bg-stone-900/50 backdrop-blur-sm overflow-y-auto"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <Card className="w-full max-w-2xl bg-white rounded-2xl border border-stone-200 shadow-2xl overflow-hidden my-auto">
+      <Card className="w-full max-w-3xl bg-white rounded-2xl border border-stone-200 shadow-2xl overflow-hidden my-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
@@ -206,7 +250,7 @@ function ProductModal({
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="px-5 py-4 space-y-5 max-h-[65vh] overflow-y-auto">
+          <div className="px-6 py-6 space-y-6 max-h-[80vh] overflow-y-auto">
             {/* Informasi Dasar */}
             <div>
               <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -220,9 +264,10 @@ function ProductModal({
                     value={form.name}
                     onChange={(e) => set('name', e.target.value)}
                     placeholder="cth. Tenda Dome 4 Orang"
-                    className="h-10 text-sm rounded-lg border-stone-200 bg-stone-50 focus:border-emerald-500 focus:bg-white"
+                    className={`h-10 text-sm rounded-lg bg-stone-50 focus:bg-white ${errors.name ? 'border-red-400 focus:border-red-500' : 'border-stone-200 focus:border-emerald-500'}`}
                     required
                   />
+                  <FieldError>{errors.name}</FieldError>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -233,9 +278,10 @@ function ProductModal({
                       value={form.price}
                       onChange={(e) => set('price', e.target.value)}
                       placeholder="150000"
-                      className="h-10 text-sm rounded-lg border-stone-200 bg-stone-50 focus:border-emerald-500 focus:bg-white"
+                      className={`h-10 text-sm rounded-lg bg-stone-50 focus:bg-white ${errors.price ? 'border-red-400 focus:border-red-500' : 'border-stone-200 focus:border-emerald-500'}`}
                       required
                     />
+                    <FieldError>{errors.price}</FieldError>
                   </div>
                   <div className="space-y-1.5">
                     <FieldLabel>Harga Asli (Rp)</FieldLabel>
@@ -257,30 +303,33 @@ function ProductModal({
                       value={form.stock}
                       onChange={(e) => set('stock', e.target.value)}
                       placeholder="0"
-                      className="h-10 text-sm rounded-lg border-stone-200 bg-stone-50 focus:border-emerald-500 focus:bg-white"
+                      className={`h-10 text-sm rounded-lg bg-stone-50 focus:bg-white ${errors.stock ? 'border-red-400 focus:border-red-500' : 'border-stone-200 focus:border-emerald-500'}`}
                       required
                     />
+                    <FieldError>{errors.stock}</FieldError>
                   </div>
                   <div className="space-y-1.5">
-                    <FieldLabel>Kategori</FieldLabel>
+                    <FieldLabel required>Kategori</FieldLabel>
                     <Input
                       value={form.category}
                       onChange={(e) => set('category', e.target.value)}
                       placeholder="cth. Tenda, Sleeping Bag"
-                      className="h-10 text-sm rounded-lg border-stone-200 bg-stone-50 focus:border-emerald-500 focus:bg-white"
+                      className={`h-10 text-sm rounded-lg bg-stone-50 focus:bg-white ${errors.category ? 'border-red-400 focus:border-red-500' : 'border-stone-200 focus:border-emerald-500'}`}
                     />
+                    <FieldError>{errors.category}</FieldError>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <FieldLabel>Brand</FieldLabel>
+                    <FieldLabel required>Brand</FieldLabel>
                     <Input
                       value={form.brand}
                       onChange={(e) => set('brand', e.target.value)}
                       placeholder="cth. Eiger, Coleman"
-                      className="h-10 text-sm rounded-lg border-stone-200 bg-stone-50 focus:border-emerald-500 focus:bg-white"
+                      className={`h-10 text-sm rounded-lg bg-stone-50 focus:bg-white ${errors.brand ? 'border-red-400 focus:border-red-500' : 'border-stone-200 focus:border-emerald-500'}`}
                     />
+                    <FieldError>{errors.brand}</FieldError>
                   </div>
                   <div className="space-y-1.5">
                     <FieldLabel>Status</FieldLabel>
@@ -317,13 +366,32 @@ function ProductModal({
                 </div>
 
                 <div className="space-y-1.5">
+                  <FieldLabel required>Penilaian</FieldLabel>
+                  <div className="flex flex-wrap gap-2">
+                    {RATING_LABELS.map((label) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => set('rating_label', label)}
+                        className={`px-3.5 py-2 rounded-lg text-xs font-semibold border transition-colors ${
+                          form.rating_label === label
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                            : 'bg-stone-50 text-stone-600 border-stone-200 hover:border-emerald-400 hover:text-emerald-700'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <FieldError>{errors.rating_label}</FieldError>
+                </div>
+
+                <div className="space-y-1.5">
                   <FieldLabel>Deskripsi</FieldLabel>
-                  <textarea
+                  <MarkdownEditor
                     value={form.description}
-                    onChange={(e) => set('description', e.target.value)}
-                    placeholder="Deskripsi produk..."
-                    rows={3}
-                    className="w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-stone-50 focus:border-emerald-500 focus:bg-white outline-none transition-colors resize-none font-body"
+                    onChange={(v) => set('description', v)}
+                    placeholder="Deskripsi produk... (mendukung Markdown)"
                   />
                 </div>
               </div>
@@ -335,17 +403,52 @@ function ProductModal({
                 <span className="w-1 h-3.5 rounded-full bg-emerald-600" />
                 Spesifikasi Fisik
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <FieldLabel>Berat (kg)</FieldLabel>
-                  <Input
-                    type="number" min="0" step="0.01"
-                    value={form.weight_kg}
-                    onChange={(e) => set('weight_kg', e.target.value)}
-                    placeholder="2.5"
-                    className="h-10 text-sm rounded-lg border-stone-200 bg-stone-50 focus:border-emerald-500 focus:bg-white"
-                  />
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <FieldLabel>Berat</FieldLabel>
+                  <div className="flex bg-stone-100 rounded-lg p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setWeightUnit('kg')}
+                      className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${
+                        weightUnit === 'kg'
+                          ? 'bg-white text-emerald-700 shadow-sm'
+                          : 'text-stone-400 hover:text-stone-600'
+                      }`}
+                    >
+                      kg
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWeightUnit('g')}
+                      className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${
+                        weightUnit === 'g'
+                          ? 'bg-white text-emerald-700 shadow-sm'
+                          : 'text-stone-400 hover:text-stone-600'
+                      }`}
+                    >
+                      g
+                    </button>
+                  </div>
                 </div>
+                <Input
+                  type="number" min="0" step={weightUnit === 'kg' ? '0.01' : '1'}
+                  value={weightUnit === 'kg' ? form.weight_kg : weightNum > 0 ? Math.round(weightNum * 1000).toString() : ''}
+                  onChange={(e) =>
+                    set(
+                      'weight_kg',
+                      weightUnit === 'kg'
+                        ? e.target.value
+                        : e.target.value === ''
+                          ? ''
+                          : (parseFloat(e.target.value) / 1000).toString()
+                    )
+                  }
+                  placeholder={weightUnit === 'kg' ? 'cth. 2.5' : 'cth. 2500'}
+                  className="h-10 text-sm rounded-lg border-stone-200 bg-stone-50 focus:border-emerald-500 focus:bg-white"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-3">
                 <div className="space-y-1.5">
                   <FieldLabel>Dimensi</FieldLabel>
                   <Input
@@ -384,156 +487,120 @@ function ProductModal({
                 Media
               </h3>
               <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <FieldLabel>Gambar Utama</FieldLabel>
-                  <div className="flex gap-1 mb-2">
-                    <button
-                      type="button"
-                      onClick={() => setImageTab('url')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        imageTab === 'url'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
-                      }`}
-                    >
-                      <Link className="w-3 h-3" /> URL
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setImageTab('file')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        imageTab === 'file'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
-                      }`}
-                    >
-                      <Upload className="w-3 h-3" /> Upload File
-                    </button>
-                  </div>
+                <div className="flex items-center justify-between">
+                  <FieldLabel>Media Produk</FieldLabel>
+                  <span className="text-[10px] text-stone-400 font-medium">
+                    {mediaImages.length} gambar
+                  </span>
+                </div>
+                <FieldError>{errors.media}</FieldError>
 
-                  {imageTab === 'url' ? (
-                    <Input
-                      type="url"
-                      value={form.image_url}
-                      onChange={(e) => set('image_url', e.target.value)}
-                      placeholder="https://..."
-                      className="h-10 text-sm rounded-lg border-stone-200 bg-stone-50 focus:border-emerald-500 focus:bg-white"
-                    />
-                  ) : (
-                    <div className="flex items-center gap-3">
-                      <label className="flex-1 flex items-center justify-center gap-2 h-10 px-3 rounded-lg border-2 border-dashed border-stone-300 bg-stone-50 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/30 transition-colors">
-                        <Upload className="w-4 h-4 text-stone-400" />
-                        <span className="text-sm text-stone-500">
-                          {uploading ? 'Mengupload...' : 'Pilih File'}
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageFile}
-                          disabled={uploading}
-                          className="hidden"
-                        />
-                      </label>
-                      {uploading && <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />}
-                    </div>
-                  )}
-
-                  {form.image_url && (
-                    <div className="relative rounded-lg overflow-hidden border border-stone-200 h-28 mt-2 group">
-                      <OptimizedImage src={form.image_url} alt="Preview" className="w-full h-full object-cover" width={200} height={112} />
+                <div className="relative rounded-xl overflow-hidden border border-stone-200 aspect-video bg-stone-100 group">
+                  {mediaImages[activeMediaIdx] ? (
+                    <>
+                      <OptimizedImage
+                        src={mediaImages[activeMediaIdx]}
+                        alt={`Preview ${activeMediaIdx + 1}`}
+                        className="w-full h-full object-cover"
+                        width={640}
+                        height={360}
+                      />
                       <button
                         type="button"
-                        onClick={() => set('image_url', '')}
-                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => removeMedia(activeMediaIdx)}
+                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
                       >
-                        <X className="w-3.5 h-3.5 text-white" />
+                        <Trash2 className="w-3.5 h-3.5 text-white" />
                       </button>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-2 h-full text-stone-400">
+                      <ImagePlus className="w-10 h-10" />
+                      <p className="text-sm font-medium">Belum ada gambar</p>
+                      <p className="text-xs">Tambahkan lewat strip di bawah</p>
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-1.5">
-                  <FieldLabel>Galeri Gambar</FieldLabel>
-                  <div className="flex gap-1 mb-2">
-                    <button
-                      type="button"
-                      onClick={() => setGalleryTab('url')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        galleryTab === 'url'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {mediaImages.map((url, idx) => (
+                    <div
+                      key={idx}
+                      className={`relative group rounded-lg overflow-hidden w-16 h-16 shrink-0 border-2 transition-colors cursor-pointer ${
+                        activeMediaIdx === idx
+                          ? 'border-emerald-600 ring-2 ring-emerald-600/20'
+                          : 'border-stone-200 hover:border-stone-300'
                       }`}
+                      onClick={() => setSelectedMedia(idx)}
                     >
-                      <Link className="w-3 h-3" /> URL
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setGalleryTab('file')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        galleryTab === 'file'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
-                      }`}
-                    >
-                      <Upload className="w-3 h-3" /> Upload File
-                    </button>
-                  </div>
-
-                  {galleryTab === 'url' ? (
-                    <div className="flex gap-2">
-                      <Input
-                        type="url"
-                        value={galleryInput}
-                        onChange={(e) => setGalleryInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addGalleryUrl())}
-                        placeholder="https://..."
-                        className="h-10 text-sm rounded-lg border-stone-200 bg-stone-50 focus:border-emerald-500 focus:bg-white flex-1"
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={addGalleryUrl}
-                        disabled={!galleryInput.trim()}
-                        className="h-10 px-3 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 shadow-none"
-                      >
-                        <ImagePlus className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3">
-                      <label className="flex-1 flex items-center justify-center gap-2 h-10 px-3 rounded-lg border-2 border-dashed border-stone-300 bg-stone-50 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/30 transition-colors">
-                        <ImagePlus className="w-4 h-4 text-stone-400" />
-                        <span className="text-sm text-stone-500">
-                          {uploading ? 'Mengupload...' : 'Tambah Gambar'}
+                      <OptimizedImage src={url} alt={`Media ${idx + 1}`} className="w-full h-full object-cover" width={64} height={64} />
+                      {idx === 0 && (
+                        <span className="absolute bottom-0 inset-x-0 text-center text-[8px] font-bold uppercase tracking-wide bg-emerald-600 text-white py-0.5">
+                          Utama
                         </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleGalleryFile}
-                          disabled={uploading}
-                          className="hidden"
-                        />
-                      </label>
-                      {uploading && <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />}
+                      )}
+                      <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => moveMedia(idx, -1)}
+                          className="w-5 h-5 rounded-full bg-white/90 flex items-center justify-center hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <ChevronLeft className="w-3 h-3 text-stone-700" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={idx === mediaImages.length - 1}
+                          onClick={() => moveMedia(idx, 1)}
+                          className="w-5 h-5 rounded-full bg-white/90 flex items-center justify-center hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <ChevronRight className="w-3 h-3 text-stone-700" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeMedia(idx)}
+                          className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center hover:bg-red-600 transition-colors"
+                        >
+                          <Trash2 className="w-3 h-3 text-white" />
+                        </button>
+                      </div>
                     </div>
-                  )}
+                  ))}
 
-                  {form.gallery_urls.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {form.gallery_urls.map((url, idx) => (
-                        <div key={idx} className="relative group rounded-lg overflow-hidden border border-stone-200 w-16 h-16">
-                          <OptimizedImage src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" width={64} height={64} />
-                          <button
-                            type="button"
-                            onClick={() => removeGalleryUrl(idx)}
-                            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                          >
-                            <X className="w-4 h-4 text-white" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <label className="w-16 h-16 shrink-0 rounded-lg border-2 border-dashed border-stone-300 bg-stone-50 flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/30 transition-colors">
+                    <ImagePlus className="w-4 h-4 text-stone-400" />
+                    <span className="text-[9px] text-stone-500 font-medium">
+                      {uploading ? '...' : 'Tambah'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => handleMediaFiles(e.target.files)}
+                      disabled={uploading}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                <div className="flex gap-2">
+                  <Input
+                    type="url"
+                    value={galleryInput}
+                    onChange={(e) => setGalleryInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addMediaUrl())}
+                    placeholder="Atau tempel URL gambar... https://..."
+                    className="h-10 text-sm rounded-lg border-stone-200 bg-stone-50 focus:border-emerald-500 focus:bg-white flex-1"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={addMediaUrl}
+                    disabled={!galleryInput.trim()}
+                    className="h-10 px-3 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 shadow-none"
+                  >
+                    <Link className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
             </div>
@@ -602,6 +669,12 @@ function ProductCard({
 
         {item.description && (
           <p className="text-xs text-stone-400 mb-3 leading-relaxed line-clamp-2">{item.description}</p>
+        )}
+
+        {item.rating_label && (
+          <span className="inline-block mb-3 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+            {item.rating_label}
+          </span>
         )}
 
         <div className="space-y-2 mb-3 mt-auto">
@@ -694,6 +767,7 @@ export default function CatalogShopManagement() {
         image_url: form.image_url.trim() || null,
         gallery_urls: form.gallery_urls,
         brand: form.brand.trim() || null,
+        rating_label: form.rating_label.trim() || null,
         specifications: specs ?? {},
         weight_kg: form.weight_kg ? parseFloat(form.weight_kg) : null,
         dimensions: form.dimensions.trim() || null,

@@ -158,7 +158,7 @@ export async function checkTransactionStatus(orderId: string) {
 export function formatItemsForMidtrans(items: any[]): MidtransItemDetails[] {
   return items.map((item, index) => ({
     id: item.id || `item-${index}`,
-    name: item.name || 'Unknown Item',
+    name: String(item.name || 'Unknown Item').slice(0, 50),
     price: item.price || 0,
     quantity: item.quantity || 1,
     category: item.category || 'Equipment',

@@ -23,6 +23,7 @@ alter table public.shop_products add column if not exists is_available    boolea
 alter table public.shop_products add column if not exists is_featured     boolean not null default false;
 alter table public.shop_products add column if not exists is_new          boolean not null default false;
 alter table public.shop_products add column if not exists rating          numeric(3,2) not null default 0;
+alter table public.shop_products add column if not exists rating_label    text;
 alter table public.shop_products add column if not exists review_count    integer not null default 0;
 alter table public.shop_products add column if not exists sold_count      integer not null default 0;
 alter table public.shop_products add column if not exists created_at      timestamptz not null default now();

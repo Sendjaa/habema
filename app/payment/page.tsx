@@ -19,7 +19,10 @@ const loadMidtransScript = () => {
     }
 
     const script = document.createElement('script')
-    script.src = 'https://app.midtrans.com/snap/snap.js'
+    script.src =
+      process.env.NEXT_PUBLIC_MIDTRANS_PRODUCTION === "true"
+        ? 'https://app.midtrans.com/snap/snap.js'
+        : 'https://app.sandbox.midtrans.com/snap/snap.js'
     script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '')
     script.onload = () => resolve(window.snap)
     document.body.appendChild(script)

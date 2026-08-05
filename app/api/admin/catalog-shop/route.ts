@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
       gallery_urls: Array.isArray(body.gallery_urls) ? body.gallery_urls : [],
       brand: body.brand?.trim() || null,
       specifications: typeof body.specifications === 'object' ? body.specifications : {},
+      rating_label: body.rating_label?.trim() || null,
       weight_kg: body.weight_kg ? parseFloat(body.weight_kg) : null,
       dimensions: body.dimensions?.trim() || null,
       material: body.material?.trim() || null,
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
       is_new: body.is_new ?? false,
     }
 
-    const { data, error } = await supabaseAdmin.from('shop_products').insert(payload).select().single()
+    const { data, error } = await (supabaseAdmin.from('shop_products') as any).insert(payload).select().single()
 
     if (error) throw error
 
@@ -83,6 +84,7 @@ export async function PUT(req: NextRequest) {
     if (fields.image_url !== undefined) payload.image_url = fields.image_url?.trim() || null
     if (fields.gallery_urls !== undefined) payload.gallery_urls = Array.isArray(fields.gallery_urls) ? fields.gallery_urls : []
     if (fields.brand !== undefined) payload.brand = fields.brand?.trim() || null
+    if (fields.rating_label !== undefined) payload.rating_label = fields.rating_label?.trim() || null
     if (fields.specifications !== undefined) payload.specifications = typeof fields.specifications === 'object' ? fields.specifications : {}
     if (fields.weight_kg !== undefined) payload.weight_kg = fields.weight_kg ? parseFloat(fields.weight_kg) : null
     if (fields.dimensions !== undefined) payload.dimensions = fields.dimensions?.trim() || null
@@ -91,7 +93,7 @@ export async function PUT(req: NextRequest) {
     if (fields.is_featured !== undefined) payload.is_featured = fields.is_featured
     if (fields.is_new !== undefined) payload.is_new = fields.is_new
 
-    const { data, error } = await supabaseAdmin.from('shop_products').update(payload).eq('id', id).select().single()
+    const { data, error } = await (supabaseAdmin.from('shop_products') as any).update(payload).eq('id', id).select().single()
 
     if (error) throw error
 

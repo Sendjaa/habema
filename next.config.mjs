@@ -57,6 +57,18 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: '*.img.susercontent.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.shopee.co.id',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: '*.supabase.co',
         port: '',
         pathname: '/**',

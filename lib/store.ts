@@ -136,17 +136,47 @@ export const useCartStore = create<CartStore>()(
       location: null,
       claimedDiscount: null,
 
-      // Menambahkan item ke keranjang
+      // Menambahkan item ke keranjang (gabung jika id sudah ada)
       addItem: (item) =>
-        set((state) => ({
-          items: [...state.items, item],
-        })),
+        set((state) => {
+          const existing = state.items.find((i) => i.id === item.id);
+          if (existing) {
+            return {
+              items: state.items.map((i) =>
+                i.id === item.id
+                  ? {
+                      ...i,
+                      quantity:
+                        Math.max(1, Number(i.quantity) || 1) +
+                        Math.max(1, Number(item.quantity) || 1),
+                    }
+                  : i
+              ),
+            };
+          }
+          return { items: [...state.items, item] };
+        }),
 
       // Alias untuk addItem guna memperbaiki error "addToCart is not a function"
       addToCart: (item) =>
-        set((state) => ({
-          items: [...state.items, item],
-        })),
+        set((state) => {
+          const existing = state.items.find((i) => i.id === item.id);
+          if (existing) {
+            return {
+              items: state.items.map((i) =>
+                i.id === item.id
+                  ? {
+                      ...i,
+                      quantity:
+                        Math.max(1, Number(i.quantity) || 1) +
+                        Math.max(1, Number(item.quantity) || 1),
+                    }
+                  : i
+              ),
+            };
+          }
+          return { items: [...state.items, item] };
+        }),
 
       // Menghapus item dari keranjang
       removeItem: (id) =>
@@ -232,6 +262,33 @@ export const useCartStore = create<CartStore>()(
     {
       name: "habema-cart-storage", // Nama key di localStorage
       storage: createJSONStorage(() => localStorage),
+
+      // Bersihkan duplikat item (id sama) yang tersimpan lama di localStorage
+      merge: (persistedState: any, currentState: CartStore): CartStore => {
+        const seen = new Map<string, any>();
+        const persistedItems: any[] = Array.isArray(persistedState?.items)
+          ? persistedState.items
+          : [];
+        const currentItems: any[] = Array.isArray(currentState?.items)
+          ? currentState.items
+          : [];
+        for (const item of [...persistedItems, ...currentItems]) {
+          if (!item || item.id == null) continue;
+          const existing = seen.get(item.id);
+          if (existing) {
+            existing.quantity =
+              Math.max(1, Number(existing.quantity) || 1) +
+              Math.max(1, Number(item.quantity) || 1);
+          } else {
+            seen.set(item.id, { ...item });
+          }
+        }
+        return {
+          ...currentState,
+          ...persistedState,
+          items: Array.from(seen.values()),
+        };
+      },
       
       // Callback untuk memantau proses sinkronisasi data dari localStorage ke aplikasi
       onRehydrateStorage: (state) => {

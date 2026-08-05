@@ -28,7 +28,14 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  await supabase.auth.getUser()
+  try {
+    await supabase.auth.getUser()
+  } catch (error) {
+    // Jangan sampai kegagalan sementara dari auth (refresh token / jaringan)
+    // memblokir request. API & halaman tetap diproses; status auth dianggap
+    // tidak valid dan akan di-recheck di client/server berikutnya.
+    console.error('[middleware] auth getUser failed:', error instanceof Error ? error.message : error)
+  }
   return supabaseResponse
 }
 

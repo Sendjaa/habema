@@ -6,12 +6,11 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInventoryStatus } from "@/lib/catalog-context";
 import { ReviewForm } from "@/components/product/review-form";
+import { Markdown } from "@/components/ui/markdown";
 import {
-  ShoppingCart,
   Heart,
   Share2,
   CheckCircle,
@@ -28,11 +27,14 @@ import {
   X,
   MessageSquare,
   Package,
+  Tag,
+  Gift,
+  Check,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { LoginModal } from "@/components/auth/login-modal";
 import { useRouter } from "next/navigation";
-import { useCartStore } from "@/lib/store";
+import { useCartStore, type ClaimedDiscount } from "@/lib/store";
 import { toast } from "sonner";
 import {
   Breadcrumb,
@@ -41,6 +43,14 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
+
+function formatWeight(kg: number): string {
+  const whole = Math.floor(kg);
+  const grams = Math.round((kg - whole) * 1000);
+  if (whole > 0 && grams > 0) return `${whole} kg ${grams} g`;
+  if (whole > 0) return `${whole} kg`;
+  return `${grams} g`;
+}
 
 export default function ProductDetailPage({
   params,
@@ -52,6 +62,7 @@ export default function ProductDetailPage({
 
   // --- SEMUA HOOKS HARUS DI ATAS ---
   const [product, setProduct] = useState<any>(null);
+  const [isShop, setIsShop] = useState(false);
   const [loading, setLoading] = useState(true);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
   const [popularProducts, setPopularProducts] = useState<any[]>([]);
@@ -67,6 +78,8 @@ export default function ProductDetailPage({
   const [submittingReply, setSubmittingReply] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [shopVouchers, setShopVouchers] = useState<any[]>([]);
+  const [claimingVoucher, setClaimingVoucher] = useState(false);
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<string>("Semua");
 
@@ -88,6 +101,8 @@ export default function ProductDetailPage({
   const [isLiked, setIsLiked] = useState([false, false, false, false, false]);
   const addToCart = useCartStore((state) => state.addToCart);
   const setTransaction = useCartStore((state) => state.setTransaction);
+  const claimedDiscount = useCartStore((state) => state.claimedDiscount);
+  const setClaimedDiscount = useCartStore((state) => state.setClaimedDiscount);
   const unsplashLoader = ({ src, width, quality }: any) => {
     return `${src}?auto=format&fit=crop&w=${width}&q=${quality || 75}`;
   };
@@ -244,21 +259,58 @@ export default function ProductDetailPage({
   };
 
   useEffect(() => {
-    const fetchProduct = async () => {
+    const fetchProduct = async (attempt = 1) => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("equipment")
-        .select(`*, equipment_categories(name)`)
-        .eq("id", id)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from("equipment")
+          .select(`*, equipment_categories(name)`)
+          .eq("id", id)
+          .single();
 
-      if (error) {
-        console.error("Error fetching product:", error);
-      } else {
-        setProduct({
-          ...(data as any),
-          specs: (data as any).specifications || {},
-        });
+        if (error) {
+          // PGRST116 = tidak ditemukan di tabel equipment. Mungkin produk beli
+          // (shop_products) — coba cari di sana sebelum menampilkan not-found.
+          if (error.code === "PGRST116") {
+            const { data: shopData, error: shopError } = await supabase
+              .from("shop_products")
+              .select("*")
+              .eq("id", id)
+              .single();
+
+            if (!shopError && shopData) {
+              setIsShop(true);
+              setProduct({
+                ...(shopData as any),
+                specs: (shopData as any).specifications || {},
+              });
+            } else {
+              setProduct(null);
+            }
+            setLoading(false);
+            return;
+          }
+          // Error lain (network/permission) — retry sekali sebelum menyerah.
+          if (attempt < 2) {
+            setTimeout(() => fetchProduct(attempt + 1), 1200);
+            return;
+          }
+          console.error("Error fetching product:", error?.message || error);
+          setProduct(null);
+        } else {
+          setIsShop(false);
+          setProduct({
+            ...(data as any),
+            specs: (data as any).specifications || {},
+          });
+        }
+      } catch (err) {
+        if (attempt < 2) {
+          setTimeout(() => fetchProduct(attempt + 1), 1200);
+          return;
+        }
+        console.error("Error fetching product:", err);
+        setProduct(null);
       }
       setLoading(false);
     };
@@ -266,6 +318,79 @@ export default function ProductDetailPage({
   }, [id]);
 
   useEffect(() => {
+    if (!isShop || !product) return;
+    let cancelled = false;
+    const loadVouchers = async () => {
+      try {
+        const { data } = await supabase
+          .from("discounts")
+          .select("*")
+          .eq("is_active", true)
+          .order("created_at", { ascending: false });
+        if (cancelled) return;
+        const applicable = (data || []).filter((d: any) => {
+          if (d.applies_to === "all") return true;
+          if (d.applies_to === "category")
+            return d.target_id === product.category;
+          if (d.applies_to === "equipment") return d.target_id === product.id;
+          return false;
+        });
+        setShopVouchers(applicable.slice(0, 1));
+      } catch {
+        if (!cancelled) setShopVouchers([]);
+      }
+    };
+    loadVouchers();
+    return () => {
+      cancelled = true;
+    };
+  }, [isShop, product]);
+
+  const handleClaimVoucher = async (voucher: any) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+    setClaimingVoucher(true);
+    try {
+      const res = await fetch("/api/discounts/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: voucher.code, userId: user.id }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        toast.error(result.error || "Gagal mengklaim voucher");
+        return;
+      }
+      const d = result.discount;
+      const claimed: ClaimedDiscount = {
+        id: d.id,
+        code: d.code,
+        description: d.description,
+        discount_type: d.discount_type as "percentage" | "fixed",
+        discount_value: Number(d.discount_value),
+        min_purchase: d.min_purchase ? Number(d.min_purchase) : null,
+        max_discount: d.max_discount ? Number(d.max_discount) : null,
+        applies_to: d.applies_to as "all" | "category" | "equipment",
+        target_id: d.target_id,
+        claimed_at: result.claim?.claimed_at || new Date().toISOString(),
+      };
+      setClaimedDiscount(claimed);
+      toast.success("Voucher toko berhasil diklaim!");
+    } catch {
+      toast.error("Gagal mengklaim voucher. Silakan coba lagi.");
+    } finally {
+      setClaimingVoucher(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isShop || !product) return;
+
     if (product) {
       supabase
         .from("equipment")
@@ -274,7 +399,13 @@ export default function ProductDetailPage({
         .eq("category_id", product.category_id)
         .limit(4)
         .then(({ data }) => setRelatedProducts(data || []));
+    }
+  }, [product]);
 
+  useEffect(() => {
+    if (isShop || !product) return;
+
+    if (product) {
       supabase
         .from("equipment")
         .select(`*, equipment_categories(name)`)
@@ -300,8 +431,444 @@ export default function ProductDetailPage({
     );
   if (!product)
     return (
-      <div className="p-20 text-center font-bold text-slate-500">
-        Produk tidak ditemukan
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center">
+        <h1 className="text-3xl font-black text-forest mb-2">
+          Produk Tidak Ditemukan
+        </h1>
+        <p className="text-stone-500 font-medium mb-6 max-w-md">
+          Produk yang Anda cari mungkin sudah tidak tersedia atau tautannya
+          sudah tidak berlaku.
+        </p>
+        <Button
+          variant="outline"
+          className="font-bold"
+          onClick={() => router.push("/catalog_rental")}
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" /> Kembali ke Katalog
+        </Button>
+      </div>
+    );
+
+  // ===== Produk BELI (shop_products), bukan rental =====
+  const shopPrice = Number(product.price || 0);
+  const shopOriginalPrice = Number(product.original_price || 0);
+  const shopDiscount =
+    shopOriginalPrice > shopPrice && shopPrice > 0
+      ? Math.round((1 - shopPrice / shopOriginalPrice) * 100)
+      : null;
+  const shopStock = Number(product.stock ?? 0);
+  const shopImages = [
+    product.image_url,
+    ...(product.gallery_urls || []),
+  ].filter(Boolean);
+  const shopSpecs =
+    product.specifications && typeof product.specifications === "object"
+      ? Object.entries(product.specifications).filter(([, v]) => v)
+      : [];
+
+  const handleShopAddToCart = () => {
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: shopPrice,
+      image_url: product.image_url,
+      quantity: Math.max(1, Number(quantity)),
+      category: product.category || "Produk",
+      description: product.description,
+      brand: product.brand,
+    });
+    toast.success(`${product.name} masuk keranjang!`, {
+      style: { background: "#1B4332", color: "#fff", borderRadius: "12px" },
+    });
+  };
+
+  const handleShopBuyNow = () => {
+    handleShopAddToCart();
+    router.push("/checkout");
+  };
+
+  if (isShop)
+    return (
+      <div className="min-h-screen bg-[#F0F2F5] pb-15 md:pb-16">
+        <nav className="bg-white hidden border-b border-slate-200 py-3 px-4 md:px-6">
+          <div className="max-w-7xl mx-auto flex items-center gap-2 text-[10px] md:text-xs font-medium text-slate-500 capitalize">
+            <Link
+              href="/catalog_shop"
+              className="hover:text-[#1B4332] transition-colors"
+            >
+              Katalog
+            </Link>
+            <ChevronRight className="w-3 h-3 text-slate-300" />
+            <span className="text-slate-400">{product.category || "Beli"}</span>
+            <ChevronRight className="w-3 h-3 text-slate-300" />
+            <span className="text-[#1B4332] truncate font-bold">
+              {product.name}
+            </span>
+          </div>
+        </nav>
+
+        <div className="max-w-7xl mx-auto md:px-4 md:py-6">
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Image gallery */}
+            <div className="lg:w-1/3 px-4 md:px-0">
+              <div className="bg-white md:rounded-xl overflow-hidden sticky md:top-24 shadow-sm border border-slate-100">
+                <div className="relative aspect-square">
+                  {shopImages.length > 0 ? (
+                    <Image
+                      src={shopImages[selectedImage]}
+                      alt={product.name}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-stone-100">
+                      <Package className="w-16 h-16 text-stone-300" />
+                    </div>
+                  )}
+                </div>
+                {shopImages.length > 1 && (
+                  <div className="p-4 hidden md:flex gap-2 border-t flex-wrap">
+                    {shopImages.map((url, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setSelectedImage(i)}
+                        className={`w-20 h-20 border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${
+                          selectedImage === i
+                            ? "border-[#1B4332] opacity-100"
+                            : "border-transparent opacity-50 hover:opacity-100"
+                        }`}
+                      >
+                        <Image
+                          src={url}
+                          alt={`${product.name} ${i + 1}`}
+                          width={80}
+                          height={80}
+                          className="object-cover w-full h-full"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Info column */}
+            <div className="lg:w-5/12 px-4 md:px-0 space-y-4">
+              <div className="bg-white p-6 rounded-xl shadow-sm space-y-3 border border-slate-100">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl font-bolder text-slate-800 capitalize leading-tight">
+                    {product.name}
+                  </h1>
+                  <span className="text-[#FF6B35] font-bold text-2xl">
+                    Rp{shopPrice.toLocaleString("id-ID")}
+                  </span>
+                  {/* <span className="text-slate-400 text-sm">/ unit</span> */}
+                  {shopDiscount && (
+                    <Badge className="bg-gold text-[#FF6B35] rounded-full text-xs font-bold px-2 py-1 bg-amber-400/10">
+                      -{shopDiscount}%
+                    </Badge>
+                  )}
+                </div>
+                {shopOriginalPrice > shopPrice && (
+                  <p className="text-slate-400 line-through text-sm">
+                    Rp{shopOriginalPrice.toLocaleString("id-ID")}
+                  </p>
+                )}
+                <div className="flex items-center gap-3 text-sm">
+                  <div className="flex items-center text-amber-500 font-bold">
+                    <Star className="w-4 h-4 fill-current mr-1" />{" "}
+                    {(Number(product.rating) || 0).toFixed(1)}
+                  </div>
+                  <span className="text-slate-300">|</span>
+                  <span className="text-slate-500">
+                    Terjual {Number(product.sold_count || 0)}x
+                  </span>
+                  {product.rating_label && (
+                    <>
+                      <span className="text-slate-300">|</span>
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        {product.rating_label}
+                      </span>
+                    </>
+                  )}
+                  {product.brand && (
+                    <>
+                      <span className="text-slate-300">|</span>
+                      <span className="text-slate-500 capitalize">
+                        {product.brand}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {shopVouchers.length > 0 && (
+                <div className="bg-gradient-to-br from-emerald-50 via-white to-white rounded-xl shadow-sm border border-emerald-200/70 overflow-hidden">
+                  <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-dashed border-emerald-200/70">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-emerald-800">
+                      <Tag className="w-3.5 h-3.5" />
+                      Voucher Toko
+                    </span>
+                    <span className="text-[10px] text-emerald-600 font-semibold uppercase tracking-wide">
+                      Gratis diklaim
+                    </span>
+                  </div>
+
+                  {shopVouchers.map((voucher) => {
+                    const isClaimed = claimedDiscount?.code === voucher.code;
+                    const discountText =
+                      voucher.discount_type === "fixed"
+                        ? `Potongan Rp${Number(voucher.discount_value).toLocaleString("id-ID")}`
+                        : `Diskon ${voucher.discount_value}%`;
+                    return (
+                      <div key={voucher.id} className="p-5">
+                        <p className="text-sm font-semibold text-slate-800 leading-snug">
+                          {voucher.description || "Voucher belanja toko Habema"}
+                        </p>
+
+                        <div className="mt-3 flex items-center gap-2">
+                          <div className="flex-1 flex items-center justify-center rounded-xl border-2 border-dashed border-emerald-400 font-mono font-bold tracking-widest text-sm py-2.5 bg-white text-emerald-700 select-all">
+                            {voucher.code}
+                          </div>
+                          {isClaimed ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setClaimedDiscount(null);
+                                toast.info("Voucher dibatalkan");
+                              }}
+                              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
+                            >
+                              <Check className="w-4 h-4" />
+                              Diklaim
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleClaimVoucher(voucher)}
+                              disabled={claimingVoucher}
+                              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs text-white bg-[#1B4332] hover:bg-[#143326] transition-colors disabled:opacity-60"
+                            >
+                              {claimingVoucher ? (
+                                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Gift className="w-4 h-4" />
+                              )}
+                              {claimingVoucher ? "Memproses..." : "Klaim"}
+                            </button>
+                          )}
+                        </div>
+
+                        <ul className="mt-3 space-y-1">
+                          {discountText && (
+                            <li className="flex gap-2 text-xs text-stone-500">
+                              <span className="text-emerald-500">✓</span>{" "}
+                              {discountText}
+                            </li>
+                          )}
+                          {voucher.min_purchase > 0 && (
+                            <li className="flex gap-2 text-xs text-stone-500">
+                              <span className="text-emerald-500">✓</span>{" "}
+                              Minimal belanja Rp
+                              {Number(voucher.min_purchase).toLocaleString(
+                                "id-ID",
+                              )}
+                            </li>
+                          )}
+                          {voucher.max_discount > 0 && (
+                            <li className="flex gap-2 text-xs text-stone-500">
+                              <span className="text-emerald-500">✓</span>{" "}
+                              Maksimal potongan Rp
+                              {Number(voucher.max_discount).toLocaleString(
+                                "id-ID",
+                              )}
+                            </li>
+                          )}
+                        </ul>
+
+                        {isClaimed && (
+                          <p className="mt-3 text-[11px] text-emerald-600 font-medium text-center">
+                            Voucher otomatis dipakai saat checkout
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Purchase card */}
+            <div className="lg:w-1/4 px-4 md:px-0">
+              <Card className="p-5 sticky top-24 rounded-xl shadow-md border-none">
+                <h3 className="font-bolder mb-1 text-slate-800 text-sm">
+                  Atur Jumlah
+                </h3>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-4 mb-4 bg-slate-50 p-2 rounded-lg border border-slate-100 w-30">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="hover:bg-emerald-50/hover:text-[#1B4332]"
+                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    >
+                      -
+                    </Button>
+                    <span className="flex-1 text-center font-bold text-sm">
+                      {quantity}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="hover:bg-emerald-50/hover:text-[#1B4332]"
+                      onClick={() => setQuantity(quantity + 1)}
+                    >
+                      +
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs mb-3 py-0 rounded-lg ">
+                    {/* <CheckCircle className="w-4 h-4" /> */}
+                    {/* <span className="text-slate-300">|</span> */}
+                    {shopStock > 0 ? (
+                      <span className="text-slate-500">
+                        {" "}
+                        Tersedia {shopStock}{" "}
+                      </span>
+                    ) : (
+                      "Stok Habis"
+                    )}
+                  </div>
+                </div>
+
+                {/* <div
+                  className={`flex items-center gap-2 text-sm font-bold mb-4 px-3 py-2 rounded-lg ${
+                    shopStock > 0
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "bg-red-50 text-red-700"
+                  }`}
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  {shopStock > 0
+                    ? `Stok Tersedia (${shopStock})`
+                    : "Stok Habis"}
+                </div> */}
+
+                <div className="flex justify-between mb-6">
+                  <span className="text-sm text-slate-500 font-medium">
+                    Subtotal
+                  </span>
+                  <span className="font-bold text-lg text-[#FF6B35]">
+                    Rp{(shopPrice * quantity).toLocaleString("id-ID")}
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <Button
+                    onClick={handleShopAddToCart}
+                    variant="outline"
+                    disabled={shopStock <= 0}
+                    className="w-full font-bold py-6 rounded-xl text-[#1B4332] border-[#1B4332] hover:bg-emerald-50 hover:text-[#1B4332] transition-all"
+                  >
+                    Masuk Keranjang
+                  </Button>
+                  <Button
+                    onClick={handleShopBuyNow}
+                    disabled={shopStock <= 0}
+                    className="w-full bg-[#1B4332] hover:bg-[#143326] font-bold py-6 rounded-xl shadow-lg transition-all"
+                  >
+                    Beli Sekarang
+                  </Button>
+                </div>
+
+                <div className="mt-6 pt-4 border-t flex items-start gap-3">
+                  <ShieldCheck className="w-5 h-5 text-[#1B4332] shrink-0" />
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    Produk original berkualitas. Pembayaran aman.
+                  </p>
+                </div>
+              </Card>
+            </div>
+          </div>
+
+          {/* Detail Produk */}
+          <div className="mt-6 px-4 md:px-0">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2 sticky top-0">
+                <span className="w-1 h-4 rounded-full bg-[#1B4332]" />
+                <h2 className="font-bold text-slate-800 text-sm uppercase tracking-wide">
+                  Detail Produk
+                </h2>
+              </div>
+              <div className="p-6">
+                <Markdown>{product.description}</Markdown>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-4 pt-6 mt-4 border-t border-slate-100">
+                  <div>
+                    <div className="text-xs text-slate-400 mb-1">Kategori</div>
+                    <div className="text-sm text-slate-800 font-semibold">
+                      {product.category || "Produk"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-400 mb-1">Kondisi</div>
+                    <div className="text-sm text-slate-800 font-semibold">
+                      Original 100% (QC Passed)
+                    </div>
+                  </div>
+                  {product.weight_kg != null && (
+                    <div>
+                      <div className="text-xs text-slate-400 mb-1">Berat</div>
+                      <div className="text-sm text-slate-800 font-semibold">
+                        {formatWeight(product.weight_kg)}
+                      </div>
+                    </div>
+                  )}
+                  {product.material && (
+                    <div>
+                      <div className="text-xs text-slate-400 mb-1">Bahan</div>
+                      <div className="text-sm text-slate-800 font-semibold">
+                        {product.material}
+                      </div>
+                    </div>
+                  )}
+                  {product.dimensions && (
+                    <div>
+                      <div className="text-xs text-slate-400 mb-1">Dimensi</div>
+                      <div className="text-sm text-slate-800 font-semibold">
+                        {product.dimensions}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {shopSpecs.length > 0 && (
+                  <div className="pt-6 mt-4 border-t border-slate-100">
+                    <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wide mb-4">
+                      Spesifikasi Teknis
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3">
+                      {shopSpecs.map(([key, value]) => (
+                        <div
+                          key={key}
+                          className="flex justify-between gap-4 text-sm border-b border-dashed border-slate-100 pb-2"
+                        >
+                          <span className="text-slate-400 capitalize shrink-0">
+                            {String(key).replace(/_/g, " ")}
+                          </span>
+                          <span className="font-medium text-slate-800 text-right">
+                            {String(value)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
 
@@ -357,7 +924,9 @@ export default function ProductDetailPage({
   const inventory = getInventoryStatus(product.id);
   const isAvailable = inventory.availableUnits > 0;
   const pricePerNight = Number(product.price_per_night || 0);
-  const allImages = [product.image_url, ...(product.gallery_urls || [])].filter(Boolean);
+  const allImages = [product.image_url, ...(product.gallery_urls || [])].filter(
+    Boolean,
+  );
 
   return (
     <div className="min-h-screen bg-[#F0F2F5] pb-15 md:pb-16">
@@ -402,7 +971,7 @@ export default function ProductDetailPage({
             </BreadcrumbItem>
             {/* <BreadcrumbSeparator className="text-white/40" /> */}
             <BreadcrumbItem>
-               <BreadcrumbLink
+              <BreadcrumbLink
                 href="/"
                 className="hover:text-[#D4AF37] text-gray-900 transition-colors"
               >
@@ -512,7 +1081,7 @@ export default function ProductDetailPage({
             >
               <a
                 href={`https://wa.me/6283898749357?text=${encodeURIComponent(
-                  `Halo Habema Outdoor, saya mau tanya soal produk *${product.name}* (${id}).`
+                  `Halo Habema Outdoor, saya mau tanya soal produk *${product.name}* (${id}).`,
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -784,8 +1353,8 @@ export default function ProductDetailPage({
                       onClick={() => setSelectedImage(i)}
                       className={`w-20 h-20 border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${
                         selectedImage === i
-                          ? 'border-[#1B4332] opacity-100'
-                          : 'border-transparent opacity-50 hover:opacity-100'
+                          ? "border-[#1B4332] opacity-100"
+                          : "border-transparent opacity-50 hover:opacity-100"
                       }`}
                     >
                       <Image
@@ -1269,10 +1838,8 @@ export default function ProductDetailPage({
           </div>
         </div>
       </div>
-      <LoginModal
-        open={showLoginModal}
-        onOpenChange={setShowLoginModal}
-      />
+      <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} />
+
     </div>
   );
 }

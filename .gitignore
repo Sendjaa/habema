@@ -18,3 +18,7 @@ node_modules
 .DS_Store
 CLAUDE.md
 *.tsbuildinfo
+
+# Debug artifacts (mengandung data pelanggan — jangan pernah di-commit)
+.checkout-debug.log
+*.debug.log
