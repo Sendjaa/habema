@@ -218,6 +218,93 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ── SHOP ORDERS ──
+    // Order shop menggunakan kolom `order_id` (format SHOP-...), bukan uuid id.
+    // Webhook ini harus mengupdate shop_orders juga, dengan idempotensi
+    // compare-and-swap seperti booking agar stock tidak terpotong ganda.
+    const { data: shopOrder } = await (supabaseAdmin as any)
+      .from('shop_orders')
+      .select('id')
+      .eq('order_id', order_id)
+      .maybeSingle()
+
+    if (shopOrder) {
+      const shopId = shopOrder.id
+      if (isSuccess) {
+        // Payment sukses (pertama kali) — update status + potong stok sekali
+        const { data: updatedShop, error: shopUpdateErr } = await (supabaseAdmin as any)
+          .from('shop_orders')
+          .update({
+            payment_status: 'paid',
+            status: 'confirmed',
+            ...(payment_type ? { payment_method: payment_type } : {}),
+          })
+          .eq('id', shopId)
+          .neq('payment_status', 'paid')
+          .select('id')
+          .maybeSingle()
+
+        if (shopUpdateErr) {
+          console.error('[webhook] Gagal update shop_order paid:', shopUpdateErr.message)
+        } else if (updatedShop) {
+          console.log('[webhook] Shop order', shopId, 'ditandai paid (pertama kali)')
+          // Potong stok & naikkan sold_count — hanya sekali (di atas sudah idempotent)
+          const { data: shopItems } = await (supabaseAdmin as any)
+            .from('shop_order_items')
+            .select('product_id, quantity')
+            .eq('order_id', shopId)
+
+          for (const si of shopItems || []) {
+            const { data: prod } = await (supabaseAdmin as any)
+              .from('shop_products')
+              .select('stock, sold_count')
+              .eq('id', si.product_id)
+              .maybeSingle()
+            if (!prod) continue
+            await (supabaseAdmin as any)
+              .from('shop_products')
+              .update({
+                stock: Math.max(0, (Number(prod.stock) || 0) - Number(si.quantity)),
+                sold_count: (Number(prod.sold_count) || 0) + Number(si.quantity),
+              })
+              .eq('id', si.product_id)
+          }
+        } else {
+          console.log('[webhook] Shop order', shopId, 'sudah paid, dilewati (idempotent)')
+        }
+      } else if (transaction_status === 'refund') {
+        await (supabaseAdmin as any)
+          .from('shop_orders')
+          .update({
+            payment_status: 'refunded',
+            status: 'cancelled',
+            ...(payment_type ? { payment_method: payment_type } : {}),
+          })
+          .eq('id', shopId)
+      } else {
+        // pending/deny/cancel/expire — jangan menimpa status yang sudah final
+        const { data: updatedShop, error: shopUpdateErr } = await (supabaseAdmin as any)
+          .from('shop_orders')
+          .update({
+            payment_status: paymentStatus,
+            ...(bookingStatus ? { status: bookingStatus } : {}),
+            ...(payment_type ? { payment_method: payment_type } : {}),
+          })
+          .eq('id', shopId)
+          .or(
+            'payment_status.is.null,payment_status.eq.pending,payment_status.eq.failed,payment_status.eq.cancelled,payment_status.eq.expired,payment_status.eq.unknown,payment_status.eq.cod'
+          )
+          .select('id')
+          .maybeSingle()
+
+        if (shopUpdateErr) {
+          console.error('[webhook] Gagal update shop_order:', shopUpdateErr.message)
+        } else if (!updatedShop) {
+          console.log('[webhook] Shop order', shopId, 'sudah final, status', transaction_status, 'dilewati')
+        }
+      }
+    }
+
     return NextResponse.json({ message: 'Webhook received and processed' }, { status: 200 })
   } catch (error) {
     console.error('[webhook] Error processing webhook:', error)

@@ -54,7 +54,7 @@ const EMPTY_FORM: FormValues = {
   city: "",
   postal_code: "",
   note: "",
-  payment_method: "midtrans",
+  payment_method: "bca_va",
 };
 
 const FORM_STORAGE_KEY = "habema-checkout-form";
@@ -210,6 +210,20 @@ export default function CheckoutPage() {
         return;
       }
 
+      // COD — langsung ke konfirmasi, tanpa Midtrans
+      if (form.payment_method === "cod" || result.cod) {
+        clearCart();
+        clearClaimedDiscount();
+        clearSavedForm();
+        toast.success("Order berhasil! Bayar saat barang tiba.");
+        router.push(
+          "/order-confirmation?order_id=" +
+            (result.paymentOrderId || "") +
+            "&status=pending"
+        );
+        return;
+      }
+
       await loadMidtransScript();
 
       if (window.snap && result.token) {
@@ -332,7 +346,11 @@ export default function CheckoutPage() {
                         }
                         className="w-full h-10 px-3 text-sm border border-stone-200 rounded-lg bg-stone-50 focus:border-[#1B4332] outline-none"
                       >
-                        <option value="midtrans">Transfer / E-Wallet</option>
+                        <option value="bca_va">BCA Virtual Account</option>
+                        <option value="bni_va">BNI Virtual Account</option>
+                        <option value="bri_va">BRI Virtual Account</option>
+                        <option value="mandiri_va">Mandiri Virtual Account</option>
+                        <option value="gopay">GoPay / E-Wallet</option>
                         <option value="cod">COD</option>
                       </select>
                     </div>

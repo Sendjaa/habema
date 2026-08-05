@@ -271,7 +271,24 @@ export async function POST(request: NextRequest) {
     }
     debugLog("STEP ok: order + items inserted. order_id=" + orderId);
 
-    // --- 6) Midtrans belum terkonfigurasi ---
+    const paymentMethod = customerDetails.payment_method || "midtrans";
+
+    // --- 6) COD — tanpa Midtrans, langsung selesai ---
+    if (paymentMethod === "cod") {
+      await (supabaseAdmin as any)
+        .from("shop_orders")
+        .update({ payment_status: "cod" })
+        .eq("id", order.id);
+      return NextResponse.json({
+        success: true,
+        orderId: order.id,
+        paymentOrderId: orderId,
+        cod: true,
+        grossAmount,
+      });
+    }
+
+    // --- 7) Midtrans belum terkonfigurasi ---
     if (!isMidtransConfigured()) {
       if (allowMock) {
         return NextResponse.json({
@@ -295,7 +312,7 @@ export async function POST(request: NextRequest) {
     const host = request.headers.get("host") || "localhost:3000";
     const baseUrl = `${proto}://${host}`;
 
-    // --- 7) Bangun item_details untuk Midtrans (nama max 50 char) ---
+    // --- 8) Bangun item_details untuk Midtrans (nama max 50 char) ---
     const itemDetails = orderItems.map((it: any) => ({
       id: it.product_id,
       name: String(it.name || "Produk").slice(0, 50),
@@ -322,6 +339,15 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Peta metode pembayaran → channel Midtrans (Snap hanya menampilkan channel ini)
+    const ENABLED_PAYMENTS: Record<string, string[]> = {
+      bca_va: ["bca_va"],
+      bni_va: ["bni_va"],
+      bri_va: ["bri_va"],
+      mandiri_va: ["mandiri_va"],
+      gopay: ["gopay"],
+    };
+
     const transactionData = {
       transaction_details: {
         order_id: orderId,
@@ -334,6 +360,7 @@ export async function POST(request: NextRequest) {
         email: customerDetails.email || "noemail@habema.local",
         phone: customerDetails.phone,
       },
+      enabled_payments: ENABLED_PAYMENTS[paymentMethod] || undefined,
       callbacks: {
         finish: `${baseUrl}/payment/finish`,
         error: `${baseUrl}/payment/error`,
