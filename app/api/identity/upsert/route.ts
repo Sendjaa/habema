@@ -3,9 +3,11 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(request: NextRequest) {
   try {
     let supabaseAdmin: any
+    let ensureUserRecord: ((userId: string) => Promise<void>) | undefined
     try {
       const mod = await import('@/lib/supabaseAdmin')
       supabaseAdmin = mod.supabaseAdmin
+      ensureUserRecord = mod.ensureUserRecord
     } catch (e: any) {
       console.error('Supabase admin init failed:', e.message)
       return NextResponse.json(
@@ -24,55 +26,48 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if identity already exists
-    const { data: existing } = await supabaseAdmin
-      .from('user_identity')
-      .select('id')
-      .eq('user_id', user_id)
-      .maybeSingle()
+    // Pastikan baris public.users ada untuk user ini, jika tidak INSERT di bawah
+    // akan gagal FK (23503): user_identity.user_id -> public.users.id
+    if (ensureUserRecord) {
+      await ensureUserRecord(user_id)
+    }
 
-    let result
-    if (existing) {
-      result = await supabaseAdmin
-        .from('user_identity')
-        .update({
-          id_type: idType,
-          id_number: idNumber,
-          id_photo_url: photoUrl || null,
-          verification_status: 'pending',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user_id)
-        .select()
-        .single()
-    } else {
-      result = await supabaseAdmin
-        .from('user_identity')
-        .insert({
+    // Upsert atomik: user_identity punya constraint unique (user_id).
+    const { data, error } = await supabaseAdmin
+      .from('user_identity')
+      .upsert(
+        {
           user_id,
           id_type: idType,
           id_number: idNumber,
           id_photo_url: photoUrl || null,
           verification_status: 'pending',
-        })
-        .select()
-        .single()
-    }
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' }
+      )
+      .select()
+      .single()
 
-    if (result.error) {
-      console.error('Supabase error upserting identity:', result.error)
+    if (error) {
+      console.error('Supabase error upserting identity:', error)
       return NextResponse.json(
-        { error: 'Failed to save identity' },
+        {
+          error: 'Failed to save identity',
+          detail: error.message,
+          code: error.code,
+          hint: error.hint ?? null,
+        },
         { status: 500 }
       )
     }
 
-    // Create admin notification
+    // Create admin notification (user_id sekarang valid karena ensureUserRecord)
     try {
       await supabaseAdmin
         .from('notifications')
         .insert({
-          user_id: null,
+          user_id,
           title: 'Verifikasi ID Baru',
           message: `User telah mengupload identitas ${idType.toUpperCase()} dengan nomor ${idNumber}.`,
           notification_type: 'id_verification',
@@ -91,11 +86,11 @@ export async function POST(request: NextRequest) {
       console.error('Error creating notification:', notifErr)
     }
 
-    return NextResponse.json({ success: true, data: result.data })
-  } catch (error) {
+    return NextResponse.json({ success: true, data })
+  } catch (error: any) {
     console.error('Identity upsert API error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', detail: error?.message || null },
       { status: 500 }
     )
   }

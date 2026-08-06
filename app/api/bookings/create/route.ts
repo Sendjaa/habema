@@ -3,9 +3,11 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(request: NextRequest) {
   try {
     let supabaseAdmin: any
+    let ensureUserRecord: ((userId: string) => Promise<void>) | undefined
     try {
       const mod = await import('@/lib/supabaseAdmin')
       supabaseAdmin = mod.supabaseAdmin
+      ensureUserRecord = mod.ensureUserRecord
     } catch (e: any) {
       console.error('Supabase admin init failed:', e.message)
       return NextResponse.json(
@@ -34,6 +36,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Pastikan baris public.users ada. bookings.user_id -> public.users.id,
+    // bila user login tidak punya baris users, INSERT gagal FK (23503).
+    if (orderData?.user_id && ensureUserRecord) {
+      await ensureUserRecord(orderData.user_id)
+    }
+
     // Insert booking
     const { data: newBooking, error: bookingError } = await supabaseAdmin
       .from('bookings')
@@ -44,7 +52,12 @@ export async function POST(request: NextRequest) {
     if (bookingError) {
       console.error('Error creating booking:', bookingError)
       return NextResponse.json(
-        { error: 'Failed to create booking' },
+        {
+          error: 'Failed to create booking',
+          detail: bookingError.message,
+          code: bookingError.code,
+          hint: bookingError.hint ?? null,
+        },
         { status: 500 }
       )
     }
@@ -61,25 +74,37 @@ export async function POST(request: NextRequest) {
 
     if (itemError) {
       console.error('Error creating booking items:', itemError)
+      // Rollback: hapus booking yatim agar tidak tertinggal di DB
+      await supabaseAdmin
+        .from('bookings')
+        .delete()
+        .eq('id', newBooking.id)
+        .maybeSingle()
       return NextResponse.json(
-        { error: 'Failed to create booking items' },
+        {
+          error: 'Failed to create booking items',
+          detail: itemError.message,
+          code: itemError.code,
+          hint: itemError.hint ?? null,
+        },
         { status: 500 }
       )
     }
 
-    // Create admin notification
+    // Create admin notification (hanya bila ada user_id; kolom notifications.user_id NOT NULL)
     try {
-      const itemNames = itemsArray.map((i: any) => i.equipment_id).join(', ')
-      await supabaseAdmin
-        .from('notifications')
-        .insert({
-          user_id: orderData.user_id,
-          booking_id: newBooking.id,
-          title: 'Pesanan Baru',
-          message: `Pesanan baru (${itemsArray.length} item) ${userEmail ? ` dari ${userEmail}` : ' (Guest User)'}`,
-          notification_type: 'new_booking',
-          is_read: false,
-        })
+      if (orderData.user_id) {
+        await supabaseAdmin
+          .from('notifications')
+          .insert({
+            user_id: orderData.user_id,
+            booking_id: newBooking.id,
+            title: 'Pesanan Baru',
+            message: `Pesanan baru (${itemsArray.length} item) ${userEmail ? ` dari ${userEmail}` : ' (Guest User)'}`,
+            notification_type: 'new_booking',
+            is_read: false,
+          })
+      }
     } catch (notifErr) {
       console.error('Error creating notification:', notifErr)
     }

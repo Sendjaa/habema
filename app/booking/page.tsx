@@ -419,6 +419,8 @@ function BookingContent() {
 
       if (!productId) throw new Error("ID Produk tidak ditemukan.");
       if (!product) throw new Error("Produk tidak ditemukan.");
+      if (!startDate || !endDate)
+        throw new Error("Silakan pilih tanggal sewa terlebih dahulu.");
 
       // Item yang akan dipesan. Prioritaskan item dari keranjang (transaction),
       // fallback ke produk tunggal dari URL bila halaman dibuka langsung dari katalog.
