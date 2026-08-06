@@ -75,10 +75,13 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
       }),
     });
 
-    const json = await res.json();
+    const json = await res.json().catch(() => ({}));
     if (!res.ok) {
       console.error('Supabase error details:', JSON.stringify(json));
-      throw new Error(json.error || 'Failed to save identity');
+      throw new Error(
+        [json.error, json.detail].filter(Boolean).join(': ') ||
+          'Failed to save identity'
+      );
     }
 
     return json.data;

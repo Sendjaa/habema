@@ -493,10 +493,14 @@ function BookingContent() {
           }),
         });
 
-        const anonResult = await anonRes.json();
+        const anonResult = await anonRes.json().catch(() => ({}));
         if (!anonRes.ok) {
           console.error('Failed to create anonymous booking:', anonResult);
-          toast.error('Gagal menyimpan pesanan. Silakan coba lagi.');
+          toast.error(
+            `Gagal menyimpan pesanan: ${[anonResult.error, anonResult.detail]
+              .filter(Boolean)
+              .join(' - ') || 'Silakan coba lagi.'}`
+          );
           return;
         }
 
@@ -591,8 +595,13 @@ Mohon konfirmasi pesanan saya ya!`;
         }),
       });
 
-      const authResult = await authRes.json();
-      if (!authRes.ok) throw new Error(authResult.error || 'Failed to create booking');
+      const authResult = await authRes.json().catch(() => ({}));
+      if (!authRes.ok) {
+        throw new Error(
+          [authResult.error, authResult.detail].filter(Boolean).join(': ') ||
+            'Failed to create booking'
+        );
+      }
 
       const newBooking = authResult.data;
 
