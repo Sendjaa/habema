@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/booking/date-range-picker";
 import { calculateDaysBetween } from "@/lib/booking-utils";
-import { CheckCircle, Loader2, MapPin, Ticket } from "lucide-react";
+import { CheckCircle, Loader2, MapPin, Ticket, Truck, Store } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { LoginModal } from "@/components/auth/login-modal";
 import type { Database } from "@/types/supabase";
@@ -19,6 +19,7 @@ import {
   RentalConditionsChecklist,
   ConditionChecklistData,
 } from "@/components/checkout/rental-conditions-checklist";
+import { ShippingSelector } from "@/components/booking/shipping-selector";
 import {
   useCartStore,
   type ClaimedDiscount,
@@ -100,6 +101,16 @@ function BookingContent() {
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [pickupBranchId, setPickupBranchId] = useState<string | null>(null);
   const [returnBranchId, setReturnBranchId] = useState<string | null>(null);
+
+  // Metode pengiriman
+  const [shippingMethod, setShippingMethod] = useState<'pickup' | 'shipping'>('pickup');
+  const [shippingData, setShippingData] = useState<{
+    courierCode?: string
+    courierService?: string
+    shippingCost?: number
+    destinationId?: number
+    destinationLabel?: string
+  } | null>(null);
 
   // Kupon yang sudah diklaim user
   const [myCoupons, setMyCoupons] = useState<any[]>([]);
@@ -443,8 +454,10 @@ function BookingContent() {
         throw new Error("Silakan pilih tanggal sewa terlebih dahulu.");
       if (!conditionData)
         throw new Error("Silakan lengkapi syarat dan kondisi terlebih dahulu.");
-      if (!pickupBranchId)
+      if (shippingMethod === 'pickup' && !pickupBranchId)
         throw new Error("Silakan pilih lokasi pengambilan terlebih dahulu.");
+      if (shippingMethod === 'shipping' && !shippingData?.destinationId)
+        throw new Error("Silakan pilih tujuan pengiriman terlebih dahulu.");
 
       // Item yang akan dipesan. Prioritaskan item dari keranjang (transaction),
       // fallback ke produk tunggal dari URL bila halaman dibuka langsung dari katalog.
@@ -467,10 +480,12 @@ function BookingContent() {
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
         status: "pending",
-        delivery_option: "pickup",
-        delivery_address: null,
+        delivery_option: shippingMethod,
+        delivery_address: shippingData?.destinationLabel || null,
+        delivery_cost: shippingData?.shippingCost || 0,
+        courier_name: shippingData?.courierCode ? `${shippingData.courierCode.toUpperCase()} ${shippingData.courierService}` : null,
         customer_note: customerNote || null,
-        total_cost: totalPrice,
+        total_cost: totalPrice + (shippingData?.shippingCost || 0),
         rental_days: days,
         subtotal: subtotal,
         deposit_amount: deposit,
@@ -519,12 +534,14 @@ function BookingContent() {
         orderId: newBooking.id,
         days: Number(days),
         duration: Number(days),
-        totalPrice: Number(totalPrice),
+        totalPrice: Number(totalPrice) + (shippingData?.shippingCost || 0),
         payment: { method: paymentMethod, bank: selectedBank || undefined },
         delivery: {
-          option: "branch",
-          address: pickupBranch?.address || null,
+          option: shippingMethod,
+          address: shippingMethod === 'shipping' ? shippingData?.destinationLabel : pickupBranch?.address || null,
           note: customerNote || null,
+          courier: shippingData?.courierCode ? `${shippingData.courierCode.toUpperCase()} ${shippingData.courierService}` : null,
+          shippingCost: shippingData?.shippingCost || 0,
         },
         pickupBranch: pickupBranch
           ? {
@@ -550,15 +567,21 @@ function BookingContent() {
 
       // ===== Alur WhatsApp =====
       if (paymentMethod === "WhatsApp Konfirmasi") {
+        const shippingInfo = shippingMethod === 'shipping' 
+          ? `Metode Pengiriman: ${shippingData?.courierCode?.toUpperCase()} ${shippingData?.courierService}
+Tujuan: ${shippingData?.destinationLabel}
+Ongkir: Rp${(shippingData?.shippingCost || 0).toLocaleString("id-ID")}`
+          : `Metode Pengambilan: ${pickupBranch?.name || "Ambil di Tempat"}${pickupBranch?.address ? `
+Alamat: ${pickupBranch.address}${pickupBranch.city ? `, ${pickupBranch.city}` : ""}` : ""}`;
+
         const waMessage = `Halo Admin Habema!
 Saya ingin menyewa: *${product.name}*
 ID Booking: #${newBooking.id.slice(0, 8)}
 User: ${user ? user.email : "Guest"}
 Durasi: ${days} Hari
-Total: Rp${Number(totalPrice).toLocaleString("id-ID")}
+Total: Rp${Number(totalPrice + (shippingData?.shippingCost || 0)).toLocaleString("id-ID")}
 
-Metode Pengambilan: ${pickupBranch?.name || "Ambil di Tempat"}${pickupBranch?.address ? `
-Alamat: ${pickupBranch.address}${pickupBranch.city ? `, ${pickupBranch.city}` : ""}` : ""}${effectiveReturnBranch && effectiveReturnBranch.id !== pickupBranch?.id ? `
+${shippingInfo}${effectiveReturnBranch && effectiveReturnBranch.id !== pickupBranch?.id ? `
 Lokasi Pengembalian: ${effectiveReturnBranch.name}${effectiveReturnBranch.address ? ` (${effectiveReturnBranch.address})` : ""}` : ""}${customerNote ? `
 Pesan: ${customerNote}` : ""}
 
@@ -898,6 +921,17 @@ Mohon konfirmasi pesanan saya ya!`;
                     </p>
                   </div>
                 )}
+
+                {/* Metode Pengiriman */}
+                <ShippingSelector
+                  onShippingSelect={(data) => {
+                    setShippingMethod(data.method)
+                    setShippingData(data)
+                    if (data.method === 'shipping') {
+                      setPickupBranchId(null)
+                    }
+                  }}
+                />
 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-800">

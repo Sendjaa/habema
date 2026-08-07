@@ -42,6 +42,10 @@ interface Booking {
   deposit_amount: number;
   created_at: string;
   notes?: string;
+  delivery_option?: string;
+  delivery_address?: string | null;
+  delivery_cost?: number;
+  courier_name?: string | null;
   pickup_branch_id: string | null;
   pickup_branch_name: string | null;
   return_branch_id: string | null;
@@ -756,20 +760,51 @@ export default function BookingManagement() {
                   </div>
                 </div>
 
-                {/* Branch Info */}
-                {selectedBooking.pickup_branch_name && (
+                {/* Branch Info / Shipping Info */}
+                {(selectedBooking.pickup_branch_name || selectedBooking.delivery_option === 'shipping') && (
                   <div>
-                    <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Lokasi</h3>
+                    <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">
+                      {selectedBooking.delivery_option === 'shipping' ? 'Info Pengiriman' : 'Lokasi'}
+                    </h3>
                     <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-stone-400 text-xs">Cabang Pengambilan</span>
-                        <p className="text-stone-800 font-medium">{selectedBooking.pickup_branch_name}</p>
-                      </div>
-                      {selectedBooking.return_branch_name && (
-                        <div>
-                          <span className="text-stone-400 text-xs">Cabang Pengembalian</span>
-                          <p className="text-stone-800 font-medium">{selectedBooking.return_branch_name}</p>
-                        </div>
+                      {selectedBooking.delivery_option === 'shipping' ? (
+                        <>
+                          <div>
+                            <span className="text-stone-400 text-xs">Metode</span>
+                            <p className="text-stone-800 font-medium">Kirim ke Alamat</p>
+                          </div>
+                          {selectedBooking.courier_name && (
+                            <div>
+                              <span className="text-stone-400 text-xs">Ekspedisi</span>
+                              <p className="text-stone-800 font-medium">{selectedBooking.courier_name}</p>
+                            </div>
+                          )}
+                          {selectedBooking.delivery_address && (
+                            <div className="col-span-2">
+                              <span className="text-stone-400 text-xs">Alamat Tujuan</span>
+                              <p className="text-stone-800 font-medium">{selectedBooking.delivery_address}</p>
+                            </div>
+                          )}
+                          {selectedBooking.delivery_cost && selectedBooking.delivery_cost > 0 && (
+                            <div>
+                              <span className="text-stone-400 text-xs">Biaya Pengiriman</span>
+                              <p className="text-stone-800 font-medium">{formatCurrency(selectedBooking.delivery_cost)}</p>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <span className="text-stone-400 text-xs">Cabang Pengambilan</span>
+                            <p className="text-stone-800 font-medium">{selectedBooking.pickup_branch_name}</p>
+                          </div>
+                          {selectedBooking.return_branch_name && (
+                            <div>
+                              <span className="text-stone-400 text-xs">Cabang Pengembalian</span>
+                              <p className="text-stone-800 font-medium">{selectedBooking.return_branch_name}</p>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

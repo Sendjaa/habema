@@ -66,6 +66,8 @@ export interface TransactionData {
     cost?: number;
     distance?: number;
     duration?: string | null;
+    courier?: string | null;
+    shippingCost?: number;
     breakdown?: {
       baseCost: number;
       distanceCost: number;

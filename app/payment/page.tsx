@@ -8,7 +8,7 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Check, CreditCard, Smartphone, Building, ArrowRight, Loader2, MapPin } from 'lucide-react'
+import { Check, CreditCard, Smartphone, Building, ArrowRight, Loader2, MapPin, Truck } from 'lucide-react'
 
 // Load Midtrans Snap script
 const loadMidtransScript = () => {
@@ -66,6 +66,12 @@ export default function PaymentPage() {
       }
       const finalTotal = Math.max(0, originalTotal - discountAmount)
 
+      // Shipping data
+      const shippingCost = transaction.delivery?.shippingCost || 0
+      const courier = transaction.delivery?.courier || null
+      const deliveryOption = transaction.delivery?.option || 'pickup'
+      const deliveryAddress = transaction.delivery?.address || null
+
       return {
         product: {
           id: firstItem?.id || "default",
@@ -79,6 +85,10 @@ export default function PaymentPage() {
         total: finalTotal,
         originalTotal: originalTotal,
         discountAmount: discountAmount,
+        shippingCost: shippingCost,
+        courier: courier,
+        deliveryOption: deliveryOption,
+        deliveryAddress: deliveryAddress,
       }
     }
     
@@ -87,7 +97,7 @@ export default function PaymentPage() {
       product: {
         id: "tent-001",
         name: "Tenda Arpenaz 4.1",
-        image_url: "/api/placeholder?width=150&height=150", // Use placeholder API
+        image_url: "/api/placeholder?width=150&height=150",
         price: 50000,
         quantity: 1,
         category: "tents"
@@ -96,10 +106,14 @@ export default function PaymentPage() {
       total: 150000,
       originalTotal: 150000,
       discountAmount: 0,
+      shippingCost: 0,
+      courier: null,
+      deliveryOption: 'pickup',
+      deliveryAddress: null,
     }
   }
 
-  const { product: productToRent, duration, total, originalTotal, discountAmount } = getTransactionData()
+  const { product: productToRent, duration, total, originalTotal, discountAmount, shippingCost, courier, deliveryOption, deliveryAddress } = getTransactionData()
 
   useEffect(() => {
     setMounted(true)
@@ -416,49 +430,73 @@ export default function PaymentPage() {
                         <span className="font-medium text-red-500">-Rp {discountAmount.toLocaleString('id-ID')}</span>
                       </div>
                     )}
+                    {shippingCost > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-emerald-600">Ongkir ({courier})</span>
+                        <span className="font-medium text-emerald-900">Rp {shippingCost.toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
                     <div className="border-t border-emerald-200 pt-3">
                       <div className="flex justify-between">
                         <span className="font-semibold text-emerald-900">Total</span>
-                        <span className="text-xl font-bold text-emerald-900">Rp {total.toLocaleString('id-ID')}</span>
+                        <span className="text-xl font-bold text-emerald-900">Rp {(total + shippingCost).toLocaleString('id-ID')}</span>
                       </div>
                     </div>
                   </div>
                 </div>
               </Card>
 
-              {/* Branch Info */}
-              {(transaction?.pickupBranch || transaction?.returnBranch) && (
+              {/* Branch Info / Shipping Info */}
+              {(transaction?.pickupBranch || transaction?.returnBranch || deliveryOption === 'shipping') && (
                 <Card className="border-0 shadow-lg bg-white/80 backdrop-blur">
                   <div className="p-6">
                     <h3 className="font-semibold text-emerald-900 mb-4 flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      Lokasi Pengambilan & Pengembalian
+                      {deliveryOption === 'shipping' ? <Truck className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
+                      {deliveryOption === 'shipping' ? 'Info Pengiriman' : 'Lokasi Pengambilan & Pengembalian'}
                     </h3>
                     <div className="space-y-3">
-                      {transaction?.pickupBranch && (
-                        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100">
-                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Pengambilan</p>
-                          <p className="text-sm font-semibold text-emerald-900">{transaction.pickupBranch.name}</p>
-                          {transaction.pickupBranch.address && (
-                            <p className="text-xs text-emerald-700 mt-0.5">
-                              {transaction.pickupBranch.address}{transaction.pickupBranch.city ? `, ${transaction.pickupBranch.city}` : ''}
-                            </p>
+                      {deliveryOption === 'shipping' ? (
+                        <>
+                          <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100">
+                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Pengiriman via</p>
+                            <p className="text-sm font-semibold text-emerald-900">{courier}</p>
+                            {deliveryAddress && (
+                              <p className="text-xs text-emerald-700 mt-0.5">{deliveryAddress}</p>
+                            )}
+                          </div>
+                          <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
+                            <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Biaya Pengiriman</p>
+                            <p className="text-sm font-semibold text-blue-900">Rp {shippingCost.toLocaleString('id-ID')}</p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          {transaction?.pickupBranch && (
+                            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100">
+                              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Pengambilan</p>
+                              <p className="text-sm font-semibold text-emerald-900">{transaction.pickupBranch.name}</p>
+                              {transaction.pickupBranch.address && (
+                                <p className="text-xs text-emerald-700 mt-0.5">
+                                  {transaction.pickupBranch.address}{transaction.pickupBranch.city ? `, ${transaction.pickupBranch.city}` : ''}
+                                </p>
+                              )}
+                            </div>
                           )}
-                        </div>
-                      )}
-                      {transaction?.returnBranch && transaction.returnBranch.id !== transaction?.pickupBranch?.id && (
-                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
-                          <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Pengembalian</p>
-                          <p className="text-sm font-semibold text-blue-900">{transaction.returnBranch.name}</p>
-                          {transaction.returnBranch.address && (
-                            <p className="text-xs text-blue-700 mt-0.5">
-                              {transaction.returnBranch.address}{transaction.returnBranch.city ? `, ${transaction.returnBranch.city}` : ''}
-                            </p>
+                          {transaction?.returnBranch && transaction.returnBranch.id !== transaction?.pickupBranch?.id && (
+                            <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
+                              <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Pengembalian</p>
+                              <p className="text-sm font-semibold text-blue-900">{transaction.returnBranch.name}</p>
+                              {transaction.returnBranch.address && (
+                                <p className="text-xs text-blue-700 mt-0.5">
+                                  {transaction.returnBranch.address}{transaction.returnBranch.city ? `, ${transaction.returnBranch.city}` : ''}
+                                </p>
+                              )}
+                            </div>
                           )}
-                        </div>
-                      )}
-                      {transaction?.returnBranch && transaction.returnBranch.id === transaction?.pickupBranch?.id && (
-                        <p className="text-[10px] text-emerald-600 font-medium">Pengembalian di lokasi yang sama</p>
+                          {transaction?.returnBranch && transaction.returnBranch.id === transaction?.pickupBranch?.id && (
+                            <p className="text-[10px] text-emerald-600 font-medium">Pengembalian di lokasi yang sama</p>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
