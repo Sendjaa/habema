@@ -19,10 +19,11 @@ Habema Outdoor adalah platform sewa peralatan outdoor dan camping premium yang d
 - **Filter & Pencarian**:
   - Pencarian berdasarkan nama
   - Filter berdasarkan kategori
+  - Filter berdasarkan cabang (hanya tampilkan produk yang stoknya > 0 di cabang dipilih)
   - Filter berdasarkan rentang harga
   - Sortir berdasarkan nama, harga (rendah/tinggi), dan rating
   - Filter ketersediaan berdasarkan tanggal (`startDate`/`endDate`)
-- **Detail Produk (`/product/[id]`)**: Gambar, spesifikasi lengkap, harga per hari/malam, stok, rating & review, tombol wishlist, produk terkait
+- **Detail Produk (`/product/[id]`)**: Gambar, spesifikasi lengkap, harga per hari/malam, stok per cabang, rating & review, tombol wishlist, produk terkait
 
 ### 3. **Katalog Beli (`/catalog_shop`)**
 - Produk jual dengan harga, stok, brand, kategori, `is_featured`/`is_new`, dan rating
@@ -45,11 +46,12 @@ Habema Outdoor adalah platform sewa peralatan outdoor dan camping premium yang d
 
 ### 1. **Langkah Pemesanan (`/booking`)**
 1. **Pilih Tanggal**: DateRangePicker, tanggal terisi otomatis dari parameter URL (hero/katalog)
-2. **Syarat & Ketentuan**: Checklist persetujuan yang tersimpan di localStorage
-3. **Verifikasi Identitas**: Upload KTP/SIM + nomor + foto, tersimpan ke tabel `user_identity` (status `pending`)
-4. **Metode Pembayaran**: Transfer Bank, QRIS, atau WhatsApp Konfirmasi
-5. **Opsi Pengambilan**:
-   - **Ambil di Tempat**: Gratis (default)
+2. **Pilih Cabang**: Pemilihan lokasi cabang pengambilan (card list berdasarkan ketersediaan stok) dan cabang pengembalian (dropdown, mendukung cross-branch return)
+3. **Syarat & Ketentuan**: Checklist persetujuan yang tersimpan di localStorage
+4. **Verifikasi Identitas**: Upload KTP/SIM + nomor + foto, tersimpan ke tabel `user_identity` (status `pending`)
+5. **Metode Pembayaran**: Transfer Bank, QRIS, atau WhatsApp Konfirmasi
+6. **Opsi Pengambilan**:
+   - **Ambil di Cabang**: Pilih salah satu dari 3 cabang (Cihanjuang/Basecamp Utama, Bandung Kota, Lembang)
    - **Diantar**: Pilihan lokasi Leaflet, ongkir otomatis (jarak + durasi + volume), area Bandung & KBB, tipe lokasi (standar/camping/outdoor/remote/emergency) dengan biaya tambahan 25%/20%/35%/50%
 
 ### 2. **Perhitungan Harga**
@@ -111,8 +113,9 @@ Habema Outdoor adalah platform sewa peralatan outdoor dan camping premium yang d
 
 ### 3. **Manajemen Booking (`/admin/bookings`)**
 - Statistik (total/pending/confirmed/revenue)
-- Pencarian, filter status, filter tamu/terdaftar, pagination, ekspor
+- Pencarian, filter status, filter tamu/terdaftar, filter per cabang, pagination, ekspor CSV (termasuk kolom cabang)
 - Detail booking: aksi status pending → confirmed → picked_up → returned, edit, hapus
+- Info cabang pengambilan & pengembalian di tabel dan detail modal
 
 ### 4. **Manajemen Pengguna (`/admin/users`)**
 - Pencarian, filter status & tanggal, pagination
@@ -130,7 +133,12 @@ Habema Outdoor adalah platform sewa peralatan outdoor dan camping premium yang d
 ### 8. **Analisis (`/admin/analisis`)**
 - Revenue per status, revenue harian, tren bulanan 6 bulan, revenue per kategori, jumlah pengguna, stok menipis
 
-### 9. **Autentikasi Admin (`/admin/login`)**
+### 9. **Manajemen Cabang (`/admin/branches`)**
+- Daftar semua cabang (aktif/nonaktif) dengan info alamat, telepon, jam operasional, link Google Maps
+- CRUD cabang: tambah, edit, aktifkan/nonaktifkan
+- **Inventaris per Cabang**: Kelola stok peralatan di tiap cabang (branch_inventory), edit jumlah stok langsung dari dashboard admin
+
+### 10. **Autentikasi Admin (`/admin/login`)**
 - Email/password + Turnstile + OTP, pintu masuk berdasarkan flag `users.is_vendor`
 
 ---
@@ -139,6 +147,25 @@ Habema Outdoor adalah platform sewa peralatan outdoor dan camping premium yang d
 
 - **Notifikasi Admin**: Tabel `notifications` (jenis `new_booking`, `id_verification`), panel notifikasi admin, jumlah belum dibaca di dashboard
 - Preferensi notifikasi pengguna (order confirmation, reminder, promo, WhatsApp, email mingguan)
+
+## 🏢 Multi-Cabang
+
+### Struktur Database
+- **`branches`**: 3 cabang (Cihanjuang/Basecamp Utama, Bandung Kota, Lembang) dengan alamat, telepon, jam operasional, link maps, status aktif
+- **`branch_inventory`**: Stok peralatan per cabang (branch_id + equipment_id + quantity)
+- **`bookings`**: Kolom `pickup_branch_id`, `return_branch_id`, `pickup_branch_name`, `return_branch_name`
+
+### Alur Pengguna
+1. Pengguna memilih cabang pengambilan saat checkout (hanya cabang dengan stok > 0 yang ditampilkan)
+2. Stok dikurangi otomatis saat booking dibuat (mencegah overbooking)
+3. Pengguna bisa memilih cabang pengembalian berbeda (cross-branch return)
+4. Saat booking dibatalkan, stok dikembalikan ke cabang pengambilan
+
+### Untuk Admin
+- Kelola cabang (CRUD) di `/admin/branches`
+- Kelola inventaris per cabang (stok peralatan)
+- Filter booking per cabang di halaman manajemen booking
+- Info cabang ditampilkan di tabel booking, detail modal, dan CSV export
 
 ---
 
@@ -158,15 +185,23 @@ Habema Outdoor adalah platform sewa peralatan outdoor dan camping premium yang d
 |-------|--------|
 | `/api/auth/send-otp` | Kirim OTP (register/login) via email |
 | `/api/auth/verify-otp` | Verifikasi OTP & login |
-| `/api/bookings/create` | Buat booking + item + notifikasi (mendukung tamu) |
+| `/api/bookings/create` | Buat booking + item + notifikasi + decrement stok cabang (mendukung tamu) |
+| `/api/bookings/cancel` | Batalkan booking + kembalikan stok cabang |
 | `/api/midtrans/create-transaction` | Buat transaksi Midtrans |
 | `/api/midtrans/webhook` | Notifikasi status pembayaran (verifikasi signature) |
 | `/api/discounts/claim` | Klaim kode diskon |
 | `/api/user-discounts` | Daftar diskon yang diklaim pengguna |
 | `/api/identity/upsert` | Simpan verifikasi identitas (KTP/SIM) |
 | `/api/products`, `/api/categories`, `/api/bundles` | Data produk, kategori, bundel |
-| `/api/admin/dashboard`, `/api/admin/stats` | Data dashboard & analisis |
-| `/api/admin/bookings`, `/api/admin/catalog-shop` | Kelola booking & katalog shop |
+| `/api/branches` | Daftar cabang aktif |
+| `/api/branches/availability` | Ketersediaan stok per cabang (date-aware: cek overlap booking) |
+| `/api/admin/dashboard` | Data dashboard (booking aktif, notifikasi) |
+| `/api/admin/stats` | Data analisis & statistik |
+| `/api/admin/bookings` | Kelola booking (filter per cabang, info branch) |
+| `/api/admin/branches` | CRUD cabang |
+| `/api/admin/branches/[id]` | Update/hapus cabang |
+| `/api/admin/branches/inventory` | Kelola stok per cabang (branch_inventory) |
+| `/api/admin/catalog-shop` | Kelola katalog shop |
 | `/api/track` | Pixel pelacakan 1×1 |
 | `/api/placeholder` | Gambar placeholder |
 
@@ -177,15 +212,17 @@ Habema Outdoor adalah platform sewa peralatan outdoor dan camping premium yang d
 | Fitur | Status | Prioritas |
 |-------|--------|-----------|
 | Booking System (multi-step) | ✅ Aktif | Tinggi |
+| Multi-Cabang (3 lokasi, stok per cabang, cross-branch return) | ✅ Aktif | Tinggi |
 | Payment (Midtrans + offline) | ✅ Aktif | Tinggi |
 | WhatsApp Konfirmasi | ✅ Aktif | Tinggi |
 | User Authentication (OTP/OAuth) | ✅ Aktif | Tinggi |
-| Katalog Sewa & Beli | ✅ Aktif | Tinggi |
+| Katalog Sewa & Beli (filter per cabang) | ✅ Aktif | Tinggi |
 | Bundel, Paket, Open Trip | ✅ Aktif | Sedang |
 | Diskon & Promo | ✅ Aktif | Sedang |
 | Review & Wishlist | ✅ Aktif | Sedang |
 | Verifikasi Identitas (KTP/SIM) | ✅ Aktif (manual review) | Sedang |
 | Pengiriman & Ongkir Otomatis | ✅ Aktif (Bandung & KBB) | Sedang |
+| Admin Manajemen Cabang & Inventaris | ✅ Aktif | Sedang |
 | Push Notifications | ❌ Belum Ada | Rendah |
 | Membership / Loyalty Program | ❌ Belum Ada | Rendah |
 | Vendor Dashboard | ❌ Belum Ada | Rendah |
@@ -210,7 +247,7 @@ Habema Outdoor adalah platform sewa peralatan outdoor dan camping premium yang d
 - **Supabase**: Backend-as-a-Service dengan PostgreSQL
 - **Row Level Security**: Keamanan data tingkat baris
 - **Supabase Storage**: Upload avatar dan foto dokumen
-- **22 tabel database**: bookings, booking_items, equipment, shop_products, bundles, discounts, user_identity, reviews, dll.
+- **24 tabel database**: bookings, booking_items, equipment, shop_products, bundles, discounts, user_identity, reviews, branches, branch_inventory, dll.
 
 ### Deployment & Monitoring
 - **Vercel**: Platform hosting dan deployment
@@ -255,6 +292,11 @@ Habema Outdoor adalah platform sewa peralatan outdoor dan camping premium yang d
 - ✅ Review, wishlist, download invoice
 - ✅ Admin dashboard, manajemen booking/equipment/user/discount/promo/analisis
 - ✅ Notifikasi admin
+- ✅ Multi-cabang (3 lokasi, stok per cabang, cross-branch return)
+- ✅ Admin manajemen cabang & inventaris per cabang
+- ✅ Filter katalog per cabang
+- ✅ Stok otomatis berkurang saat booking, dikembalikan saat cancel
+- ✅ Availability API date-aware (cek overlap tanggal booking)
 
 ### Berikutnya
 - 🚧 Push notifications
@@ -283,7 +325,8 @@ Habema Outdoor adalah platform sewa peralatan outdoor dan camping premium yang d
 - **Akun**: `/account`
 - **Bantuan**: `/guide`, `/help`, `/faq`
 - **Admin**: `/admin`
+- **Admin Cabang**: `/admin/branches`
 
 ---
 
-*Update terakhir: 3 Agustus 2026*
+*Update terakhir: 7 Agustus 2026*

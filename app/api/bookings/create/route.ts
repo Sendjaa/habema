@@ -96,7 +96,8 @@ export async function POST(request: NextRequest) {
 
       for (const item of itemsArray) {
         const available = invMap.get(item.equipment_id) ?? 0
-        if (Number(item.quantity) > available) {
+        const needed = Number(item.quantity) || 0
+        if (needed > available) {
           return NextResponse.json(
             {
               error: `Stok di ${pickupBranch.name} tidak mencukupi`,
@@ -159,6 +160,36 @@ export async function POST(request: NextRequest) {
         },
         { status: 500 }
       )
+    }
+
+    // ===== Decrement branch_inventory untuk cabang pengambilan =====
+    if (orderData?.pickup_branch_id) {
+      for (const item of itemsArray) {
+        const { error: decErr } = await supabaseAdmin.rpc('decrement_branch_stock', {
+          p_branch_id: orderData.pickup_branch_id,
+          p_equipment_id: item.equipment_id,
+          p_quantity: Number(item.quantity),
+        }).single().then(() => ({ error: null })).catch((e: any) => ({ error: e }));
+
+        // Fallback: jika RPC belum tersedia, lakukan decrement manual via update
+        if (decErr) {
+          // Ambil stok saat ini
+          const { data: invRow } = await supabaseAdmin
+            .from('branch_inventory')
+            .select('id, quantity')
+            .eq('branch_id', orderData.pickup_branch_id)
+            .eq('equipment_id', item.equipment_id)
+            .maybeSingle()
+
+          if (invRow) {
+            const newQty = Math.max(0, Number(invRow.quantity) - Number(item.quantity))
+            await supabaseAdmin
+              .from('branch_inventory')
+              .update({ quantity: newQty, updated_at: new Date().toISOString() })
+              .eq('id', invRow.id)
+          }
+        }
+      }
     }
 
     // Create admin notification (hanya bila ada user_id; kolom notifications.user_id NOT NULL)

@@ -14,13 +14,14 @@ export async function GET(request: NextRequest) {
     const searchTerm = searchParams.get('search') || ''
     const statusFilter = searchParams.get('status') || 'all'
     const userTypeFilter = searchParams.get('userType') || 'all'
+    const branchFilter = searchParams.get('branchId') || 'all'
     const page = parseInt(searchParams.get('page') || '1')
     const itemsPerPage = parseInt(searchParams.get('perPage') || '10')
 
     let query = supabaseAdmin.from('bookings').select('*', { count: 'exact' })
 
     if (searchTerm) {
-      query = query.or(`id.ilike.%${searchTerm}%`)
+      query = query.or(`id.ilike.%${searchTerm}%,pickup_branch_name.ilike.%${searchTerm}%,return_branch_name.ilike.%${searchTerm}%`)
     }
     if (statusFilter !== 'all') {
       query = query.eq('status', statusFilter)
@@ -29,6 +30,9 @@ export async function GET(request: NextRequest) {
       query = query.is('user_id', null)
     } else if (userTypeFilter === 'registered') {
       query = query.not('user_id', 'is', null)
+    }
+    if (branchFilter !== 'all') {
+      query = query.eq('pickup_branch_id', branchFilter)
     }
 
     const from = (page - 1) * itemsPerPage

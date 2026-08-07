@@ -189,6 +189,8 @@ export type Database = {
       bookings: {
         Row: {
           additional_options_cost: number | null
+          cancel_note: string | null
+          cancel_reason: string | null
           created_at: string | null
           customer_note: string | null
           delivery_accessibility_notes: string | null
@@ -213,11 +215,15 @@ export type Database = {
           notes: string | null
           payment_method: string | null
           payment_status: string | null
+          pickup_branch_id: string | null
+          pickup_branch_name: string | null
           pickup_contact_name: string | null
           pickup_contact_phone: string | null
           pickup_date: string | null
           product_id: string | null
           rental_days: number | null
+          return_branch_id: string | null
+          return_branch_name: string | null
           return_date: string | null
           start_date: string
           status: string | null
@@ -228,6 +234,8 @@ export type Database = {
         }
         Insert: {
           additional_options_cost?: number | null
+          cancel_note?: string | null
+          cancel_reason?: string | null
           created_at?: string | null
           customer_note?: string | null
           delivery_accessibility_notes?: string | null
@@ -252,11 +260,15 @@ export type Database = {
           notes?: string | null
           payment_method?: string | null
           payment_status?: string | null
+          pickup_branch_id?: string | null
+          pickup_branch_name?: string | null
           pickup_contact_name?: string | null
           pickup_contact_phone?: string | null
           pickup_date?: string | null
           product_id?: string | null
           rental_days?: number | null
+          return_branch_id?: string | null
+          return_branch_name?: string | null
           return_date?: string | null
           start_date: string
           status?: string | null
@@ -267,6 +279,8 @@ export type Database = {
         }
         Update: {
           additional_options_cost?: number | null
+          cancel_note?: string | null
+          cancel_reason?: string | null
           created_at?: string | null
           customer_note?: string | null
           delivery_accessibility_notes?: string | null
@@ -291,11 +305,15 @@ export type Database = {
           notes?: string | null
           payment_method?: string | null
           payment_status?: string | null
+          pickup_branch_id?: string | null
+          pickup_branch_name?: string | null
           pickup_contact_name?: string | null
           pickup_contact_phone?: string | null
           pickup_date?: string | null
           product_id?: string | null
           rental_days?: number | null
+          return_branch_id?: string | null
+          return_branch_name?: string | null
           return_date?: string | null
           start_date?: string
           status?: string | null
@@ -306,13 +324,105 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "bookings_pickup_branch_id_fkey"
+            columns: ["pickup_branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bookings_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "equipment"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "bookings_return_branch_id_fkey"
+            columns: ["return_branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      branch_inventory: {
+        Row: {
+          branch_id: string
+          equipment_id: string
+          id: string
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          equipment_id: string
+          id?: string
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          equipment_id?: string
+          id?: string
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_inventory_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branch_inventory_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      branches: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          map_url: string | null
+          name: string
+          operational_hours: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          map_url?: string | null
+          name: string
+          operational_hours?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          map_url?: string | null
+          name?: string
+          operational_hours?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       bundle_id_mapping: {
         Row: {
@@ -826,6 +936,39 @@ export type Database = {
           },
         ]
       }
+      otp_codes: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          otp: string
+          type: string
+          verified: boolean | null
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          email: string
+          expires_at: string
+          id?: string
+          otp: string
+          type: string
+          verified?: boolean | null
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          otp?: string
+          type?: string
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
       rental_condition_checklists: {
         Row: {
           booking_id: string
@@ -941,6 +1084,197 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      shop_order_items: {
+        Row: {
+          id: string
+          name: string
+          order_id: string | null
+          price: number
+          product_id: string
+          quantity: number
+          total: number
+        }
+        Insert: {
+          id?: string
+          name: string
+          order_id?: string | null
+          price: number
+          product_id: string
+          quantity: number
+          total: number
+        }
+        Update: {
+          id?: string
+          name?: string
+          order_id?: string | null
+          price?: number
+          product_id?: string
+          quantity?: number
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "shop_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_orders: {
+        Row: {
+          address: string
+          cancel_note: string | null
+          cancel_reason: string | null
+          city: string | null
+          created_at: string
+          customer_name: string
+          delivery_cost: number
+          discount_amount: number
+          discount_id: string | null
+          email: string | null
+          id: string
+          midtrans_token: string | null
+          note: string | null
+          order_id: string | null
+          payment_method: string | null
+          payment_status: string
+          phone: string
+          postal_code: string | null
+          status: string
+          subtotal: number
+          total_amount: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          address: string
+          cancel_note?: string | null
+          cancel_reason?: string | null
+          city?: string | null
+          created_at?: string
+          customer_name: string
+          delivery_cost?: number
+          discount_amount?: number
+          discount_id?: string | null
+          email?: string | null
+          id?: string
+          midtrans_token?: string | null
+          note?: string | null
+          order_id?: string | null
+          payment_method?: string | null
+          payment_status?: string
+          phone: string
+          postal_code?: string | null
+          status?: string
+          subtotal?: number
+          total_amount?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          address?: string
+          cancel_note?: string | null
+          cancel_reason?: string | null
+          city?: string | null
+          created_at?: string
+          customer_name?: string
+          delivery_cost?: number
+          discount_amount?: number
+          discount_id?: string | null
+          email?: string | null
+          id?: string
+          midtrans_token?: string | null
+          note?: string | null
+          order_id?: string | null
+          payment_method?: string | null
+          payment_status?: string
+          phone?: string
+          postal_code?: string | null
+          status?: string
+          subtotal?: number
+          total_amount?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      shop_products: {
+        Row: {
+          brand: string | null
+          category: string | null
+          created_at: string
+          description: string | null
+          dimensions: string | null
+          gallery_urls: Json
+          id: string
+          image_url: string | null
+          is_available: boolean
+          is_featured: boolean
+          is_new: boolean
+          material: string | null
+          name: string
+          original_price: number | null
+          price: number
+          rating: number
+          review_count: number
+          sold_count: number
+          specifications: Json
+          stock: number
+          updated_at: string
+          weight_kg: number | null
+        }
+        Insert: {
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          dimensions?: string | null
+          gallery_urls?: Json
+          id?: string
+          image_url?: string | null
+          is_available?: boolean
+          is_featured?: boolean
+          is_new?: boolean
+          material?: string | null
+          name: string
+          original_price?: number | null
+          price?: number
+          rating?: number
+          review_count?: number
+          sold_count?: number
+          specifications?: Json
+          stock?: number
+          updated_at?: string
+          weight_kg?: number | null
+        }
+        Update: {
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          dimensions?: string | null
+          gallery_urls?: Json
+          id?: string
+          image_url?: string | null
+          is_available?: boolean
+          is_featured?: boolean
+          is_new?: boolean
+          material?: string | null
+          name?: string
+          original_price?: number | null
+          price?: number
+          rating?: number
+          review_count?: number
+          sold_count?: number
+          specifications?: Json
+          stock?: number
+          updated_at?: string
+          weight_kg?: number | null
+        }
+        Relationships: []
       }
       user_discounts: {
         Row: {
@@ -1082,114 +1416,6 @@ export type Database = {
           updated_at?: string | null
           vendor_description?: string | null
           vendor_name?: string | null
-        }
-        Relationships: []
-      }
-      shop_products: {
-        Row: {
-          id: string
-          name: string
-          description: string | null
-          price: number
-          original_price: number | null
-          stock: number
-          category: string | null
-          image_url: string | null
-          gallery_urls: Json
-          brand: string | null
-          specifications: Json
-          weight_kg: number | null
-          dimensions: string | null
-          material: string | null
-          is_available: boolean
-          is_featured: boolean
-          is_new: boolean
-          rating: number
-          review_count: number
-          sold_count: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          description?: string | null
-          price?: number
-          original_price?: number | null
-          stock?: number
-          category?: string | null
-          image_url?: string | null
-          gallery_urls?: Json
-          brand?: string | null
-          specifications?: Json
-          weight_kg?: number | null
-          dimensions?: string | null
-          material?: string | null
-          is_available?: boolean
-          is_featured?: boolean
-          is_new?: boolean
-          rating?: number
-          review_count?: number
-          sold_count?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          description?: string | null
-          price?: number
-          original_price?: number | null
-          stock?: number
-          category?: string | null
-          image_url?: string | null
-          gallery_urls?: Json
-          brand?: string | null
-          specifications?: Json
-          weight_kg?: number | null
-          dimensions?: string | null
-          material?: string | null
-          is_available?: boolean
-          is_featured?: boolean
-          is_new?: boolean
-          rating?: number
-          review_count?: number
-          sold_count?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      otp_codes: {
-        Row: {
-          id: string
-          email: string
-          otp: string
-          type: string
-          expires_at: string
-          attempts: number | null
-          verified: boolean | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          email: string
-          otp: string
-          type: string
-          expires_at: string
-          attempts?: number | null
-          verified?: boolean | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          email?: string
-          otp?: string
-          type?: string
-          expires_at?: string
-          attempts?: number | null
-          verified?: boolean | null
-          created_at?: string | null
         }
         Relationships: []
       }

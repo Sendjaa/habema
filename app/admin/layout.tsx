@@ -17,12 +17,14 @@ import {
   X,
   Mountain,
   Store,
+  MapPin,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/bookings", label: "Booking", icon: ShoppingCart },
   { href: "/admin/equipment", label: "Produk Rental", icon: Package },
+  { href: "/admin/branches", label: "Cabang", icon: MapPin },
   { href: "/admin/catalog-shop", label: "Katalog Toko", icon: Store },
   { href: "/admin/orders-shop", label: "Order Toko", icon: ShoppingCart },
   { href: "/admin/users", label: "Pengguna", icon: Users },

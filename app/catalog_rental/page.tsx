@@ -29,6 +29,9 @@ function CatalogContent() {
   const [selectedCategory, setSelectedCategory] = useState<string | "all">("all");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
   const [sortBy, setSortBy] = useState<"name" | "price-low" | "price-high" | "rating">("name");
+  const [branches, setBranches] = useState<any[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
+  const [branchStockMap, setBranchStockMap] = useState<Map<string, number>>(new Map());
   
   // mengambil tanggal mulai dan selesai sewa dari query params
   const urlStartDate = useSearchParamsHook.get("startDate") || "";
@@ -92,6 +95,17 @@ function CatalogContent() {
             })),
           );
         }
+
+        // 3. Fetch Branches
+        try {
+          const branchRes = await fetch('/api/branches');
+          const branchResult = await branchRes.json();
+          if (branchResult.success) {
+            setBranches(branchResult.data || []);
+          }
+        } catch {
+          // Branches are optional
+        }
       } catch (err) {
         console.error("Unexpected error:", err);
       } finally {
@@ -102,6 +116,46 @@ function CatalogContent() {
     fetchData();
   }, [urlStartDate, urlEndDate]);
   
+  // Fetch branch stock when a branch is selected
+  useEffect(() => {
+    if (!selectedBranchId) {
+      setBranchStockMap(new Map());
+      return;
+    }
+    const fetchBranchStock = async () => {
+      try {
+        const res = await fetch(`/api/branches/availability`);
+        const result = await res.json();
+        if (result.success) {
+          const stockMap = new Map<string, number>();
+          for (const row of result.data || []) {
+            if (row.id === selectedBranchId) {
+              // This is a branch-level stock entry, but we need equipment-level
+              // Let's fetch the inventory for this branch
+              break;
+            }
+          }
+          // Fetch inventory for selected branch
+          const { data: invData } = await supabase
+            .from('branch_inventory')
+            .select('equipment_id, quantity')
+            .eq('branch_id', selectedBranchId);
+          
+          if (invData) {
+            const map = new Map<string, number>();
+            for (const row of invData) {
+              map.set(row.equipment_id, row.quantity);
+            }
+            setBranchStockMap(map);
+          }
+        }
+      } catch {
+        setBranchStockMap(new Map());
+      }
+    };
+    fetchBranchStock();
+  }, [selectedBranchId]);
+
   // Best seller: top 5 equipment dengan rental_count tertinggi
   const bestSellers = useMemo(() => {
     return [...equipment]
@@ -124,8 +178,16 @@ function CatalogContent() {
       (item) =>
         item.dailyPrice >= priceRange[0] && item.dailyPrice <= priceRange[1],
     );
+
+    // 3. Filter Cabang (hanya tampilkan produk yang stoknya > 0 di cabang tsb)
+    if (selectedBranchId && branchStockMap.size > 0) {
+      result = result.filter((item) => {
+        const stock = branchStockMap.get(item.id) ?? 0;
+        return stock > 0;
+      });
+    }
   
-    // 3. Sortir
+    // 4. Sortir
     switch (sortBy) {
       case "price-low":
         result.sort((a, b) => a.dailyPrice - b.dailyPrice);
@@ -143,7 +205,7 @@ function CatalogContent() {
     }
   
     return result;
-  }, [equipment, selectedCategory, priceRange, sortBy]);
+  }, [equipment, selectedCategory, priceRange, sortBy, selectedBranchId, branchStockMap]);
   
   // mengubah tanggal dan klik update/cari katalog
   const handleUpdateFilter = (e: React.FormEvent<HTMLFormElement>) => {
@@ -342,6 +404,9 @@ function CatalogContent() {
                 onPriceRangeChange={setPriceRange}
                 sortBy={sortBy}
                 onSortChange={setSortBy}
+                branches={branches}
+                selectedBranchId={selectedBranchId}
+                onBranchChange={setSelectedBranchId}
               />
             </div>
           </aside>

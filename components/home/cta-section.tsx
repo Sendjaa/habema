@@ -1,10 +1,67 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, Phone, MessageCircle, MapPin } from 'lucide-react'
+import { ArrowRight, Phone, MessageCircle, MapPin, Loader2 } from 'lucide-react'
+
+interface Branch {
+  id: string
+  name: string
+  address: string | null
+  city: string | null
+  phone: string | null
+  operational_hours: string | null
+  map_url: string | null
+}
+
+function formatPhone(phone: string): string {
+  // Convert "0812-2000-1001" to "+62 812 2000 1001"
+  const cleaned = phone.replace(/[^0-9]/g, '')
+  if (cleaned.startsWith('0')) {
+    return '+62 ' + cleaned.slice(1).replace(/(\d{3})(\d{4})(\d{4})/, '$1 $2 $3')
+  }
+  if (cleaned.startsWith('62')) {
+    return '+' + cleaned.slice(0, 2) + ' ' + cleaned.slice(2).replace(/(\d{3})(\d{4})(\d{4})/, '$1 $2 $3')
+  }
+  return phone
+}
+
+function formatPhoneWa(phone: string): string {
+  // Convert to wa.me format: "081220001001" → "6281220001001"
+  const cleaned = phone.replace(/[^0-9]/g, '')
+  if (cleaned.startsWith('0')) {
+    return '62' + cleaned.slice(1)
+  }
+  if (cleaned.startsWith('62')) {
+    return cleaned
+  }
+  return cleaned
+}
 
 export function CTA() {
+  const [branches, setBranches] = useState<Branch[]>([])
+  const [branch, setBranch] = useState<Branch | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const res = await fetch('/api/branches')
+        const result = await res.json()
+        if (result.success && result.data?.length > 0) {
+          setBranches(result.data)
+          setBranch(result.data[0]) // Cabang pertama untuk WA & telepon
+        }
+      } catch {
+        // Fallback ke data hardcoded jika API gagal
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchBranches()
+  }, [])
+
   return (
     <section className="py-16 md:py-24 bg-stone-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -28,7 +85,7 @@ export function CTA() {
                 className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl"
                 asChild
               >
-                <Link href="/catalog">
+                <Link href="/catalog_rental">
                   Mulai Sekarang
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
@@ -46,45 +103,83 @@ export function CTA() {
             </div>
           </div>
 
-          {/* Right — Kontak minimal */}
+          {/* Right — Kontak dari data cabang */}
           <div className="lg:col-span-2 space-y-3">
-            <a
-              href="https://wa.me/6283898749357"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-4 bg-white rounded-xl border border-stone-200 p-4 hover:border-emerald-300 hover:shadow-sm transition-all group"
-            >
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition-colors">
-                <MessageCircle className="w-5 h-5 text-emerald-600" />
+            {loading ? (
+              <div className="flex items-center justify-center py-8 text-stone-400">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                <span className="text-xs">Memuat info kontak...</span>
               </div>
-              <div>
-                <p className="text-sm font-semibold text-stone-900">Chat WhatsApp</p>
-                <p className="text-xs text-stone-500">+62 838 9874 9357</p>
-              </div>
-            </a>
+            ) : (
+              <>
+                {/* WhatsApp & Telepon dari cabang pertama */}
+                <a
+                  href={`https://wa.me/${formatPhoneWa(branch?.phone || '0838-9874-9357')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-4 bg-white rounded-xl border border-stone-200 p-4 hover:border-emerald-300 hover:shadow-sm transition-all group"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition-colors">
+                    <MessageCircle className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-stone-900">Chat WhatsApp</p>
+                    <p className="text-xs text-stone-500">{formatPhone(branch?.phone || '0838-9874-9357')}</p>
+                  </div>
+                </a>
 
-            <a
-              href="tel:+6283898749357"
-              className="flex items-center gap-4 bg-white rounded-xl border border-stone-200 p-4 hover:border-emerald-300 hover:shadow-sm transition-all group"
-            >
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition-colors">
-                <Phone className="w-5 h-5 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-stone-900">Telepon</p>
-                <p className="text-xs text-stone-500">+62 838 9874 9357</p>
-              </div>
-            </a>
+                <a
+                  href={`tel:${formatPhoneWa(branch?.phone || '0838-9874-9357')}`}
+                  className="flex items-center gap-4 bg-white rounded-xl border border-stone-200 p-4 hover:border-emerald-300 hover:shadow-sm transition-all group"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition-colors">
+                    <Phone className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-stone-900">Telepon</p>
+                    <p className="text-xs text-stone-500">{formatPhone(branch?.phone || '0838-9874-9357')}</p>
+                  </div>
+                </a>
 
-            <div className="flex items-center gap-4 bg-white rounded-xl border border-stone-200 p-4">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-                <MapPin className="w-5 h-5 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-stone-900">Lokasi</p>
-                <p className="text-xs text-stone-500">Jl.Kolonel Masturi, No.176, Lembang, Bandung Barat</p>
-              </div>
-            </div>
+                {/* Semua alamat cabang */}
+                {branches.length > 0 ? (
+                  branches.map((b) => {
+                    const addr = `${b.address || ''}${b.city ? `, ${b.city}` : ''}`
+                    const mapsUrl = b.map_url || `https://maps.google.com/?q=${encodeURIComponent(addr)}`
+                    return (
+                      <a
+                        key={b.id}
+                        href={mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-4 bg-white rounded-xl border border-stone-200 p-4 hover:border-emerald-300 hover:shadow-sm transition-all group"
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition-colors">
+                          <MapPin className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-stone-900">{b.name}</p>
+                          <p className="text-xs text-stone-500">{addr}</p>
+                          {b.operational_hours && (
+                            <p className="text-[10px] text-stone-400 mt-0.5">{b.operational_hours}</p>
+                          )}
+                        </div>
+                      </a>
+                    )
+                  })
+                ) : (
+                  <div className="flex items-center gap-4 bg-white rounded-xl border border-stone-200 p-4">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                      <MapPin className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-stone-900">Lokasi</p>
+                      <p className="text-xs text-stone-500">Jl. Raya Cihanjuang No. 123, Bandung Barat</p>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
         </div>

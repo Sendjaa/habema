@@ -42,6 +42,10 @@ interface Booking {
   deposit_amount: number;
   created_at: string;
   notes?: string;
+  pickup_branch_id: string | null;
+  pickup_branch_name: string | null;
+  return_branch_id: string | null;
+  return_branch_name: string | null;
   booking_items: Array<{
     id: string;
     equipment_id: string;
@@ -64,6 +68,8 @@ export default function BookingManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [userTypeFilter, setUserTypeFilter] = useState("all");
+  const [branchFilter, setBranchFilter] = useState("all");
+  const [branches, setBranches] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -77,7 +83,18 @@ export default function BookingManagement() {
   useEffect(() => {
     fetchBookings();
     fetchStats();
-  }, [currentPage, searchTerm, statusFilter, userTypeFilter]);
+  }, [currentPage, searchTerm, statusFilter, userTypeFilter, branchFilter]);
+
+  useEffect(() => {
+    const fetchBranchesList = async () => {
+      try {
+        const res = await fetch("/api/admin/branches");
+        const result = await res.json();
+        if (result.success) setBranches(result.data || []);
+      } catch {}
+    };
+    fetchBranchesList();
+  }, []);
 
   const fetchStats = async () => {
     try {
@@ -107,6 +124,7 @@ export default function BookingManagement() {
       if (searchTerm) params.set('search', searchTerm)
       if (statusFilter !== 'all') params.set('status', statusFilter)
       if (userTypeFilter !== 'all') params.set('userType', userTypeFilter)
+      if (branchFilter !== 'all') params.set('branchId', branchFilter)
 
       const res = await fetch(`/api/admin/bookings?${params}`)
       if (!res.ok) throw new Error('Failed to fetch bookings')
@@ -190,12 +208,14 @@ export default function BookingManagement() {
 
       // Convert to CSV
       const csv = [
-        "Booking ID,Customer,Status,Start Date,End Date,Total,Created At",
+        "Booking ID,Customer,Status,Cabang Pengambilan,Cabang Pengembalian,Start Date,End Date,Total,Created At",
         ...(data || []).map(booking => {
           return [
             booking.id.slice(0, 8),
             booking.user_profile?.email || (booking.user_id ? "Registered User" : "Guest"),
             booking.status,
+            booking.pickup_branch_name || '-',
+            booking.return_branch_name || '-',
             booking.start_date,
             booking.end_date,
             formatCurrency(booking.total_cost),
@@ -360,7 +380,7 @@ export default function BookingManagement() {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               <div>
                 <Label htmlFor="status-filter" className="text-xs font-medium text-stone-600">Status</Label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -392,6 +412,21 @@ export default function BookingManagement() {
                 </Select>
               </div>
 
+              <div>
+                <Label htmlFor="branch-filter" className="text-xs font-medium text-stone-600">Cabang</Label>
+                <Select value={branchFilter} onValueChange={setBranchFilter}>
+                  <SelectTrigger id="branch-filter" className="mt-1 border-stone-200 rounded-lg">
+                    <SelectValue placeholder="Semua Cabang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Cabang</SelectItem>
+                    {branches.map((b: any) => (
+                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="flex items-end">
                 <Button 
                   variant="outline" 
@@ -401,6 +436,7 @@ export default function BookingManagement() {
                     setSearchTerm("");
                     setStatusFilter("all");
                     setUserTypeFilter("all");
+                    setBranchFilter("all");
                     setCurrentPage(1);
                   }}
                 >
@@ -457,6 +493,9 @@ export default function BookingManagement() {
                         </div>
                       )}
                       <p><span className="text-stone-400">Tanggal:</span> {formatDate(booking.start_date)} - {formatDate(booking.end_date)}</p>
+                      {booking.pickup_branch_name && (
+                        <p><span className="text-stone-400">Cabang:</span> {booking.pickup_branch_name}{booking.return_branch_name && booking.return_branch_name !== booking.pickup_branch_name ? ` → ${booking.return_branch_name}` : ''}</p>
+                      )}
                       <p><span className="text-stone-400">Dibuat:</span> {formatDate(booking.created_at)}</p>
                     </div>
                     
@@ -490,6 +529,7 @@ export default function BookingManagement() {
                   <th className="text-left py-3 px-4 text-xs font-medium text-stone-500 uppercase tracking-wider">ID</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-stone-500 uppercase tracking-wider">Pelanggan</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-stone-500 uppercase tracking-wider">Barang</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-stone-500 uppercase tracking-wider">Cabang</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-stone-500 uppercase tracking-wider">Tanggal Sewa</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-stone-500 uppercase tracking-wider">Status</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-stone-500 uppercase tracking-wider">Total</th>
@@ -541,6 +581,24 @@ export default function BookingManagement() {
                             <span className="text-stone-400 text-xs">+{booking.booking_items.length - 1} lainnya</span>
                           )}
                         </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="text-xs text-stone-600">
+                        <div className="flex items-center gap-1">
+                          <span className="text-stone-400">ambil:</span>
+                          <span className="font-medium truncate max-w-28" title={booking.pickup_branch_name || ''}>
+                            {booking.pickup_branch_name || '-'}
+                          </span>
+                        </div>
+                        {booking.return_branch_name && booking.return_branch_name !== booking.pickup_branch_name && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <span className="text-stone-400">kembali:</span>
+                            <span className="font-medium text-blue-600 truncate max-w-28" title={booking.return_branch_name}>
+                              {booking.return_branch_name}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="py-3 px-4">
@@ -697,6 +755,25 @@ export default function BookingManagement() {
                     </div>
                   </div>
                 </div>
+
+                {/* Branch Info */}
+                {selectedBooking.pickup_branch_name && (
+                  <div>
+                    <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Lokasi</h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-stone-400 text-xs">Cabang Pengambilan</span>
+                        <p className="text-stone-800 font-medium">{selectedBooking.pickup_branch_name}</p>
+                      </div>
+                      {selectedBooking.return_branch_name && (
+                        <div>
+                          <span className="text-stone-400 text-xs">Cabang Pengembalian</span>
+                          <p className="text-stone-800 font-medium">{selectedBooking.return_branch_name}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Items */}
                 <div>

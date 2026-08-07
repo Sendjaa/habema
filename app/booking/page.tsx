@@ -303,8 +303,15 @@ function BookingContent() {
       if (!product) return;
       setLoadingBranches(true);
       try {
+        const params = new URLSearchParams({
+          productId: product.id,
+        });
+        if (startDate && endDate) {
+          params.set('startDate', startDate.toISOString());
+          params.set('endDate', endDate.toISOString());
+        }
         const res = await fetch(
-          `/api/branches/availability?productId=${encodeURIComponent(product.id)}`,
+          `/api/branches/availability?${params.toString()}`,
         );
         const result = await res.json();
         if (res.ok && result.success) {
@@ -322,7 +329,7 @@ function BookingContent() {
       }
     };
     fetchBranches();
-  }, [product]);
+  }, [product, startDate, endDate]);
 
   // ==================== CALCULATIONS ====================
   const days =

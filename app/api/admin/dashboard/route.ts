@@ -1,60 +1,56 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET() {
+export async function GET(_request: NextRequest) {
   try {
     let supabaseAdmin: any
     try {
       const mod = await import('@/lib/supabaseAdmin')
       supabaseAdmin = mod.supabaseAdmin
-    } catch (e: any) {
-      console.error('Import error:', e?.message)
+    } catch {
       return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
     }
 
-    if (!supabaseAdmin) {
-      return NextResponse.json({ error: 'Koneksi database gagal (supabaseAdmin null)' }, { status: 500 })
-    }
-
-    const now = new Date()
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    startOfDay.setHours(0, 0, 0, 0)
-    const endOfDay = new Date(startOfDay)
-    endOfDay.setDate(endOfDay.getDate() + 1)
-
-    // Today's bookings for stat cards
-    const { data: todayBookings, error } = await supabaseAdmin
+    // Fetch pending bookings
+    const { data: pending } = await supabaseAdmin
       .from('bookings')
       .select('id, status, total_cost, created_at, user_id')
-      .in('status', ['pending', 'confirmed', 'picked_up'])
-      .gte('created_at', startOfDay.toISOString())
-      .lt('created_at', endOfDay.toISOString())
+      .eq('status', 'pending')
       .order('created_at', { ascending: false })
+      .limit(20)
 
-    if (error) {
-      console.error('Query1 error:', error)
-      throw error
-    }
-
-    // All active bookings for user list
-    const { data: activeBookings, error: activeError } = await supabaseAdmin
+    // Fetch picked_up bookings
+    const { data: pickedUp } = await supabaseAdmin
       .from('bookings')
-      .select('id, status, start_date, end_date, total_cost, created_at, user_id')
+      .select('id, status, total_cost, created_at, user_id')
+      .eq('status', 'picked_up')
+      .order('created_at', { ascending: false })
+      .limit(20)
+
+    // Fetch confirmed bookings
+    const { data: confirmed } = await supabaseAdmin
+      .from('bookings')
+      .select('id, status, total_cost, created_at, user_id')
+      .eq('status', 'confirmed')
+      .order('created_at', { ascending: false })
+      .limit(20)
+
+    // Active bookings (pending + confirmed + picked_up) with user info
+    const { data: activeBookings } = await supabaseAdmin
+      .from('bookings')
+      .select(`
+        id, status, start_date, end_date, total_cost, created_at, user_id
+      `)
       .in('status', ['pending', 'confirmed', 'picked_up'])
       .order('created_at', { ascending: false })
+      .limit(20)
 
-    if (activeError) {
-      console.error('Query2 error:', activeError)
-      throw activeError
-    }
-
-    // Fetch user profiles for all bookings that have user_id
+    // Fetch user profiles for active bookings
+    let userMap: Record<string, any> = {}
     const userIds = [...new Set((activeBookings || []).map((b: any) => b.user_id).filter(Boolean))]
-    let userMap: Record<string, { id: string; full_name: string | null; email: string | null }> = {}
-
     if (userIds.length > 0) {
       const { data: users } = await supabaseAdmin
         .from('users')
-        .select('id, full_name, email')
+        .select('id, email, full_name')
         .in('id', userIds)
       if (users) {
         for (const u of users) {
@@ -63,29 +59,29 @@ export async function GET() {
       }
     }
 
-    // Merge user data into bookings
-    const enriched = (activeBookings || []).map((b: any) => ({
+    const enrichedActive = (activeBookings || []).map((b: any) => ({
       ...b,
-      users: b.user_id ? (userMap[b.user_id] || null) : null,
+      users: b.user_id ? userMap[b.user_id] || null : null,
     }))
 
-    // Unread notification count
-    const { count: unreadCount, error: notifError } = await supabaseAdmin
+    // Unread notifications count
+    const { count: unreadCount } = await supabaseAdmin
       .from('notifications')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('is_read', false)
-    if (notifError) console.error('Error fetching notification count:', notifError)
-
-    const pending = (todayBookings || []).filter((b: any) => b.status === 'pending')
-    const pickedUp = (todayBookings || []).filter((b: any) => b.status === 'picked_up')
-    const confirmed = (todayBookings || []).filter((b: any) => b.status === 'confirmed')
 
     return NextResponse.json({
       success: true,
-      data: { pending, pickedUp, confirmed, activeBookings: enriched, unreadCount: unreadCount ?? 0 },
+      data: {
+        pending: pending || [],
+        pickedUp: pickedUp || [],
+        confirmed: confirmed || [],
+        activeBookings: enrichedActive,
+        unreadCount: unreadCount || 0,
+      },
     })
-  } catch (error: any) {
-    console.error('Dashboard API Error:', error?.message || error, JSON.stringify(error))
-    return NextResponse.json({ error: error?.message || 'Internal server error' }, { status: 500 })
+  } catch (e: any) {
+    console.error('[admin/dashboard] GET error:', e)
+    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 })
   }
 }

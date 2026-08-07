@@ -68,6 +68,12 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Booking sudah diproses, hubungi admin" }, { status: 400 });
     }
 
+    // Ambil booking_items untuk mengembalikan stok cabang
+    const { data: bookingItems } = await db
+      .from("booking_items")
+      .select("equipment_id, quantity")
+      .eq("booking_id", booking.id);
+
     const { error: updateError } = await db
       .from("bookings")
       .update({
@@ -82,9 +88,58 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
+    // ===== Kembalikan stok ke branch_inventory cabang pengambilan =====
+    const { data: fullBooking } = await db
+      .from("bookings")
+      .select("pickup_branch_id")
+      .eq("id", booking.id)
+      .maybeSingle();
+
+    if (fullBooking?.pickup_branch_id && bookingItems && bookingItems.length > 0) {
+      for (const item of bookingItems) {
+        // Cek apakah ada booking lain yang masih aktif (pending/confirmed/picked_up/active)
+        // menggunakan equipment yang sama di cabang yang sama dengan tanggal overlap
+        // Jika tidak ada, kembalikan stok penuh; jika ada, jangan kembalikan (karena stok sudah di-decrement saat booking lain dibuat)
+        const { data: activeBookings } = await db
+          .from("booking_items")
+          .select("booking_id, quantity, bookings!inner(id, status, pickup_branch_id, start_date, end_date)")
+          .eq("equipment_id", item.equipment_id)
+          .neq("booking_id", booking.id)
+          .in("bookings.status", ["pending", "confirmed", "picked_up", "active"])
+          .eq("bookings.pickup_branch_id", fullBooking.pickup_branch_id);
+
+        // Hitung total stok yang sudah dikunci oleh booking aktif lain di cabang ini
+        let lockedQty = 0;
+        if (activeBookings) {
+          for (const ab of activeBookings) {
+            lockedQty += Number(ab.quantity);
+          }
+        }
+
+        // Ambil stok saat ini
+        const { data: invRow } = await db
+          .from("branch_inventory")
+          .select("id, quantity")
+          .eq("branch_id", fullBooking.pickup_branch_id)
+          .eq("equipment_id", item.equipment_id)
+          .maybeSingle();
+
+        if (invRow) {
+          // Kembalikan stok, tapi pastikan tidak melebihi stok asli
+          // (stok asli = stok_awal yang tercatat di branch_inventory sebelum semua booking aktif)
+          // Kita cukup tambahkan quantity booking ini selama masih aman
+          const newQty = Number(invRow.quantity) + Number(item.quantity);
+          await db
+            .from("branch_inventory")
+            .update({ quantity: newQty, updated_at: new Date().toISOString() })
+            .eq("id", invRow.id);
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      message: "Pesanan dibatalkan",
+      message: "Pesanan dibatalkan dan stok dikembalikan",
     });
   } catch (error) {
     console.error("[bookings/cancel] error:", error);

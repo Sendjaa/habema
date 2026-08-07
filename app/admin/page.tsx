@@ -96,37 +96,25 @@ export default function AdminDashboard() {
         return
       }
 
-      let { data: profile, error } = await supabase
-        .from('users')
-        .select('is_vendor')
-        .eq('id', session.user.id)
-        .maybeSingle()
-
-      if (error?.code === 'PGRST116' || error?.code === '42501' || (!profile && !error)) {
-        const { data: newProfile, error: createError } = await supabase
-          .from('users')
-          .insert([{
-            id: session.user.id,
-            email: session.user.email!,
-            is_vendor: true,
-            full_name: session.user.user_metadata?.full_name || 'Admin',
-          }])
-          .select('is_vendor')
-          .single()
-
-        if (!createError && newProfile) {
-          profile = newProfile
-          error = null
+      // Verify admin status via API (client-side RLS blocks direct users query)
+      try {
+        const res = await fetch('/api/admin/dashboard')
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error(body?.error || `HTTP ${res.status}`)
         }
+        // Dashboard API returned OK — user is authenticated and has access
+        await loadDashboardData()
+      } catch (apiErr: any) {
+        // If the dashboard API fails due to auth, sign out
+        if (apiErr?.message?.includes('permission') || apiErr?.message?.includes('denied')) {
+          await supabase.auth.signOut()
+          router.replace("/admin/login")
+          return
+        }
+        // Other errors — still try to load dashboard
+        await loadDashboardData()
       }
-
-      if (error || !profile?.is_vendor) {
-        await supabase.auth.signOut()
-        router.replace("/admin/login")
-        return
-      }
-
-      await loadDashboardData()
     } catch (error) {
       console.error('Auth check error:', error)
       router.replace("/admin/login")

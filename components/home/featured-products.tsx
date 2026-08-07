@@ -71,13 +71,13 @@ export function FeaturedProducts() {
               <span className="italic">Pilihan Pro.</span>
             </h2>
           </div>
-          <div className="px-6 md:px-8 py-3 md:py-4 bg-white border border-forest/10 rounded-xl md:rounded-2xl font-bold text-forest text-sm text-center w-[140px]">
-            <span className="flex items-center justify-center gap-3">
+          <div className="px-6 md:px-8 py-3 md:py-4 bg-white border border-forest/10 rounded-xl md:rounded-2xl font-bold text-forest text-xs text-center w-[140px]">
+            <a href="/catalog_rental" className="flex items-center justify-center gap-3">
               Semua Gear
-            </span>
+            </a>
           </div>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="h-full w-40 sm:w-56 shrink-0 rounded-xl border border-slate-200 bg-white overflow-hidden animate-pulse">
               <div className="aspect-square bg-slate-200 rounded-t-xl" />
@@ -113,8 +113,8 @@ export function FeaturedProducts() {
             </h2>
           </div>
             <Link 
-            href="/catalog" 
-            className="group relative px-6 md:px-8 py-3 md:py-4 bg-white border border-forest/10 rounded-xl md:rounded-2xl font-bold text-forest text-sm overflow-hidden transition-all hover:shadow-2xl hover:shadow-forest/10 md:w-auto text-center"
+            href="/catalog_rental" 
+            className="group relative px-6 md:px-8 py-3 md:py-4 bg-white border border-forest/10 rounded-xl md:rounded-2xl font-bold text-forest text-xs md:text-sm lg:text-md overflow-hidden transition-all hover:shadow-2xl hover:shadow-forest/10 md:w-auto text-center"
           >
             <span className="relative z-10 flex items-center justify-center gap-3">
               Semua Gear <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

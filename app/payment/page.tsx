@@ -8,7 +8,7 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Check, CreditCard, Smartphone, Building, ArrowRight, Loader2 } from 'lucide-react'
+import { Check, CreditCard, Smartphone, Building, ArrowRight, Loader2, MapPin } from 'lucide-react'
 
 // Load Midtrans Snap script
 const loadMidtransScript = () => {
@@ -425,6 +425,45 @@ export default function PaymentPage() {
                   </div>
                 </div>
               </Card>
+
+              {/* Branch Info */}
+              {(transaction?.pickupBranch || transaction?.returnBranch) && (
+                <Card className="border-0 shadow-lg bg-white/80 backdrop-blur">
+                  <div className="p-6">
+                    <h3 className="font-semibold text-emerald-900 mb-4 flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      Lokasi Pengambilan & Pengembalian
+                    </h3>
+                    <div className="space-y-3">
+                      {transaction?.pickupBranch && (
+                        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100">
+                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Pengambilan</p>
+                          <p className="text-sm font-semibold text-emerald-900">{transaction.pickupBranch.name}</p>
+                          {transaction.pickupBranch.address && (
+                            <p className="text-xs text-emerald-700 mt-0.5">
+                              {transaction.pickupBranch.address}{transaction.pickupBranch.city ? `, ${transaction.pickupBranch.city}` : ''}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {transaction?.returnBranch && transaction.returnBranch.id !== transaction?.pickupBranch?.id && (
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
+                          <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Pengembalian</p>
+                          <p className="text-sm font-semibold text-blue-900">{transaction.returnBranch.name}</p>
+                          {transaction.returnBranch.address && (
+                            <p className="text-xs text-blue-700 mt-0.5">
+                              {transaction.returnBranch.address}{transaction.returnBranch.city ? `, ${transaction.returnBranch.city}` : ''}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {transaction?.returnBranch && transaction.returnBranch.id === transaction?.pickupBranch?.id && (
+                        <p className="text-[10px] text-emerald-600 font-medium">Pengembalian di lokasi yang sama</p>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              )}
 
               {/* Security Badge */}
               <Card className="border-0 shadow-lg bg-white/80 backdrop-blur">

@@ -24,7 +24,10 @@ export function CatalogFilters({
   searchQuery,
   onSearchChange,
   priceRange,
-  onPriceRangeChange
+  onPriceRangeChange,
+  branches = [],
+  selectedBranchId = null,
+  onBranchChange,
 }: any) {
   // Komponen Filter yang akan di-reuse
   const FilterContent = () => (
@@ -70,6 +73,44 @@ export function CatalogFilters({
                     <div className="h-4 bg-stone-100 rounded w-3/4"></div>
                   </div>
                 )}
+              </AccordionContent>
+            </AccordionItem>
+          )}
+
+          {/* Section Cabang */}
+          {branches.length > 0 && (
+            <AccordionItem value="branch" className="px-4 border-stone-100">
+              <AccordionTrigger className="text-sm font-bold text-stone-800 hover:no-underline py-4">
+                Cabang
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3 pb-4">
+                <div className="flex items-center gap-3 py-1">
+                  <Checkbox
+                    id="branch-all"
+                    checked={!selectedBranchId}
+                    onCheckedChange={() => onBranchChange && onBranchChange(null)}
+                    className="w-5 h-5 rounded-md border-stone-300 data-[state=checked]:bg-[#2D5016] data-[state=checked]:border-[#2D5016]"
+                  />
+                  <Label htmlFor="branch-all" className="text-sm font-semibold cursor-pointer">
+                    Semua Cabang
+                  </Label>
+                </div>
+                {branches.map((branch: any) => (
+                  <div key={branch.id} className="flex items-center gap-3 py-1">
+                    <Checkbox
+                      id={`branch-${branch.id}`}
+                      checked={selectedBranchId === branch.id}
+                      onCheckedChange={() => onBranchChange && onBranchChange(branch.id)}
+                      className="w-5 h-5 rounded-md border-stone-300 data-[state=checked]:bg-[#2D5016] data-[state=checked]:border-[#2D5016]"
+                    />
+                    <Label
+                      htmlFor={`branch-${branch.id}`}
+                      className="text-sm cursor-pointer text-stone-600 font-medium hover:text-[#2D5016] transition-colors"
+                    >
+                      {branch.name}
+                    </Label>
+                  </div>
+                ))}
               </AccordionContent>
             </AccordionItem>
           )}
