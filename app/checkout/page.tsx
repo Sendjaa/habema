@@ -7,10 +7,11 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ShoppingBag, MapPin, Tag, Loader2, Check } from "lucide-react";
+import { ShoppingBag, MapPin, Tag, Loader2, Check, Truck } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useCartStore } from "@/lib/store";
 import { LoginModal } from "@/components/auth/login-modal";
+import { ShippingSelector } from "@/components/booking/shipping-selector";
 import { toast } from "sonner";
 
 declare global {
@@ -44,6 +45,14 @@ interface FormValues {
   postal_code: string;
   note: string;
   payment_method: string;
+}
+
+interface ShippingData {
+  courierCode?: string;
+  courierService?: string;
+  shippingCost?: number;
+  destinationId?: number;
+  destinationLabel?: string;
 }
 
 const EMPTY_FORM: FormValues = {
@@ -90,6 +99,7 @@ export default function CheckoutPage() {
   const [user, setUser] = useState<any>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [shippingData, setShippingData] = useState<ShippingData | null>(null);
 
   useEffect(() => {
     try {
@@ -193,6 +203,10 @@ export default function CheckoutPage() {
                 min_purchase: claimedDiscount.min_purchase,
                 max_discount: claimedDiscount.max_discount,
               }
+            : null,
+          deliveryCost: shippingData?.shippingCost || 0,
+          courierName: shippingData?.courierCode
+            ? `${shippingData.courierCode.toUpperCase()} ${shippingData.courierService}`
             : null,
         }),
       });
@@ -370,6 +384,20 @@ export default function CheckoutPage() {
 
               <Card className="p-6 bg-white border border-stone-200 rounded-2xl shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
+                  <Truck className="w-5 h-5 text-[#1B4332]" />
+                  <h2 className="font-bold text-stone-800">Metode Pengiriman</h2>
+                </div>
+                <ShippingSelector
+                  originId={31555}
+                  weight={1000}
+                  onShippingSelect={(data) => {
+                    setShippingData(data);
+                  }}
+                />
+              </Card>
+
+              <Card className="p-6 bg-white border border-stone-200 rounded-2xl shadow-sm">
+                <div className="flex items-center gap-2 mb-4">
                   <ShoppingBag className="w-5 h-5 text-[#1B4332]" />
                   <h2 className="font-bold text-stone-800">Produk ({cart.length})</h2>
                 </div>
@@ -443,10 +471,21 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
+                  {shippingData?.shippingCost && shippingData.shippingCost > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-stone-500">
+                        Ongkir ({shippingData.courierCode?.toUpperCase()} {shippingData.courierService})
+                      </span>
+                      <span className="font-medium">
+                        Rp{shippingData.shippingCost.toLocaleString("id-ID")}
+                      </span>
+                    </div>
+                  )}
+
                   <div className="border-t border-stone-200 pt-3 flex justify-between text-base">
                     <span className="text-stone-500">Total</span>
                     <span className="text-2xl font-black text-[#FF6B35]">
-                      Rp{total.toLocaleString("id-ID")}
+                      Rp{(total + (shippingData?.shippingCost || 0)).toLocaleString("id-ID")}
                     </span>
                   </div>
                 </div>

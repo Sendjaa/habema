@@ -59,6 +59,7 @@ interface ShopOrder {
   subtotal: number;
   discount_amount: number;
   delivery_cost: number;
+  courier_name?: string | null;
   total_amount: number;
   payment_method: string | null;
   created_at: string;
@@ -768,7 +769,12 @@ export default function ShopOrdersManagement() {
                     )}
                     <div className="flex justify-between">
                       <span className="text-stone-500">Ongkos Kirim</span>
-                      <span className="text-stone-800">{formatCurrency(selectedOrder.delivery_cost)}</span>
+                      <span className="text-stone-800">
+                        {formatCurrency(selectedOrder.delivery_cost)}
+                        {selectedOrder.courier_name && (
+                          <span className="text-xs text-stone-500 ml-1">({selectedOrder.courier_name})</span>
+                        )}
+                      </span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-stone-200">
                       <span className="font-medium text-stone-800">Total</span>
