@@ -3,20 +3,15 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, Phone, MessageCircle, MapPin, Loader2 } from 'lucide-react'
+import { ArrowRight, Phone, MessageCircle, Loader2 } from 'lucide-react'
 
 interface Branch {
   id: string
   name: string
-  address: string | null
-  city: string | null
   phone: string | null
-  operational_hours: string | null
-  map_url: string | null
 }
 
 function formatPhone(phone: string): string {
-  // Convert "0812-2000-1001" to "+62 812 2000 1001"
   const cleaned = phone.replace(/[^0-9]/g, '')
   if (cleaned.startsWith('0')) {
     return '+62 ' + cleaned.slice(1).replace(/(\d{3})(\d{4})(\d{4})/, '$1 $2 $3')
@@ -28,7 +23,6 @@ function formatPhone(phone: string): string {
 }
 
 function formatPhoneWa(phone: string): string {
-  // Convert to wa.me format: "081220001001" → "6281220001001"
   const cleaned = phone.replace(/[^0-9]/g, '')
   if (cleaned.startsWith('0')) {
     return '62' + cleaned.slice(1)
@@ -40,7 +34,6 @@ function formatPhoneWa(phone: string): string {
 }
 
 export function CTA() {
-  const [branches, setBranches] = useState<Branch[]>([])
   const [branch, setBranch] = useState<Branch | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -50,8 +43,7 @@ export function CTA() {
         const res = await fetch('/api/branches')
         const result = await res.json()
         if (result.success && result.data?.length > 0) {
-          setBranches(result.data)
-          setBranch(result.data[0]) // Cabang pertama untuk WA & telepon
+          setBranch(result.data[0])
         }
       } catch {
         // Fallback ke data hardcoded jika API gagal
@@ -103,7 +95,7 @@ export function CTA() {
             </div>
           </div>
 
-          {/* Right — Kontak dari data cabang */}
+          {/* Right — Kontak */}
           <div className="lg:col-span-2 space-y-3">
             {loading ? (
               <div className="flex items-center justify-center py-8 text-stone-400">
@@ -112,7 +104,6 @@ export function CTA() {
               </div>
             ) : (
               <>
-                {/* WhatsApp & Telepon dari cabang pertama */}
                 <a
                   href={`https://wa.me/${formatPhoneWa(branch?.phone || '0838-9874-9357')}`}
                   target="_blank"
@@ -140,44 +131,6 @@ export function CTA() {
                     <p className="text-xs text-stone-500">{formatPhone(branch?.phone || '0838-9874-9357')}</p>
                   </div>
                 </a>
-
-                {/* Semua alamat cabang */}
-                {branches.length > 0 ? (
-                  branches.map((b) => {
-                    const addr = `${b.address || ''}${b.city ? `, ${b.city}` : ''}`
-                    const mapsUrl = b.map_url || `https://maps.google.com/?q=${encodeURIComponent(addr)}`
-                    return (
-                      <a
-                        key={b.id}
-                        href={mapsUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-4 bg-white rounded-xl border border-stone-200 p-4 hover:border-emerald-300 hover:shadow-sm transition-all group"
-                      >
-                        <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition-colors">
-                          <MapPin className="w-5 h-5 text-emerald-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-stone-900">{b.name}</p>
-                          <p className="text-xs text-stone-500">{addr}</p>
-                          {b.operational_hours && (
-                            <p className="text-[10px] text-stone-400 mt-0.5">{b.operational_hours}</p>
-                          )}
-                        </div>
-                      </a>
-                    )
-                  })
-                ) : (
-                  <div className="flex items-center gap-4 bg-white rounded-xl border border-stone-200 p-4">
-                    <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-                      <MapPin className="w-5 h-5 text-emerald-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-stone-900">Lokasi</p>
-                      <p className="text-xs text-stone-500">Jl. Raya Cihanjuang No. 123, Bandung Barat</p>
-                    </div>
-                  </div>
-                )}
               </>
             )}
           </div>

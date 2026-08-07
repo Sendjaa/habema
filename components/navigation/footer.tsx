@@ -1,18 +1,45 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Facebook, Instagram, } from 'lucide-react'
+import { Facebook, Instagram, MapPin, Phone, Clock } from 'lucide-react'
 import Image from 'next/image'
+
+interface Branch {
+  id: string
+  name: string
+  address: string | null
+  city: string | null
+  phone: string | null
+  operational_hours: string | null
+  map_url: string | null
+}
 
 export function Footer() {
   const currentYear = new Date().getFullYear()
+  const [branches, setBranches] = useState<Branch[]>([])
+
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const res = await fetch('/api/branches')
+        const result = await res.json()
+        if (result.success) {
+          setBranches(result.data || [])
+        }
+      } catch {
+        // silently fail
+      }
+    }
+    fetchBranches()
+  }, [])
 
   return (
     <footer className="bg-forest text-cream mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mb-8">
           {/* Brand Section */}
-          <div> 
+          <div className="md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
               <Image src="/images/logo-dark.webp" alt="Habema Logo" width={80} height={80} />
             </div>
@@ -23,12 +50,9 @@ export function Footer() {
               <a href="#" className="hover:text-gold transition-colors">
                 <Facebook className="w-5 h-5" />
               </a>
-              <a href="#" className="hover:text-gold transition-colors">
+              <a href="https://www.instagram.com/habemaoutdoor?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" className="hover:text-gold transition-colors" target="_blank" rel="noopener noreferrer">
                 <Instagram className="w-5 h-5" />
               </a>
-              {/* <a href="#" className="hover:text-gold transition-colors">
-                <Image src="/tiktok.png" alt="Tiktok" className="rounded-full" width={30} height={30} />  
-              </a> */}
             </div>
           </div>
 
@@ -64,8 +88,13 @@ export function Footer() {
             <h4 className="font-bold mb-4">Produk</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/catalog" className="hover:text-gold transition-colors">
-                  Katalog Lengkap
+                <Link href="/catalog_rental" className="hover:text-gold transition-colors">
+                  Katalog Sewa
+                </Link>
+              </li>
+              <li>
+                <Link href="/catalog_shop" className="hover:text-gold transition-colors">
+                  Katalog Beli
                 </Link>
               </li>
               <li>
@@ -76,11 +105,6 @@ export function Footer() {
               <li>
                 <Link href="/bundles" className="hover:text-gold transition-colors">
                   Promo
-                </Link>
-              </li>
-              <li>
-                <Link href="/help" className="hover:text-gold transition-colors">
-                  Panduan Pemilihan
                 </Link>
               </li>
               <li>
@@ -116,6 +140,49 @@ export function Footer() {
                 </Link>
               </li>
             </ul>
+          </div>
+
+          {/* Cabang */}
+          <div>
+            <h4 className="font-bold mb-4">Cabang Kami</h4>
+            {branches.length > 0 ? (
+              <div className="space-y-4">
+                {branches.map((b) => (
+                  <div key={b.id} className="space-y-1.5">
+                    <p className="text-sm font-semibold">{b.name}</p>
+                    <a
+                      href={b.map_url || `https://maps.google.com/?q=${encodeURIComponent(`${b.address || ''}${b.city ? `, ${b.city}` : ''}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-start gap-1.5 text-xs text-cream/70 hover:text-gold transition-colors"
+                    >
+                      <MapPin className="w-3 h-3 mt-0.5 shrink-0" />
+                      <span>{b.address}{b.city ? `, ${b.city}` : ''}</span>
+                    </a>
+                    {b.phone && (
+                      <a
+                        href={`tel:${b.phone.replace(/[^0-9]/g, '').startsWith('0') ? '62' + b.phone.replace(/[^0-9]/g, '').slice(1) : b.phone.replace(/[^0-9]/g, '')}`}
+                        className="flex items-center gap-1.5 text-xs text-cream/70 hover:text-gold transition-colors"
+                      >
+                        <Phone className="w-3 h-3 shrink-0" />
+                        <span>{b.phone}</span>
+                      </a>
+                    )}
+                    {b.operational_hours && (
+                      <div className="flex items-center gap-1.5 text-xs text-cream/60">
+                        <Clock className="w-3 h-3 shrink-0" />
+                        <span>{b.operational_hours}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <p className="text-sm font-semibold">Habema Cihanjuang</p>
+                <p className="text-xs text-cream/70">Jl. Raya Cihanjuang No. 123, Bandung Barat</p>
+              </div>
+            )}
           </div>
         </div>
 
