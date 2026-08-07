@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useImperativeHandle } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { X, Camera, Shield, AlertTriangle, CheckCircle } from "lucide-react";
@@ -10,7 +9,7 @@ import { toast } from "sonner";
 import { useCartStore } from "@/lib/store";
 import { supabase } from "@/lib/supabaseClient";
 
-export function IDVerificationForm({ onVerificationComplete }: any) {
+export function IDVerificationForm({ onVerificationComplete, ref }: any) {
   const router = useRouter();
   
   // Ambil data dan fungsi dari Zustand
@@ -208,28 +207,28 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return;
+    if (!validateForm()) return false;
 
     // First validate document authenticity
     if (!photoPreview) {
       toast.error("Foto Dokumen wajib diambil terlebih dahulu");
-      return;
+      return false;
     }
 
     setIsProcessing(true);
-    
+
     // Validate document authenticity before proceeding
     const isValidDocument = await validateDocumentAuthenticity(photoPreview);
     if (!isValidDocument) {
       setIsProcessing(false);
-      return;
+      return false;
     }
-    
+
     // Upload file to Supabase storage if file was uploaded (not camera photo)
     let photoUrl = photoPreview;
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (user && uploadedFile) {
         // Upload file to Supabase storage
         toast.loading("Mengupload file...", { id: "upload" });
@@ -238,11 +237,11 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
         toast.success("File berhasil diupload");
       }
     } catch (uploadError) {
-      console.error('Upload error:', uploadError);
+      console.error("Upload error:", uploadError);
       // If upload fails, fall back to base64 photoPreview
       toast.warning("Gagal upload ke storage, menggunakan base64");
     }
-    
+
     // Prepare data first (needed for both authenticated and anonymous flows)
     const data = {
       fullName,
@@ -254,93 +253,57 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
       photoUrl: photoUrl || undefined,
       verified: true,
     };
-    
+
     try {
-      // Check if user is authenticated first
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
-      if (authError || !user) {
-        console.log('User not authenticated - proceeding with anonymous checkout');
-        // For anonymous users, save to local storage only and continue
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Anonymous: simpan ke localStorage saja dan lanjut
+      if (!user) {
         setIdentity(data);
-        
         if (onVerificationComplete) {
-          onVerificationComplete({
-            ...data,
-            isAnonymous: true
-          });
+          onVerificationComplete({ ...data, isAnonymous: true });
         }
-        
         setIsProcessing(false);
         toast.success("Identitas tersimpan (mode anonim)");
-        return;
+        return data;
       }
-    } catch (error) {
-      console.log('Auth check failed - proceeding as anonymous');
-      // For anonymous users, save to local storage only and continue
-      setIdentity(data);
-      
-      if (onVerificationComplete) {
-        onVerificationComplete({
-          ...data,
-          isAnonymous: true
-        });
-      }
-      
-      setIsProcessing(false);
-      toast.success("Identitas tersimpan (mode anonim)");
-      return;
-    }
-    // Now we know user is authenticated, proceed with database submission
 
-    // Simulasi delay proses
-    setTimeout(async () => {
+      // Authed: simpan ke Supabase, fallback ke lokal bila DB gagal
       try {
-        // Get current user again (we already checked above, but need fresh data)
-        console.log('Getting current user for submission...');
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        
-        console.log('Auth response:', { user, authError });
-        
-        if (authError || !user) {
-          console.error('Auth error during submission:', authError);
-          toast.error('Terjadi kesalahan autentikasi');
-          setIsProcessing(false);
-          return;
-        }
-
-        // Insert to Supabase
-        try {
-          await upsertIdentityToSupabase({
-            ...data,
-            user_id: user.id,
-            fullName,
-            validationResults
-          });
-          
-          toast.success("Identitas berhasil disimpan dan diverifikasi");
-        } catch (supabaseError) {
-          console.error('Supabase failed, saving to local only:', supabaseError);
-          toast.warning("Database gagal, data disimpan lokal saja");
-        }
-
-        // Simpan ke Zustand (LocalStorage) - selalu dijalankan
-        setIdentity(data);
-
-        if (onVerificationComplete) onVerificationComplete(data);
-
-        setIsProcessing(false);
-      } catch (error) {
-        console.error('Error saving identity:', error);
-        toast.error("Terjadi kesalahan, data disimpan lokal saja");
-        
-        // Fallback: simpan ke Zustand saja
-        setIdentity(data);
-        if (onVerificationComplete) onVerificationComplete(data);
-        setIsProcessing(false);
+        await upsertIdentityToSupabase({
+          ...data,
+          user_id: user.id,
+          fullName,
+          validationResults,
+        });
+        toast.success("Identitas berhasil disimpan dan diverifikasi");
+      } catch (supabaseError) {
+        console.error("Supabase failed, saving to local only:", supabaseError);
+        toast.warning("Database gagal, data disimpan lokal saja");
       }
-    }, 800);
+
+      // Simpan ke Zustand (LocalStorage) - selalu dijalankan
+      setIdentity(data);
+      if (onVerificationComplete) onVerificationComplete(data);
+
+      setIsProcessing(false);
+      return data;
+    } catch (error) {
+      console.error("Error saving identity:", error);
+      toast.error("Terjadi kesalahan, data disimpan lokal saja");
+
+      // Fallback: simpan ke Zustand saja
+      setIdentity(data);
+      if (onVerificationComplete) onVerificationComplete(data);
+      setIsProcessing(false);
+      return data;
+    }
   };
+
+  // Ekspos fungsi submit ke parent (dipakai oleh tombol utama di akhir halaman)
+  useImperativeHandle(ref, () => ({
+    submit: () => handleSubmit(),
+  }));
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -900,36 +863,6 @@ export function IDVerificationForm({ onVerificationComplete }: any) {
         )}
       </div>
 
-      <Button
-        onClick={handleSubmit}
-        disabled={
-          isProcessing || 
-          isAnalyzing || 
-          !idNumber.trim() || 
-          !fullName.trim() || 
-          !photoPreview ||
-          !validateIdFormat(idNumber, idType)
-        }
-        className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {isAnalyzing ? (
-          <span className="flex items-center justify-center gap-2">
-            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            Menganalisis Dokumen...
-          </span>
-        ) : isProcessing ? (
-          <span className="flex items-center justify-center gap-2">
-            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            Menyimpan...
-          </span>
-        ) : (
-          <span className="flex items-center justify-center gap-2">
-            <Shield className="w-4 h-4" />
-            Verifikasi Identitas
-          </span>
-        )}
-      </Button>
-      
       {/* Format Requirements Helper */}
       <div className="text-center">
         <p className="text-[8px] text-slate-400">

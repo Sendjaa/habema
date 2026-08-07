@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertCircle, CheckCircle } from "lucide-react";
@@ -103,20 +102,17 @@ export function RentalConditionsChecklist({
     }));
   };
 
-  const handleSubmit = () => {
-    if (!agreedToTerms) {
-      alert("Anda harus setuju dengan syarat dan ketentuan");
-      return;
-    }
-
+  // Otomatis kirim data saat pengguna menyetujui syarat, tanpa tombol terpisah.
+  useEffect(() => {
+    if (!agreedToTerms || !editable) return;
     onChecklistComplete({
       itemsChecked: checkedItems,
       damageNotes,
       agreedToTerms,
     });
-
     setIsSubmitted(true);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agreedToTerms, editable]);
 
   if (isSubmitted && !editable) {
     return (
@@ -214,20 +210,6 @@ export function RentalConditionsChecklist({
               </ul>
             </label>
           </div>
-        )}
-
-        {/* Submit Button */}
-        {editable && (
-          <Button
-            onClick={handleSubmit}
-            disabled={!agreedToTerms}
-            className="w-full bg-primary text-primary-foreground hover:bg-forest-dark text-sm sm:text-base"
-            size="lg"
-          >
-            {agreedToTerms
-              ? "Lanjutkan"
-              : "Checklist Terlebih Dahulu"}
-          </Button>
         )}
       </div>
     </Card>

@@ -90,6 +90,8 @@ function BookingContent() {
 
   const [showLoginModal, setShowLoginModal] = useState(false);
   const skipAuthCheck = useRef(false);
+  const idFormRef = useRef<any>(null);
+  const idDataRef = useRef<any>(null);
 
   const [customerNote, setCustomerNote] = useState("");
 
@@ -369,11 +371,26 @@ function BookingContent() {
   };
 
   // ==================== BOOKING HANDLERS ====================
+  // Tombol utama tunggal di akhir halaman: selesaikan verifikasi identitas
+  // (bila belum), lalu proses booking & pembayaran.
+  const handleCheckout = async () => {
+    try {
+      if (!idDataRef.current) {
+        const result = await idFormRef.current?.submit();
+        if (!result) return;
+      }
+      await handleFinalAction();
+    } catch (error: any) {
+      toast.error(`Gagal memproses pesanan: ${error?.message || "Terjadi kesalahan sistem"}`);
+    }
+  };
+
   const handleFinalAction = async () => {
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      const identity = idDataRef.current || idData;
 
       if (!productId) throw new Error("ID Produk tidak ditemukan.");
       if (!product) throw new Error("Produk tidak ditemukan.");
@@ -479,9 +496,9 @@ Metode Pengambilan: Ambil di Tempat${customerNote ? `
 Pesan: ${customerNote}` : ""}
 
 Data Identitas:
-Nama: ${idData?.fullName || "Guest"}
-ID: ${idData?.idNumber || "-"}
-Tipe: ${idData?.idType || "-"}
+Nama: ${identity?.fullName || "Guest"}
+ID: ${identity?.idNumber || "-"}
+Tipe: ${identity?.idType || "-"}
 
 Mohon konfirmasi pesanan saya ya!`;
 
@@ -510,7 +527,7 @@ Mohon konfirmasi pesanan saya ya!`;
       }
 
       // ===== Alur Midtrans (QRIS / Transfer Bank) =====
-      await handleMidtransPayment(newBooking.id);
+      await handleMidtransPayment(newBooking.id, identity);
     } catch (error: any) {
       console.error("Error saat menyimpan pesanan:", error);
       toast.error(
@@ -519,7 +536,7 @@ Mohon konfirmasi pesanan saya ya!`;
     }
   };
 
-  const handleMidtransPayment = async (bookingId: string) => {
+  const handleMidtransPayment = async (bookingId: string, identity: any) => {
     setIsProcessingPayment(true);
 
     try {
@@ -532,7 +549,7 @@ Mohon konfirmasi pesanan saya ya!`;
       if (!conditionData) {
         throw new Error("Silakan lengkapi syarat dan kondisi terlebih dahulu");
       }
-      if (!idData) {
+      if (!identity) {
         throw new Error("Silakan lengkapi verifikasi identitas terlebih dahulu");
       }
       if (!paymentMethod) {
@@ -588,9 +605,9 @@ Mohon konfirmasi pesanan saya ya!`;
       const midtransPayload = {
         bookingId: bookingId,
         customerDetails: {
-          firstName: idData?.fullName || "Customer",
+          firstName: identity?.fullName || "Customer",
           email: user?.email || "customer@example.com",
-          phone: idData?.phone || "+62800000000",
+          phone: identity?.phone || "+62800000000",
         },
       };
 
@@ -747,7 +764,9 @@ Mohon konfirmasi pesanan saya ya!`;
             >
               <LazyWrapper>
                 <LazyIDVerificationForm
+                  ref={idFormRef}
                   onVerificationComplete={(data: any) => {
+                    idDataRef.current = data;
                     setIdData(data);
                   }}
                   disabled={!startDate || !endDate}
@@ -872,33 +891,6 @@ Mohon konfirmasi pesanan saya ya!`;
                     </p>
                   </div>
                 )}
-
-                <Button
-                  onClick={handleFinalAction}
-                  disabled={
-                    isProcessingPayment ||
-                    !paymentMethod ||
-                    (paymentMethod === "Transfer Bank" && !selectedBank)
-                  }
-                  className={`w-full h-14 mt-2 rounded-xl font-bold text-lg shadow-lg ${
-                    paymentMethod &&
-                    (paymentMethod !== "Transfer Bank" || selectedBank) &&
-                    !isProcessingPayment
-                      ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                      : "bg-slate-200 text-slate-400"
-                  }`}
-                >
-                  {isProcessingPayment ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Memproses Pembayaran...
-                    </>
-                  ) : paymentMethod === "WhatsApp Konfirmasi" ? (
-                    "Pesan via WhatsApp"
-                  ) : (
-                    "Bayar Sekarang"
-                  )}
-                </Button>
               </div>
             </StepCard>
 
@@ -917,6 +909,42 @@ Mohon konfirmasi pesanan saya ya!`;
                 }}
               />
             </StepCard>
+
+            {/* Tombol utama tunggal di akhir */}
+            <div className="pt-2">
+              <Button
+                onClick={handleCheckout}
+                disabled={
+                  isProcessingPayment ||
+                  !startDate ||
+                  !endDate ||
+                  !conditionData ||
+                  !paymentMethod ||
+                  (paymentMethod === "Transfer Bank" && !selectedBank)
+                }
+                className={`w-full h-14 rounded-xl font-bold text-lg shadow-lg ${
+                  isProcessingPayment ||
+                  !startDate ||
+                  !endDate ||
+                  !conditionData ||
+                  !paymentMethod ||
+                  (paymentMethod === "Transfer Bank" && !selectedBank)
+                    ? "bg-slate-200 text-slate-400"
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                }`}
+              >
+                {isProcessingPayment ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Memproses Pembayaran...
+                  </>
+                ) : paymentMethod === "WhatsApp Konfirmasi" ? (
+                  "Pesan via WhatsApp"
+                ) : (
+                  "Bayar Sekarang"
+                )}
+              </Button>
+            </div>
           </div>
 
           {/* Right Column: Order Summary */}
