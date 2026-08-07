@@ -1,7 +1,7 @@
 "use client";
 
 // ==================== IMPORTS ====================
-import { useState, Suspense, useEffect, lazy, useRef } from "react";
+import { useState, Suspense, useEffect, useRef } from "react";
 import type { User } from "@supabase/supabase-js";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -9,43 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/booking/date-range-picker";
 import { calculateDaysBetween } from "@/lib/booking-utils";
-import { CheckCircle, Loader2, MapPin, Calculator, AlertCircle, Ticket } from "lucide-react";
+import { CheckCircle, Loader2, MapPin, Ticket } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { LoginModal } from "@/components/auth/login-modal";
 import type { Database } from "@/types/supabase";
-import { leafletService, DeliveryCost } from "@/lib/leaflet-service";
-import { LazyWrapper, LazyIDVerificationForm, LazyLocationPicker } from "@/components/lazy-components";
+import { LazyWrapper, LazyIDVerificationForm } from "@/components/lazy-components";
 import { OptimizedImage } from "@/components/optimized-image";
-
-
-// Load Midtrans Snap script
-const loadMidtransScript = () => {
-  return new Promise((resolve) => {
-    if (window.snap) {
-
-      resolve(window.snap)
-      return
-    }
-
-    const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || ''
-    console.log('Client-side Midtrans Client Key:', clientKey.substring(0, 10) + '...')
-
-    const script = document.createElement('script')
-    script.src =
-      process.env.NEXT_PUBLIC_MIDTRANS_PRODUCTION === "true"
-        ? 'https://app.midtrans.com/snap/snap.js'
-        : 'https://app.sandbox.midtrans.com/snap/snap.js'
-    script.setAttribute('data-client-key', clientKey)
-    script.onload = () => resolve(window.snap)
-    document.body.appendChild(script)
-  })
-}
-
-declare global {
-  interface Window {
-    snap: any
-  }
-}
 import {
   RentalConditionsChecklist,
   ConditionChecklistData,
@@ -56,6 +25,32 @@ import {
   type TransactionData,
 } from "@/lib/store";
 import { toast } from "sonner";
+
+// ==================== MIDTRANS SNAP ====================
+const loadMidtransScript = () => {
+  return new Promise((resolve) => {
+    if (window.snap) {
+      resolve(window.snap);
+      return;
+    }
+
+    const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || "";
+    const script = document.createElement("script");
+    script.src =
+      process.env.NEXT_PUBLIC_MIDTRANS_PRODUCTION === "true"
+        ? "https://app.midtrans.com/snap/snap.js"
+        : "https://app.sandbox.midtrans.com/snap/snap.js";
+    script.setAttribute("data-client-key", clientKey);
+    script.onload = () => resolve(window.snap);
+    document.body.appendChild(script);
+  });
+};
+
+declare global {
+  interface Window {
+    snap: any;
+  }
+}
 
 // ==================== MAIN COMPONENT ====================
 function BookingContent() {
@@ -74,8 +69,7 @@ function BookingContent() {
     return isNaN(d.getTime()) ? null : d;
   };
 
-  // ==================== STATE DECLARATIONS ====================
-  // hybrid checkout
+  // ==================== STATE ====================
   const [user, setUser] = useState<User | null>(null);
   const transaction = useCartStore((state) => state.currentTransaction);
   const [product, setProduct] = useState<any>(null);
@@ -87,42 +81,17 @@ function BookingContent() {
     parseUrlDate(urlEndDate),
   );
 
-
   const [idData, setIdData] = useState<any | null>(null);
   const [conditionData, setConditionData] =
     useState<ConditionChecklistData | null>(null);
   const [paymentMethod, setPaymentMethod] = useState("Transfer Bank");
-  const [isSuccess, setIsSuccess] = useState(false);
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const [showLoginModal, setShowLoginModal] = useState(false);
   const skipAuthCheck = useRef(false);
 
-  // Pickup/Delivery options
-  const [deliveryOption, setDeliveryOption] = useState<'pickup' | 'delivery'>('pickup');
-  const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [customerNote, setCustomerNote] = useState('');
-
-  // Delivery cost calculation
-  const [deliveryCost, setDeliveryCost] = useState<DeliveryCost | null>(null);
-  const [isCalculatingDelivery, setIsCalculatingDelivery] = useState(false);
-  const [deliveryError, setDeliveryError] = useState<string | null>(null);
-
-  // Special location and emergency contact
-  const [specialLocationType, setSpecialLocationType] = useState<'standard' | 'camping' | 'outdoor' | 'remote' | 'emergency'>('standard');
-  const [emergencyContact, setEmergencyContact] = useState({
-    name: '',
-    phone: '',
-    relationship: ''
-  });
-  const [gpsCoordinates, setGpsCoordinates] = useState({
-    latitude: '',
-    longitude: ''
-  });
-  const [deliveryInstructions, setDeliveryInstructions] = useState('');
-  const [deliveryTime, setDeliveryTime] = useState<'morning' | 'afternoon' | 'evening' | 'flexible'>('flexible');
-  const [accessibilityNotes, setAccessibilityNotes] = useState('');
+  const [customerNote, setCustomerNote] = useState("");
 
   // Kupon yang sudah diklaim user
   const [myCoupons, setMyCoupons] = useState<any[]>([]);
@@ -257,57 +226,44 @@ function BookingContent() {
     enrichItemImages();
   }, [transaction]);
 
-  // Load existing condition data from localStorage
+  // Muat syarat & kondisi yang sudah diisi sebelumnya dari localStorage
   useEffect(() => {
-    const loadExistingConditionData = () => {
-      try {
-        const savedConditionData = localStorage.getItem('rentalConditions');
-        if (savedConditionData) {
-          const parsedData = JSON.parse(savedConditionData);
-          setConditionData(parsedData);
-          console.log('Data syarat & kondisi sebelumnya telah dimuat:', parsedData);
-        }
-      } catch (error) {
-        console.log('Tidak ada data syarat & kondisi sebelumnya:', error);
-      }
-    };
-
-    loadExistingConditionData();
+    try {
+      const saved = localStorage.getItem("rentalConditions");
+      if (saved) setConditionData(JSON.parse(saved));
+    } catch {
+      // abaikan data korup
+    }
   }, []);
 
-  // Load existing identity data if user is logged in
+  // Muat identitas yang tersimpan jika user login
   useEffect(() => {
     const loadExistingIdentityData = async () => {
       if (!user) return;
 
       try {
         const { data: identityData, error } = await supabase
-          .from('user_identity')
-          .select('*')
-          .eq('user_id', user.id)
+          .from("user_identity")
+          .select("*")
+          .eq("user_id", user.id)
           .single()
-          .returns<Database['public']['Tables']['user_identity']['Row']>();
+          .returns<Database["public"]["Tables"]["user_identity"]["Row"]>();
 
         if (!error && identityData) {
-          // Data identitas sudah ada, set ke state
           setIdData({
-            fullName: user.user_metadata?.full_name || '',
-            idNumber: identityData.id_number || '',
-            idType: identityData.id_type || '',
-            phone: user.phone || ''
+            fullName: user.user_metadata?.full_name || "",
+            idNumber: identityData.id_number || "",
+            idType: identityData.id_type || "",
+            phone: user.phone || "",
           });
-
-          toast.success('Data identitas Anda sebelumnya telah dimuat.');
-
-          console.log('Data identitas sebelumnya telah dimuat:', identityData);
         }
-      } catch (error) {
-        console.log('Tidak ada data identitas sebelumnya atau error:', error);
+      } catch {
+        // tidak ada data identitas sebelumnya
       }
     };
 
     loadExistingIdentityData();
-  }, [user, startDate, endDate, conditionData]);
+  }, [user]);
 
   // Ambil daftar kupon yang sudah diklaim oleh user yang login
   useEffect(() => {
@@ -323,8 +279,8 @@ function BookingContent() {
         if (res.ok && result.success) {
           setMyCoupons(result.data || []);
         }
-      } catch (err) {
-        console.error('Failed to fetch claimed coupons:', err);
+      } catch {
+        // abaikan error saat memuat kupon
       } finally {
         setLoadingCoupons(false);
       }
@@ -337,10 +293,14 @@ function BookingContent() {
     startDate && endDate ? Math.max(1, calculateDaysBetween(startDate, endDate)) : 0;
   const pricePerNight = product ? Number(product.price_per_night) : 0;
 
-  // Calculate subtotal from transaction items if available, otherwise use single product
-  const subtotal = transaction?.items && transaction.items.length > 0
-    ? transaction.items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0) * days
-    : pricePerNight * quantity * days;
+  // Subtotal dihitung dari item keranjang, fallback ke produk tunggal dari URL
+  const subtotal =
+    transaction?.items && transaction.items.length > 0
+      ? transaction.items.reduce(
+          (sum: number, item: any) => sum + item.price * item.quantity,
+          0,
+        ) * days
+      : pricePerNight * quantity * days;
 
   const claimedDiscount = useCartStore((s) => s.claimedDiscount);
   // Diskon hanya berlaku untuk user yang sudah login.
@@ -350,9 +310,12 @@ function BookingContent() {
     const meetsMinPurchase =
       !claimedDiscount.min_purchase || subtotal >= claimedDiscount.min_purchase;
     if (meetsMinPurchase) {
-      if (claimedDiscount.discount_type === 'percentage') {
-        discountAmount = Math.round(subtotal * claimedDiscount.discount_value / 100);
-        if (claimedDiscount.max_discount && discountAmount > claimedDiscount.max_discount) {
+      if (claimedDiscount.discount_type === "percentage") {
+        discountAmount = Math.round((subtotal * claimedDiscount.discount_value) / 100);
+        if (
+          claimedDiscount.max_discount &&
+          discountAmount > claimedDiscount.max_discount
+        ) {
           discountAmount = claimedDiscount.max_discount;
         }
       } else {
@@ -361,17 +324,20 @@ function BookingContent() {
     }
   }
   const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+  const deposit = Math.round(discountedSubtotal * 0.2);
+  const totalPrice = discountedSubtotal;
+  const setTransactionData = useCartStore((state) => state.setTransaction);
 
   // Cek apakah sebuah kupon bisa dipakai untuk booking ini
   const getCouponEligibility = (d: any) => {
-    if (!d) return { eligible: false, reason: 'Kupon tidak valid' };
+    if (!d) return { eligible: false, reason: "Kupon tidak valid" };
     if (d.min_purchase && subtotal < Number(d.min_purchase)) {
       return {
         eligible: false,
-        reason: `Min. belanja Rp${Number(d.min_purchase).toLocaleString('id-ID')}`,
+        reason: `Min. belanja Rp${Number(d.min_purchase).toLocaleString("id-ID")}`,
       };
     }
-    return { eligible: true, reason: '' };
+    return { eligible: true, reason: "" };
   };
 
   const applyCoupon = (discount: any) => {
@@ -380,11 +346,11 @@ function BookingContent() {
       id: discount.id,
       code: discount.code,
       description: discount.description,
-      discount_type: discount.discount_type as 'percentage' | 'fixed',
+      discount_type: discount.discount_type as "percentage" | "fixed",
       discount_value: Number(discount.discount_value),
       min_purchase: discount.min_purchase ? Number(discount.min_purchase) : null,
       max_discount: discount.max_discount ? Number(discount.max_discount) : null,
-      applies_to: discount.applies_to as 'all' | 'category' | 'equipment',
+      applies_to: discount.applies_to as "all" | "category" | "equipment",
       target_id: discount.target_id,
       claimed_at: new Date().toISOString(),
     };
@@ -394,14 +360,8 @@ function BookingContent() {
 
   const clearCoupon = () => {
     useCartStore.getState().clearClaimedDiscount();
-    toast.info('Kupon dibatalkan');
+    toast.info("Kupon dibatalkan");
   };
-
-  const deposit = Math.round(discountedSubtotal * 0.2);
-  const tax = Math.round(discountedSubtotal * 0.1);
-  const deliveryFee = deliveryOption === 'delivery' ? (deliveryCost?.cost || 0) : 0;
-  const totalPrice = discountedSubtotal + deliveryFee;
-  const setTransactionData = useCartStore((state) => state.setTransaction);
 
   const handleDateSelect = (start: Date, end: Date) => {
     setStartDate(start);
@@ -411,10 +371,8 @@ function BookingContent() {
   // ==================== BOOKING HANDLERS ====================
   const handleFinalAction = async () => {
     try {
-      // 1. Ambil data user yang sedang login dari Supabase Auth
       const {
         data: { user },
-        error: authError,
       } = await supabase.auth.getUser();
 
       if (!productId) throw new Error("ID Produk tidak ditemukan.");
@@ -427,22 +385,24 @@ function BookingContent() {
       const sourceItems =
         transaction?.items && transaction.items.length > 0
           ? transaction.items
-          : [{
-              id: product.id,
-              name: product.name,
-              price: Number(product.price_per_night),
-              quantity: Number(quantity),
-              category: product.equipment_categories?.name || "Equipment",
-              image_url: product.image_url,
-            }];
+          : [
+              {
+                id: product.id,
+                name: product.name,
+                price: Number(product.price_per_night),
+                quantity: Number(quantity),
+                category: product.equipment_categories?.name || "Equipment",
+                image_url: product.image_url,
+              },
+            ];
 
       const orderData = {
-        user_id: user?.id || null, // null for anonymous users
-        start_date: startDate?.toISOString() || '',
-        end_date: endDate?.toISOString() || '',
+        user_id: user?.id || null,
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
         status: "pending",
-        delivery_option: deliveryOption,
-        delivery_address: deliveryOption === 'delivery' ? deliveryAddress : null,
+        delivery_option: "pickup",
+        delivery_address: null,
         customer_note: customerNote || null,
         total_cost: totalPrice,
         rental_days: days,
@@ -450,163 +410,41 @@ function BookingContent() {
         deposit_amount: deposit,
       };
 
-      // Show login modal for anonymous users before proceeding
+      // Guest: minta login dulu sebelum melanjutkan
       if (!user && !skipAuthCheck.current) {
         setShowLoginModal(true);
         return;
       }
 
-      // For anonymous users, save to database with null user_id
-      if (!user) {
-        console.log('Creating anonymous booking (database with null user_id)');
-
-        // Create order data for anonymous user
-        const anonymousOrderData = {
-          user_id: null,
-          start_date: startDate?.toISOString() || '',
-          end_date: endDate?.toISOString() || '',
-          status: "pending",
-          delivery_option: deliveryOption,
-          delivery_address: deliveryOption === 'delivery' ? deliveryAddress : null,
-          customer_note: customerNote || null,
-          total_cost: totalPrice,
-          rental_days: days,
-          subtotal: subtotal,
-          deposit_amount: deposit,
-        };
-
-        // Save anonymous booking via server API — kirim semua item dari keranjang
-        const anonItems = sourceItems.map((item: any) => ({
-          equipment_id: item.id,
-          quantity: Number(item.quantity),
-          unit_price: Number(item.price),
-          subtotal: Number(item.price) * Number(item.quantity) * Number(days),
-        }));
-
-        const anonRes = await fetch('/api/bookings/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderData: anonymousOrderData,
-            itemData: anonItems,
-            userEmail: null,
-          }),
-        });
-
-        const anonResult = await anonRes.json().catch(() => ({}));
-        if (!anonRes.ok) {
-          console.error('Failed to create anonymous booking:', anonResult);
-          toast.error(
-            `Gagal menyimpan pesanan: ${[anonResult.error, anonResult.detail]
-              .filter(Boolean)
-              .join(' - ') || 'Silakan coba lagi.'}`
-          );
-          return;
-        }
-
-        const newBooking = anonResult.data;
-
-        console.log('Anonymous booking saved to database:', newBooking);
-
-        // Log booking details for debugging
-        console.log('=== ANONYMOUS BOOKING CREATED ===');
-        console.log('Booking ID:', newBooking.id);
-        console.log('Product:', product?.name);
-        console.log('User Data:', idData);
-        console.log('Total Price:', totalPrice);
-        console.log('Duration:', days, 'days');
-        console.log('Payment Method:', paymentMethod);
-        console.log('=================================');
-
-
-        // Update transaction data with booking info
-        // Spread transaction dulu agar items dari keranjang tidak hilang
-        setTransactionData({
-          ...transaction,
-          items: sourceItems,
-          orderId: newBooking.id,
-          days: Number(days),
-          duration: Number(days),
-          totalPrice: Number(totalPrice),
-          payment: { method: paymentMethod, bank: selectedBank || undefined },
-          delivery: {
-            option: deliveryOption,
-            address: deliveryOption === 'delivery' ? deliveryAddress : null,
-            note: customerNote || null,
-            cost: deliveryOption === 'delivery' ? deliveryFee : 0,
-            distance: deliveryOption === 'delivery' ? deliveryCost?.distance || 0 : 0,
-            duration: deliveryOption === 'delivery' ? deliveryCost?.duration || null : null,
-            breakdown: deliveryOption === 'delivery' ? deliveryCost?.breakdown || undefined : undefined
-          },
-          dates: {
-            start: startDate?.toISOString(),
-            end: endDate?.toISOString()
-          }
-        });
-
-        // For anonymous users, only WhatsApp is available
-        if (paymentMethod === "WhatsApp Konfirmasi") {
-          const waMessage = `Halo Admin Habema!
-Saya ingin menyewa: *${product.name}*
-ID Booking: #${newBooking.id.slice(0, 8)}
-User: Guest
-Durasi: ${days} Hari
-Total: Rp${Number(totalPrice).toLocaleString("id-ID")}
-
-Metode Pengambilan: ${deliveryOption === 'pickup' ? 'Ambil di Tempat' : 'Diantar'}${deliveryOption === 'delivery' ? `
-Alamat: ${deliveryAddress}
-Biaya Pengantaran: ${leafletService.formatCost(deliveryFee)}
-Jarak: ${deliveryCost?.distance || 0} km
-Estimasi: ${deliveryCost?.duration || 'N/A'}` : ''}${customerNote ? `
-Pesan: ${customerNote}` : ''}
-
-Data Identitas:
-Nama: ${idData?.fullName || 'Guest'}
-ID: ${idData?.idNumber || '-'}
-Tipe: ${idData?.idType || '-'}
-
-Mohon konfirmasi pesanan saya ya!`;
-
-          window.open(
-            `https://wa.me/6283898749357?text=${encodeURIComponent(waMessage)}`,
-            "_blank",
-          );
-        }
-
-        router.push("/order-confirmation");
-        return;
-      }
-
-      // For authenticated users, save to database via server API — kirim semua item
-      const authItems = sourceItems.map((item: any) => ({
+      // Simpan booking via server API — kirim semua item dari keranjang
+      const itemData = sourceItems.map((item: any) => ({
         equipment_id: item.id,
         quantity: Number(item.quantity),
         unit_price: Number(item.price),
         subtotal: Number(item.price) * Number(item.quantity) * Number(days),
       }));
 
-      const authRes = await fetch('/api/bookings/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/bookings/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderData,
-          itemData: authItems,
+          itemData,
           userEmail: user?.email || null,
         }),
       });
 
-      const authResult = await authRes.json().catch(() => ({}));
-      if (!authRes.ok) {
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
         throw new Error(
-          [authResult.error, authResult.detail].filter(Boolean).join(': ') ||
-            'Failed to create booking'
+          [result.error, result.detail].filter(Boolean).join(": ") ||
+            "Failed to create booking",
         );
       }
 
-      const newBooking = authResult.data;
+      const newBooking = result.data;
 
-      // 5. Update Global State (Zustand)
-      // Spread transaction dulu agar items dari keranjang tidak hilang
+      // Update Global State (Zustand) — pertahankan items dari keranjang
       setTransactionData({
         ...transaction,
         items: sourceItems,
@@ -616,17 +454,17 @@ Mohon konfirmasi pesanan saya ya!`;
         totalPrice: Number(totalPrice),
         payment: { method: paymentMethod, bank: selectedBank || undefined },
         delivery: {
-          option: deliveryOption,
-          address: deliveryOption === 'delivery' ? deliveryAddress : null,
-          note: customerNote || null
+          option: "pickup",
+          address: null,
+          note: customerNote || null,
         },
         dates: {
-          start: startDate?.toISOString(),
-          end: endDate?.toISOString()
-        }
+          start: startDate.toISOString(),
+          end: endDate.toISOString(),
+        },
       });
 
-      // 6. Alur Keluar (WhatsApp)
+      // ===== Alur WhatsApp =====
       if (paymentMethod === "WhatsApp Konfirmasi") {
         const waMessage = `Halo Admin Habema!
 Saya ingin menyewa: *${product.name}*
@@ -635,148 +473,105 @@ User: ${user ? user.email : "Guest"}
 Durasi: ${days} Hari
 Total: Rp${Number(totalPrice).toLocaleString("id-ID")}
 
-Metode Pengambilan: ${deliveryOption === 'pickup' ? 'Ambil di Tempat' : 'Diantar'}${deliveryOption === 'delivery' ? `
-Alamat: ${deliveryAddress}
-Tipe Lokasi: ${specialLocationType === 'standard' ? 'Standar' :
-              specialLocationType === 'camping' ? 'Camping Area' :
-                specialLocationType === 'outdoor' ? 'Outdoor Event' :
-                  specialLocationType === 'remote' ? 'Remote Area' :
-                    specialLocationType === 'emergency' ? 'Emergency Delivery' : 'Special'}
-Biaya Pengantaran: ${leafletService.formatCost(deliveryFee)}
-Jarak: ${deliveryCost?.distance || 0} km
-Estimasi: ${deliveryCost?.duration || 'N/A'}
-Waktu: ${deliveryTime === 'flexible' ? 'Fleksibel' :
-              deliveryTime === 'morning' ? 'Pagi (08:00-12:00)' :
-                deliveryTime === 'afternoon' ? 'Siang (12:00-16:00)' :
-                  deliveryTime === 'evening' ? 'Sore (16:00-18:00)' : 'N/A'}${gpsCoordinates.latitude && gpsCoordinates.longitude ? `
-GPS: ${gpsCoordinates.latitude}, ${gpsCoordinates.longitude}` : ''}${emergencyContact.name ? `
-Kontak Darurat: ${emergencyContact.name} (${emergencyContact.relationship}) - ${emergencyContact.phone}` : ''}${deliveryInstructions ? `
-Instruksi: ${deliveryInstructions}` : ''}${accessibilityNotes ? `
-Akses: ${accessibilityNotes}` : ''}` : ''}${customerNote ? `
-Pesan: ${customerNote}` : ''}
+Metode Pengambilan: Ambil di Tempat${customerNote ? `
+Pesan: ${customerNote}` : ""}
 
-Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
+Data Identitas:
+Nama: ${idData?.fullName || "Guest"}
+ID: ${idData?.idNumber || "-"}
+Tipe: ${idData?.idType || "-"}
 
-        // Save booking data to localStorage for guest users
+Mohon konfirmasi pesanan saya ya!`;
+
         if (!user) {
-          const bookingData = {
-            id: newBooking.id,
-            product: product.name,
-            days: Number(days),
-            totalPrice: Number(totalPrice),
-            pricePerNight: Number(pricePerNight),
-            quantity: Number(quantity),
-            timestamp: new Date().toISOString()
-          };
-          localStorage.setItem('recentBooking', JSON.stringify(bookingData));
+          localStorage.setItem(
+            "recentBooking",
+            JSON.stringify({
+              id: newBooking.id,
+              product: product.name,
+              days: Number(days),
+              totalPrice: Number(totalPrice),
+              pricePerNight: Number(pricePerNight),
+              quantity: Number(quantity),
+              timestamp: new Date().toISOString(),
+            }),
+          );
         }
 
         window.open(
-          `https://wa.me/6289509162484?text=${encodeURIComponent(waMessage)}`,
+          `https://wa.me/${user ? "6289509162484" : "6283898749357"}?text=${encodeURIComponent(waMessage)}`,
           "_blank",
         );
+
+        router.push("/order-confirmation");
+        return;
       }
 
-      // Handle payment based on selected method
-      if (paymentMethod === "QRIS" || paymentMethod === "Transfer Bank") {
-        // Process payment via Midtrans
-        await handleMidtransPayment(newBooking.id);
-      } else if (paymentMethod === "WhatsApp Konfirmasi") {
-        // For WhatsApp confirmation, redirect to order confirmation
-        router.push("/order-confirmation");
-      } else {
-        // Fallback to order confirmation
-        router.push("/order-confirmation");
-      }
+      // ===== Alur Midtrans (QRIS / Transfer Bank) =====
+      await handleMidtransPayment(newBooking.id);
     } catch (error: any) {
-      console.error("Error lengkap:", error);
-      alert(
-        `Gagal menyimpan pesanan: ${error.message || "Terjadi kesalahan sistem"}`,
+      console.error("Error saat menyimpan pesanan:", error);
+      toast.error(
+        `Gagal menyimpan pesanan: ${error?.message || "Terjadi kesalahan sistem"}`,
       );
     }
   };
 
-  // ==================== PAYMENT HANDLERS ====================
   const handleMidtransPayment = async (bookingId: string) => {
     setIsProcessingPayment(true);
 
     try {
-      // Validate required data before sending to Midtrans
-      console.log('=== DEBUG: Data yang akan dikirim ke Midtrans ===');
-      console.log('Product:', product);
-      console.log('Days:', days);
-      console.log('TotalPrice:', totalPrice);
-      console.log('Quantity:', quantity);
-      console.log('ID Data:', idData);
-      console.log('User:', user);
-      console.log('Payment Method:', paymentMethod);
-      console.log('Selected Bank:', selectedBank);
-      console.log('Booking ID:', bookingId);
-
-      // Check for missing required fields
       if (!product || !product.id || !product.name || !product.price_per_night) {
-        throw new Error('Data produk tidak lengkap');
+        throw new Error("Data produk tidak lengkap");
       }
-
-      // Check if all steps are completed
       if (!startDate || !endDate) {
-        throw new Error('Silakan pilih tanggal sewa terlebih dahulu');
+        throw new Error("Silakan pilih tanggal sewa terlebih dahulu");
       }
-
       if (!conditionData) {
-        throw new Error('Silakan lengkapi syarat dan kondisi terlebih dahulu');
+        throw new Error("Silakan lengkapi syarat dan kondisi terlebih dahulu");
       }
-
       if (!idData) {
-        throw new Error('Silakan lengkapi verifikasi identitas terlebih dahulu');
+        throw new Error("Silakan lengkapi verifikasi identitas terlebih dahulu");
       }
-
       if (!paymentMethod) {
-        throw new Error('Silakan pilih metode pembayaran terlebih dahulu');
+        throw new Error("Silakan pilih metode pembayaran terlebih dahulu");
       }
-
       if (paymentMethod === "Transfer Bank" && !selectedBank) {
-        throw new Error('Silakan pilih bank terlebih dahulu');
+        throw new Error("Silakan pilih bank terlebih dahulu");
       }
-
       if (!days || days <= 0) {
-        throw new Error('Durasi sewa tidak valid');
+        throw new Error("Durasi sewa tidak valid");
       }
-
       if (!totalPrice || totalPrice <= 0) {
-        throw new Error('Total harga tidak valid');
+        throw new Error("Total harga tidak valid");
       }
-
       if (!quantity || quantity <= 0) {
-        throw new Error('Jumlah produk tidak valid');
+        throw new Error("Jumlah produk tidak valid");
       }
 
-      // Prepare transaction data for Midtrans
       const transactionData = {
-        items: [{
-          id: product.id,
-          name: product.name,
-          price: Number(product.price_per_night),
-          quantity: quantity,
-          category: product.equipment_categories?.name || "Equipment",
-          image_url: product.image_url
-        }],
+        items: [
+          {
+            id: product.id,
+            name: product.name,
+            price: Number(product.price_per_night),
+            quantity: quantity,
+            category: product.equipment_categories?.name || "Equipment",
+            image_url: product.image_url,
+          },
+        ],
         duration: Number(days),
         days: Number(days),
         payment: {
           method: paymentMethod,
           bank: selectedBank || undefined,
-          bookingId: bookingId
+          bookingId: bookingId,
         },
-        paymentMethod: 'Midtrans',
-        totalPrice: Number(totalPrice)
+        paymentMethod: "Midtrans",
+        totalPrice: Number(totalPrice),
       };
 
-      console.log('Transaction Data:', transactionData);
-
-      // Set transaction data to store for payment processing
-      // Gabung dengan data yang sudah ada agar delivery, dates, items, dll tidak hilang
-      // Jangan timpa items — biarkan semua item dari keranjang tetap utuh
+      // Gabung dengan data yang sudah ada agar items, dates, dll tidak hilang
       const existingTransaction = useCartStore.getState().currentTransaction;
       useCartStore.getState().setTransaction({
         ...existingTransaction,
@@ -787,23 +582,20 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
         payment: transactionData.payment,
       });
 
-      // Prepare Midtrans payload — harga dihitung ulang di server dari bookingId
+      // Harga dihitung ulang di server dari bookingId
       const midtransPayload = {
         bookingId: bookingId,
         customerDetails: {
-          firstName: idData?.fullName || 'Customer',
-          email: user?.email || 'customer@example.com',
-          phone: idData?.phone || '+62800000000'
-        }
+          firstName: idData?.fullName || "Customer",
+          email: user?.email || "customer@example.com",
+          phone: idData?.phone || "+62800000000",
+        },
       };
 
-      // Create Midtrans transaction
-      const response = await fetch('/api/midtrans/create-transaction', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(midtransPayload)
+      const response = await fetch("/api/midtrans/create-transaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(midtransPayload),
       });
 
       const result = await response.json();
@@ -812,82 +604,66 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
         throw new Error(result.error);
       }
 
-      // CRITICAL: No mock mode - ensure real payment processing
+      // Jangan lanjut bila pembayaran dalam mode mock.
       if (result.mockMode) {
-        console.error('CRITICAL: Mock mode detected in production!');
         setIsProcessingPayment(false);
-        toast.error('Payment system configuration error. Please contact support.');
+        toast.error("Payment system configuration error. Please contact support.");
         return;
       }
 
-      // Save Midtrans orderId ke store
+      // Simpan Midtrans orderId ke store
       if (result.orderId) {
         const current = useCartStore.getState().currentTransaction;
         if (current) {
-          useCartStore.getState().setTransaction({ ...current, orderId: result.orderId });
+          useCartStore
+            .getState()
+            .setTransaction({ ...current, orderId: result.orderId });
         }
       }
 
-      // Load Midtrans Snap script
       await loadMidtransScript();
 
-      console.log('About to open Snap popup with token:', result.token);
-      console.log('Snap available:', !!window.snap);
-
       try {
-        // Try using redirect URL if available, otherwise use Snap popup
         if (result.redirect_url) {
-          console.log('Using redirect URL:', result.redirect_url);
           setIsProcessingPayment(false);
 
-          // Mock mode (non-produksi): pembayaran simulasi dianggap selesai.
+          // Mode mock (non-produksi): pembayaran simulasi dianggap selesai.
           if (result.mock) {
-            router.push('/order-confirmation');
+            router.push("/order-confirmation");
             return;
           }
 
-          // Real mode: arahkan ke halaman pembayaran Midtrans di tab yang sama.
+          // Mode nyata: arahkan ke halaman pembayaran Midtrans.
           // Order-confirmation hanya dicapai lewat callback Midtrans
           // (/payment/finish) setelah transaksi benar-benar selesai.
           window.location.href = result.redirect_url;
         } else {
-          console.log('Using Snap popup with token:', result.token);
-          // Open Midtrans Snap popup
           window.snap.pay(result.token, {
-            onSuccess: function (result: any) {
-              console.log('Payment success:', result);
+            onSuccess: () => {
               setIsProcessingPayment(false);
-              router.push('/order-confirmation');
+              router.push("/order-confirmation");
             },
-            onPending: function (result: any) {
-              console.log('Payment pending:', result);
+            onPending: () => {
               setIsProcessingPayment(false);
-              router.push('/payment/pending');
+              router.push("/payment/pending");
             },
-            onError: function (result: any) {
-              console.log('Payment error:', result);
+            onError: () => {
               setIsProcessingPayment(false);
-              toast.error('Pembayaran gagal. Silakan coba lagi.');
+              toast.error("Pembayaran gagal. Silakan coba lagi.");
             },
-            onClose: function () {
-              console.log('Payment popup closed');
+            onClose: () => {
               setIsProcessingPayment(false);
-            }
+            },
           });
         }
-      } catch (error: any) {
-        console.error('Error opening payment:', error);
+      } catch {
         setIsProcessingPayment(false);
-        toast.error('Gagal membuka pembayaran. Silakan coba lagi.');
+        toast.error("Gagal membuka pembayaran. Silakan coba lagi.");
       }
-
     } catch (error: any) {
-      console.error('Payment error:', error);
+      console.error("Payment error:", error);
       setIsProcessingPayment(false);
-
-      // Show specific error message from validation or generic error
-      const errorMessage = error?.message || 'Terjadi kesalahan saat memproses pembayaran.';
-      toast.error(errorMessage);
+      toast.error(error?.message || "Terjadi kesalahan saat memproses pembayaran.");
     }
   };
 
@@ -898,6 +674,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
         Memproses data...
       </div>
     );
+
   if (!product)
     return (
       <div className="min-h-screen flex items-center justify-center text-red-500">
@@ -905,343 +682,58 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
       </div>
     );
 
-  // ==================== SUCCESS STATE ====================
-  if (isSuccess) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
-        <div className="max-w-md w-full text-center space-y-6">
-          <div className="w-20 h-20 bg-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-emerald-100">
-            <CheckCircle className="w-10 h-10 text-white" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-slate-900">
-              Pesanan Berhasil!
-            </h2>
-            <p className="text-slate-500 text-sm">
-              Tim kami akan segera memverifikasi dokumen dan pesanan Anda.
-            </p>
-          </div>
-          <Button
-            className="w-full h-12 bg-slate-900 rounded-xl font-bold"
-            onClick={() => router.push("/")}
-          >
-            Kembali ke Beranda
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   // ==================== MAIN RENDER ====================
   return (
     <div className="min-h-screen bg-cream pb-24">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <header className="mb-6">
-          <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-forest">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+        <header className="mb-8">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-1">
+            Habema Rental
+          </p>
+          <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-forest">
             Checkout
           </h1>
+          <p className="text-sm text-stone-500 font-medium mt-1">
+            Lengkapi detail sewa untuk melanjutkan — {product.name}.
+          </p>
         </header>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
           {/* Main Column: Booking Steps */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-5">
             {/* Step 1: Jadwal Sewa */}
-            <StepCard
-              number={1}
-              title="Jadwal Sewa"
-              completed={!!(startDate && endDate)}
-            >
-              <div className="space-y-6">
+            <StepCard number={1} title="Jadwal Sewa" completed={!!(startDate && endDate)}>
+              <div className="space-y-5">
                 <DateRangePicker
                   onDateRangeSelect={handleDateSelect}
                   selectedStartDate={startDate || undefined}
                   selectedEndDate={endDate || undefined}
                 />
 
-                {/* Pickup/Delivery Options */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-slate-900">Metode Pengambilan</h3>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setDeliveryOption('pickup')}
-                      className={`p-4 rounded-xl border-2 transition-all ${deliveryOption === 'pickup'
-                          ? 'border-emerald-600 bg-emerald-50 text-emerald-900'
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                        }`}
-                    >
-                      <div className="text-center">
-                        <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-current/10 flex items-center justify-center">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                          </svg>
-                        </div>
-                        <div className="text-sm font-medium">Ambil di Tempat</div>
-                        <div className="text-xs opacity-75">Gratis</div>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={true}
-                      className="p-4 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed opacity-60"
-                    >
-                      <div className="text-center">
-                        <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-current/10 flex items-center justify-center">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4-4a2 2 0 104 0" />
-                          </svg>
-                        </div>
-                        <div className="text-sm font-medium">Diantar</div>
-                        <div className="text-xs opacity-75">Fitur Mendatang</div>
-                      </div>
-                    </button>
+                <div className="flex items-center gap-3 p-4 rounded-xl border border-stone-200 bg-stone-50/60">
+                  <MapPin className="w-5 h-5 text-forest shrink-0" />
+                  <div>
+                    <p className="text-sm font-bold text-forest">Ambil di Tempat</p>
+                    <p className="text-xs text-stone-500 font-medium">
+                      Gratis · Basecamp Habema, Cihanjuang
+                    </p>
                   </div>
-
-                  {/* Delivery Zone Info Banner */}
-                  {/* {deliveryOption === 'delivery' && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4">
-                      <div className="flex items-start gap-2">
-                        <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                        <div className="text-xs text-blue-800">
-                          <p className="font-medium mb-1">Area Layanan Pengantaran</p>
-                          <p className="opacity-90">Melayani area Bandung Raya (Bandung, Cimahi, KBB, Lembang, Padalarang) dengan radius maksimal 30km dari Basecamp Cihanjuang.</p>
-                        </div>
-                      </div>
-                    </div>
-                  )} */}
-
-                  {/* Address Input for Delivery */}
-                  {deliveryOption === 'delivery' && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-700">
-                        Pilih Lokasi Pengantaran *
-                      </label>
-                      <LazyWrapper>
-                        <LazyLocationPicker
-                          onLocationChange={(location) => {
-                            setDeliveryAddress(location.fullAddress);
-                          }}
-                          onDeliveryCostChange={(deliveryData) => {
-                            // Update delivery cost state with full data from LocationPicker
-                            if (deliveryData && deliveryData.cost > 0) {
-                              setDeliveryCost({
-                                cost: deliveryData.cost,
-                                distance: deliveryData.distance || 0,
-                                duration: '',
-                                durationMinutes: 0,
-                                breakdown: deliveryData.breakdown || {
-                                  baseCost: 15000,
-                                  distanceCost: deliveryData.cost - 15000,
-                                  volumeSurcharge: 0,
-                                  vehicleType: 'motor'
-                                },
-                                locationType: 'standard'
-                              });
-                            }
-                          }}
-                        />
-                      </LazyWrapper>
-
-
-
-                      {/* Error Message */}
-                      {deliveryError && (
-                        <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-                          <div className="flex items-start gap-2">
-                            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                            <div>
-                              <p className="text-xs text-red-800 font-medium">
-                                {deliveryError.includes('di luar jangkauan') || deliveryError.includes('area layanan')
-                                  ? 'Lokasi di Luar Area Layanan'
-                                  : 'Gagal menghitung biaya'}
-                              </p>
-                              <p className="text-xs text-red-600 mt-1">{deliveryError}</p>
-                              {deliveryError.includes('di luar jangkauan') || deliveryError.includes('area layanan') ? (
-                                <p className="text-xs text-red-600 mt-2 font-medium">
-                                  Silakan pilih opsi "Ambil di Tempat" atau gunakan alamat di area Bandung Raya.
-                                </p>
-                              ) : null}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Loading State */}
-                      {isCalculatingDelivery && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                          <div className="flex items-center gap-2">
-                            <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
-                            <span className="text-xs text-blue-800">Sedang menghitung biaya pengantaran...</span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Special Location Type */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700">
-                          Tipe Lokasi
-                        </label>
-                        <select
-                          value={specialLocationType}
-                          onChange={(e) => setSpecialLocationType(e.target.value as any)}
-                          className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        >
-                          <option value="standard">📍 Lokasi Standar (Rumah/Kantor)</option>
-                          <option value="camping">🏕️ Camping Area</option>
-                          <option value="outdoor">🎪 Outdoor Event</option>
-                          <option value="remote">🏔️ Remote Area</option>
-                          <option value="emergency">🚨 Emergency Delivery</option>
-                        </select>
-                      </div>
-
-                      {/* GPS Coordinates for Remote Areas */}
-                      {(specialLocationType === 'camping' || specialLocationType === 'remote' || specialLocationType === 'emergency') && (
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-slate-700">
-                            Koordinat GPS {specialLocationType === 'emergency' ? '(Sangat Direkomendasikan)' : '(Direkomendasikan)'}
-                          </label>
-                          <div className="grid grid-cols-2 gap-2">
-                            <input
-                              type="text"
-                              value={gpsCoordinates.latitude}
-                              onChange={(e) => setGpsCoordinates(prev => ({ ...prev, latitude: e.target.value }))}
-                              placeholder="Latitude (ex: -6.826438)"
-                              className="p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                            <input
-                              type="text"
-                              value={gpsCoordinates.longitude}
-                              onChange={(e) => setGpsCoordinates(prev => ({ ...prev, longitude: e.target.value }))}
-                              placeholder="Longitude (ex: 107.574937)"
-                              className="p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                          </div>
-                          <p className="text-xs text-slate-500">
-                            Gunakan GPS dari aplikasi maps untuk akurasi terbaik
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Emergency Contact */}
-                      {(specialLocationType === 'camping' || specialLocationType === 'remote' || specialLocationType === 'emergency') && (
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-slate-700">
-                            Kontak Darurat Lokal *
-                          </label>
-                          <div className="space-y-2">
-                            <input
-                              type="text"
-                              value={emergencyContact.name}
-                              onChange={(e) => setEmergencyContact(prev => ({ ...prev, name: e.target.value }))}
-                              placeholder="Nama kontak darurat"
-                              className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                            <div className="grid grid-cols-2 gap-2">
-                              <input
-                                type="tel"
-                                value={emergencyContact.phone}
-                                onChange={(e) => setEmergencyContact(prev => ({ ...prev, phone: e.target.value }))}
-                                placeholder="Nomor telepon"
-                                className="p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                              />
-                              <input
-                                type="text"
-                                value={emergencyContact.relationship}
-                                onChange={(e) => setEmergencyContact(prev => ({ ...prev, relationship: e.target.value }))}
-                                placeholder="Hubungan (ex: Guide, Teman)"
-                                className="p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                              />
-                            </div>
-                          </div>
-                          <p className="text-xs text-slate-500">
-                            Kontak lokal yang bisa dihubungi jika ada kendala pengantaran
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Delivery Time Preference */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700">
-                          Waktu Pengantaran
-                        </label>
-                        <select
-                          value={deliveryTime}
-                          onChange={(e) => setDeliveryTime(e.target.value as any)}
-                          className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        >
-                          <option value="flexible">Fleksibel</option>
-                          <option value="morning">Pagi (08:00 - 12:00)</option>
-                          <option value="afternoon">Siang (12:00 - 16:00)</option>
-                          <option value="evening">Sore (16:00 - 18:00)</option>
-                        </select>
-                      </div>
-
-                      {/* Special Instructions */}
-                      {/* <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700">
-                          Instruksi Khusus {specialLocationType !== 'standard' ? '(Penting)' : '(Opsional)'}
-                        </label>
-                        <textarea
-                          value={deliveryInstructions}
-                          onChange={(e) => setDeliveryInstructions(e.target.value)}
-                          placeholder={
-                            specialLocationType === 'camping' ? 'Contoh: Dekat tenda biru, sebelah toilet umum, hubungi Pak Budi guide' :
-                            specialLocationType === 'outdoor' ? 'Contoh: Area panggung utama, dekat sound system, kontak panitia Acara' :
-                            specialLocationType === 'remote' ? 'Contoh: Lewat jembatan kayu, dekat masjid, hubungi kepala desa' :
-                            specialLocationType === 'emergency' ? 'Contoh: URGENT - Kebakaran, butuh alat safety segera!' :
-                            'Contoh: Rumah warna merah, belakang toko kelontong, panggil Pak RT'
-                          }
-                          className={`w-full p-3 border rounded-xl text-sm resize-none h-20 focus:outline-none focus:ring-2 ${
-                            specialLocationType !== 'standard' 
-                              ? 'border-orange-300 focus:ring-orange-500 focus:border-orange-500 bg-orange-50/30' 
-                              : 'border-slate-200 focus:ring-emerald-500 focus:border-emerald-500'
-                          }`}
-                          rows={2}
-                        />
-                      </div> */}
-
-                      {/* Accessibility Notes */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700">
-                          Catatan Akses Lokasi
-                        </label>
-                        <textarea
-                          value={accessibilityNotes}
-                          onChange={(e) => setAccessibilityNotes(e.target.value)}
-                          placeholder="Contoh: Jalan sempit, perlu kendaraan kecil, tidak ada parkir, harus jalan kaki 100m"
-                          className="w-full p-3 border border-slate-200 rounded-xl text-sm resize-none h-16 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                          rows={2}
-                        />
-                      </div>
-
-                      <p className="text-xs text-slate-500">
-                        Pengantaran akan dilakukan pada hari pertama sewa. {specialLocationType !== 'standard' ? 'Pastikan semua informasi lokasi lengkap untuk pengantaran yang tepat.' : 'Pastikan alamat lengkap untuk pengantaran yang tepat.'}
-                      </p>
-                    </div>
-                  )}
                 </div>
 
-                {/* Customer Note */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">
-                    Pesan untuk Pemilik Rental (Opsional)
+                  <label className="text-sm font-semibold text-slate-800">
+                    Pesan untuk Pemilik Rental{" "}
+                    <span className="text-stone-400 font-medium">(Opsional)</span>
                   </label>
                   <textarea
                     value={customerNote}
                     onChange={(e) => setCustomerNote(e.target.value)}
-                    placeholder="Berikan pesan atau catatan khusus untuk pemilik rental (contoh: permintaan khusus, pertanyaan, dll)"
-                    className="w-full p-3 border border-slate-200 rounded-xl text-sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    rows={2}
+                    placeholder="Berikan catatan khusus, misalnya permintaan tambahan atau pertanyaan"
+                    className="w-full p-3 border border-stone-200 rounded-xl text-sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   />
                 </div>
               </div>
-
-              {!startDate && !endDate && (
-                <p className="text-xs text-stone-400 font-medium">Pilih tanggal sewa untuk melanjutkan</p>
-              )}
             </StepCard>
 
             {/* Step 2: Syarat & Kondisi */}
@@ -1255,7 +747,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                 equipmentName={product.name}
                 onChecklistComplete={(data: ConditionChecklistData) => {
                   setConditionData(data);
-                  localStorage.setItem('rentalConditions', JSON.stringify(data));
+                  localStorage.setItem("rentalConditions", JSON.stringify(data));
                 }}
               />
             </StepCard>
@@ -1285,53 +777,58 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
               disabled={!idData}
             >
               <div className="space-y-3">
-                {/* Logika Hybrid: Filter metode berdasarkan status login */}
                 {[
                   {
                     id: "tf",
                     name: "Transfer Bank",
                     desc: "Verifikasi manual 10-30 menit",
                     icon: "🏦",
-                    requiresAuth: true, // Hanya untuk user login
+                    requiresAuth: true,
                   },
                   {
                     id: "qris",
                     name: "QRIS",
                     desc: "Otomatis & Instan (Gopay, OVO, Dana)",
                     icon: "📸",
-                    requiresAuth: true, // Hanya untuk user login
+                    requiresAuth: true,
                   },
                   {
                     id: "wa",
                     name: "WhatsApp Konfirmasi",
                     desc: "Tanya admin via WhatsApp",
                     icon: "💬",
-                    requiresAuth: false, // Guest & User bisa pakai ini
+                    requiresAuth: false,
                   },
                 ]
-                  // FILTER DISINI: Jika user TIDAK login, tampilkan yang NOT requiresAuth saja
+                  // Guest hanya bisa pakai WhatsApp
                   .filter((m) => (user ? true : !m.requiresAuth))
                   .map((m) => (
                     <div key={m.id} className="space-y-2">
                       <div
                         onClick={() => setPaymentMethod(m.name)}
-                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex justify-between items-center ${paymentMethod === m.name
+                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex justify-between items-center ${
+                          paymentMethod === m.name
                             ? "border-emerald-600 bg-emerald-50/50"
                             : "border-slate-100 bg-white hover:border-slate-200"
-                          }`}
+                        }`}
                       >
                         <div className="flex items-center gap-3">
                           <div
-                            className={`text-xl p-2 rounded-lg ${paymentMethod === m.name
+                            className={`text-xl p-2 rounded-lg ${
+                              paymentMethod === m.name
                                 ? "bg-emerald-100"
                                 : "bg-slate-50"
-                              }`}
+                            }`}
                           >
                             {m.icon}
                           </div>
                           <div className="flex flex-col">
                             <span
-                              className={`font-bold text-sm ${paymentMethod === m.name ? "text-emerald-900" : "text-slate-700"}`}
+                              className={`font-bold text-sm ${
+                                paymentMethod === m.name
+                                  ? "text-emerald-900"
+                                  : "text-slate-700"
+                              }`}
                             >
                               {m.name}
                             </span>
@@ -1341,7 +838,11 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                           </div>
                         </div>
                         <div
-                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === m.name ? "border-emerald-600 bg-emerald-600" : "border-slate-200"}`}
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                            paymentMethod === m.name
+                              ? "border-emerald-600 bg-emerald-600"
+                              : "border-slate-200"
+                          }`}
                         >
                           {paymentMethod === m.name && (
                             <div className="w-2 h-2 bg-white rounded-full" />
@@ -1349,7 +850,6 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                         </div>
                       </div>
 
-                      {/* Sub-pilihan Bank (Hanya muncul jika Login & Pilih TF) */}
                       {m.name === "Transfer Bank" &&
                         paymentMethod === "Transfer Bank" && (
                           <div className="grid grid-cols-2 gap-2 ml-4 animate-in slide-in-from-top-2">
@@ -1357,10 +857,11 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                               <button
                                 key={bank}
                                 onClick={() => setSelectedBank(bank)}
-                                className={`py-3 px-4 rounded-xl border-2 text-xs font-bold transition-all ${selectedBank === bank
+                                className={`py-3 px-4 rounded-xl border-2 text-xs font-bold transition-all ${
+                                  selectedBank === bank
                                     ? "border-emerald-500 bg-white text-emerald-700 shadow-sm"
                                     : "border-slate-100 bg-slate-50/50 text-slate-500"
-                                  }`}
+                                }`}
                               >
                                 {bank}
                               </button>
@@ -1370,12 +871,11 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                     </div>
                   ))}
 
-                {/* Cari bagian ini di kode kamu */}
                 {!user && (
                   <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl">
                     <p className="text-[10px] text-amber-700 font-medium">
-                      Note: Karena Anda belum masuk, pembayaran via Bank/QRIS
-                      tidak tersedia. Silakan{" "}
+                      Note: Karena Anda belum masuk, pembayaran via Bank/QRIS tidak
+                      tersedia. Silakan{" "}
                       <button
                         onClick={() => router.push("/login")}
                         className="underline font-bold text-amber-800"
@@ -1394,12 +894,13 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                     !paymentMethod ||
                     (paymentMethod === "Transfer Bank" && !selectedBank)
                   }
-                  className={`w-full h-14 mt-4 rounded-xl font-bold text-lg shadow-lg ${paymentMethod &&
-                      (paymentMethod !== "Transfer Bank" || selectedBank) &&
-                      !isProcessingPayment
+                  className={`w-full h-14 mt-2 rounded-xl font-bold text-lg shadow-lg ${
+                    paymentMethod &&
+                    (paymentMethod !== "Transfer Bank" || selectedBank) &&
+                    !isProcessingPayment
                       ? "bg-emerald-600 hover:bg-emerald-700 text-white"
                       : "bg-slate-200 text-slate-400"
-                    }`}
+                  }`}
                 >
                   {isProcessingPayment ? (
                     <>
@@ -1425,11 +926,13 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                 </h3>
               </div>
               <div className="p-4 space-y-3">
-                {/* Display all items from transaction */}
                 {transaction?.items && transaction.items.length > 0 ? (
                   <div className="space-y-2.5 max-h-40 lg:max-h-60 overflow-y-auto">
                     {transaction.items.map((item: any, index: number) => (
-                      <div key={`${item.id}-${index}`} className="flex gap-3 items-start">
+                      <div
+                        key={`${item.id}-${index}`}
+                        className="flex gap-3 items-start"
+                      >
                         <OptimizedImage
                           src={
                             item.image_url ||
@@ -1438,7 +941,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                               : "") ||
                             "/placeholder.svg"
                           }
-                          alt={item.name || 'Produk'}
+                          alt={item.name || "Produk"}
                           className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg object-cover ring-1 ring-stone-100 shrink-0 bg-stone-50"
                           width={48}
                           height={48}
@@ -1448,21 +951,21 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                             {item.name}
                           </h4>
                           <p className="text-[10px] text-stone-500 font-medium">
-                            {item.quantity} unit × Rp{item.price.toLocaleString('id-ID')}
+                            {item.quantity} unit × Rp
+                            {item.price.toLocaleString("id-ID")}
                           </p>
                         </div>
                         <p className="text-xs font-bold text-forest shrink-0">
-                          Rp{(item.price * item.quantity).toLocaleString('id-ID')}
+                          Rp{(item.price * item.quantity).toLocaleString("id-ID")}
                         </p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  /* Fallback to single product display */
                   <div className="flex gap-4">
                     <OptimizedImage
-                      src={product.image_url || '/placeholder.svg'}
-                      alt={product.name || 'Produk'}
+                      src={product.image_url || "/placeholder.svg"}
+                      alt={product.name || "Produk"}
                       className="w-14 h-14 rounded-xl object-cover ring-1 ring-stone-100 shrink-0 bg-stone-50"
                       width={56}
                       height={56}
@@ -1492,7 +995,9 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
 
                       {discountAmount > 0 && (
                         <div className="flex justify-between text-xs font-medium">
-                          <span className="text-emerald-600">Diskon ({claimedDiscount?.code})</span>
+                          <span className="text-emerald-600">
+                            Diskon ({claimedDiscount?.code})
+                          </span>
                           <span className="text-emerald-600 font-bold">
                             -Rp{discountAmount.toLocaleString("id-ID")}
                           </span>
@@ -1500,9 +1005,7 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                       )}
 
                       <div className="flex justify-between items-end pt-2">
-                        <span className="font-bold text-forest text-sm">
-                          Total
-                        </span>
+                        <span className="font-bold text-forest text-sm">Total</span>
                         <span className="font-black text-forest text-lg tracking-tight">
                           Rp{totalPrice.toLocaleString("id-ID")}
                         </span>
@@ -1514,66 +1017,6 @@ Data sudah masuk ke sistem, mohon konfirmasinya ya!`;
                     </div>
                   )}
                 </div>
-
-                {/* Delivery Cost Breakdown */}
-                {deliveryCost && (
-                  <div className="bg-stone-50 border border-stone-200 rounded-xl p-3 mt-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <MapPin className="w-4 h-4 text-forest" />
-                      <span className="text-sm font-bold text-forest">
-                        Detail Pengantaran
-                        {deliveryCost.locationType !== 'standard' && (
-                          <span className="ml-2 text-xs px-2 py-0.5 bg-gold text-white rounded-full font-bold">
-                            {deliveryCost.locationType === 'camping' ? 'Camping' :
-                              deliveryCost.locationType === 'outdoor' ? 'Outdoor Event' :
-                                deliveryCost.locationType === 'remote' ? 'Remote' :
-                                  deliveryCost.locationType === 'emergency' ? 'Emergency' : 'Special'}
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                    <div className="space-y-1 text-xs">
-                      <div className="flex justify-between text-stone-600 font-medium">
-                        <span>Jarak</span>
-                        <span className="font-bold text-forest">{deliveryCost.distance} km</span>
-                      </div>
-                      <div className="flex justify-between text-stone-600 font-medium">
-                        <span>Estimasi waktu</span>
-                        <span className="font-bold text-forest">{deliveryCost.duration}</span>
-                      </div>
-                      <div className="flex justify-between text-stone-600 font-medium">
-                        <span>Biaya dasar</span>
-                        <span className="font-bold text-forest">{leafletService.formatCost(deliveryCost.breakdown.baseCost)}</span>
-                      </div>
-                      <div className="flex justify-between text-stone-600 font-medium">
-                        <span>Biaya jarak</span>
-                        <span className="font-bold text-forest">{leafletService.formatCost(deliveryCost.breakdown.distanceCost)}</span>
-                      </div>
-                      {deliveryCost.locationType !== 'standard' && deliveryCost.locationType && (
-                        <div className="flex justify-between font-bold text-forest">
-                          <span>Tambahan lokasi khusus</span>
-                          <span>
-                            {deliveryCost.locationType === 'camping' ? '+25%' :
-                              deliveryCost.locationType === 'outdoor' ? '+20%' :
-                                deliveryCost.locationType === 'remote' ? '+35%' :
-                                  deliveryCost.locationType === 'emergency' ? '+50%' : '+0%'}
-                          </span>
-                        </div>
-                      )}
-                      {deliveryCost.specialNotes && (
-                        <div className="text-xs text-stone-500 font-medium bg-white p-2 rounded-lg mt-2 border border-stone-200">
-                          {deliveryCost.specialNotes}
-                        </div>
-                      )}
-                      <div className="border-t border-stone-200 pt-1 mt-1">
-                        <div className="flex justify-between font-bold text-forest">
-                          <span>Total biaya pengantaran</span>
-                          <span>{leafletService.formatCost(deliveryCost.cost)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </Card>
 
@@ -1695,7 +1138,9 @@ function StepCard({
       <div className="p-4 sm:p-4">
         <div className="flex items-center gap-3 mb-4">
           <div
-            className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${completed ? "bg-forest text-white" : "bg-stone-200 text-stone-500"}`}
+            className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+              completed ? "bg-forest text-white" : "bg-stone-200 text-stone-500"
+            }`}
           >
             {completed ? <CheckCircle className="w-4 h-4" /> : number}
           </div>
@@ -1718,8 +1163,8 @@ export default function BookingPage() {
   return (
     <Suspense
       fallback={
-        <div className="h-screen flex items-center justify-center font-bold text-slate-200 uppercase tracking-widest">
-          Loading...
+        <div className="min-h-screen flex items-center justify-center text-slate-400 animate-pulse font-medium">
+          Memuat halaman booking...
         </div>
       }
     >
