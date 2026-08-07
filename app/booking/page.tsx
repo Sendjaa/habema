@@ -778,8 +778,8 @@ Mohon konfirmasi pesanan saya ya!`;
             <StepCard
               number={3}
               title="Metode Pembayaran"
-              completed={false}
-              disabled={!idData}
+              completed={!!paymentMethod}
+              disabled={!startDate || !endDate}
             >
               <div className="space-y-3">
                 {[
