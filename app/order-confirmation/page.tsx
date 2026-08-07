@@ -419,8 +419,37 @@ export default function OrderConfirmationPage() {
                       <span className="text-forest text-xs font-bold">3</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-forest text-sm sm:text-base">Pengambilan/Pengantaran</h4>
-                      <p className="text-xs sm:text-sm text-stone-600 font-medium">Koordinasi waktu dan tempat pengambilan</p>
+                      <h4 className="font-bold text-forest text-sm sm:text-base">Pengambilan</h4>
+                      {transactionData?.pickupBranch ? (
+                        <div className="text-xs sm:text-sm text-stone-600 font-medium mt-1 space-y-0.5">
+                          <p>
+                            Ambil di{" "}
+                            <span className="font-bold text-forest">
+                              {transactionData.pickupBranch.name}
+                            </span>
+                          </p>
+                          {transactionData.returnBranch &&
+                            transactionData.returnBranch.id !==
+                              transactionData.pickupBranch.id && (
+                              <p>
+                                Kembalikan di{" "}
+                                <span className="font-bold text-forest">
+                                  {transactionData.returnBranch.name}
+                                </span>
+                              </p>
+                            )}
+                          <p className="text-stone-400">
+                            {transactionData.pickupBranch.address}
+                            {transactionData.pickupBranch.city
+                              ? `, ${transactionData.pickupBranch.city}`
+                              : ""}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-xs sm:text-sm text-stone-600 font-medium">
+                          Koordinasi waktu dan tempat pengambilan
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

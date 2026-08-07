@@ -78,6 +78,18 @@ export interface TransactionData {
     start: string | undefined;
     end: string | undefined;
   };
+  pickupBranch?: {
+    id: string;
+    name: string;
+    address?: string | null;
+    city?: string | null;
+  } | null;
+  returnBranch?: {
+    id: string;
+    name: string;
+    address?: string | null;
+    city?: string | null;
+  } | null;
 }
 
 export interface ClaimedDiscount {

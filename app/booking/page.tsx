@@ -95,6 +95,12 @@ function BookingContent() {
 
   const [customerNote, setCustomerNote] = useState("");
 
+  // Cabang pengambilan & pengembalian
+  const [branches, setBranches] = useState<any[]>([]);
+  const [loadingBranches, setLoadingBranches] = useState(false);
+  const [pickupBranchId, setPickupBranchId] = useState<string | null>(null);
+  const [returnBranchId, setReturnBranchId] = useState<string | null>(null);
+
   // Kupon yang sudah diklaim user
   const [myCoupons, setMyCoupons] = useState<any[]>([]);
   const [loadingCoupons, setLoadingCoupons] = useState(false);
@@ -290,6 +296,34 @@ function BookingContent() {
     fetchMyCoupons();
   }, [user]);
 
+  // Muat cabang + stok untuk produk ini (Pendekatan B: katalog global,
+  // cabang dipilih saat checkout; hanya cabang berstok yang ditampilkan).
+  useEffect(() => {
+    const fetchBranches = async () => {
+      if (!product) return;
+      setLoadingBranches(true);
+      try {
+        const res = await fetch(
+          `/api/branches/availability?productId=${encodeURIComponent(product.id)}`,
+        );
+        const result = await res.json();
+        if (res.ok && result.success) {
+          const available = (result.data || []).filter(
+            (b: any) => (b.stock || 0) > 0,
+          );
+          setBranches(available);
+          setPickupBranchId((prev) => prev || available[0]?.id || null);
+          setReturnBranchId((prev) => prev || null);
+        }
+      } catch {
+        setBranches([]);
+      } finally {
+        setLoadingBranches(false);
+      }
+    };
+    fetchBranches();
+  }, [product]);
+
   // ==================== CALCULATIONS ====================
   const days =
     startDate && endDate ? Math.max(1, calculateDaysBetween(startDate, endDate)) : 0;
@@ -329,6 +363,10 @@ function BookingContent() {
   const deposit = Math.round(discountedSubtotal * 0.2);
   const totalPrice = discountedSubtotal;
   const setTransactionData = useCartStore((state) => state.setTransaction);
+
+  const pickupBranch = branches.find((b: any) => b.id === pickupBranchId) || null;
+  const returnBranch = branches.find((b: any) => b.id === returnBranchId) || null;
+  const effectiveReturnBranch = returnBranch || pickupBranch;
 
   // Cek apakah sebuah kupon bisa dipakai untuk booking ini
   const getCouponEligibility = (d: any) => {
@@ -398,6 +436,8 @@ function BookingContent() {
         throw new Error("Silakan pilih tanggal sewa terlebih dahulu.");
       if (!conditionData)
         throw new Error("Silakan lengkapi syarat dan kondisi terlebih dahulu.");
+      if (!pickupBranchId)
+        throw new Error("Silakan pilih lokasi pengambilan terlebih dahulu.");
 
       // Item yang akan dipesan. Prioritaskan item dari keranjang (transaction),
       // fallback ke produk tunggal dari URL bila halaman dibuka langsung dari katalog.
@@ -427,6 +467,8 @@ function BookingContent() {
         rental_days: days,
         subtotal: subtotal,
         deposit_amount: deposit,
+        pickup_branch_id: pickupBranchId,
+        return_branch_id: returnBranchId || pickupBranchId,
       };
 
       // Guest: minta login dulu sebelum melanjutkan
@@ -473,10 +515,26 @@ function BookingContent() {
         totalPrice: Number(totalPrice),
         payment: { method: paymentMethod, bank: selectedBank || undefined },
         delivery: {
-          option: "pickup",
-          address: null,
+          option: "branch",
+          address: pickupBranch?.address || null,
           note: customerNote || null,
         },
+        pickupBranch: pickupBranch
+          ? {
+              id: pickupBranch.id,
+              name: pickupBranch.name,
+              address: pickupBranch.address,
+              city: pickupBranch.city,
+            }
+          : null,
+        returnBranch: effectiveReturnBranch
+          ? {
+              id: effectiveReturnBranch.id,
+              name: effectiveReturnBranch.name,
+              address: effectiveReturnBranch.address,
+              city: effectiveReturnBranch.city,
+            }
+          : null,
         dates: {
           start: startDate.toISOString(),
           end: endDate.toISOString(),
@@ -492,7 +550,9 @@ User: ${user ? user.email : "Guest"}
 Durasi: ${days} Hari
 Total: Rp${Number(totalPrice).toLocaleString("id-ID")}
 
-Metode Pengambilan: Ambil di Tempat${customerNote ? `
+Metode Pengambilan: ${pickupBranch?.name || "Ambil di Tempat"}${pickupBranch?.address ? `
+Alamat: ${pickupBranch.address}${pickupBranch.city ? `, ${pickupBranch.city}` : ""}` : ""}${effectiveReturnBranch && effectiveReturnBranch.id !== pickupBranch?.id ? `
+Lokasi Pengembalian: ${effectiveReturnBranch.name}${effectiveReturnBranch.address ? ` (${effectiveReturnBranch.address})` : ""}` : ""}${customerNote ? `
 Pesan: ${customerNote}` : ""}
 
 Data Identitas:
@@ -730,15 +790,107 @@ Mohon konfirmasi pesanan saya ya!`;
                   selectedEndDate={endDate || undefined}
                 />
 
-                <div className="flex items-center gap-3 p-4 rounded-xl border border-stone-200 bg-stone-50/60">
-                  <MapPin className="w-5 h-5 text-forest shrink-0" />
-                  <div>
-                    <p className="text-sm font-bold text-forest">Ambil di Tempat</p>
-                    <p className="text-xs text-stone-500 font-medium">
-                      Gratis · Basecamp Habema, Cihanjuang
+                {/* Pilih Cabang Pengambilan */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-800">
+                    Lokasi Pengambilan <span className="text-stone-400 font-medium">*</span>
+                  </label>
+
+                  {loadingBranches ? (
+                    <div className="flex items-center gap-2 text-xs text-stone-500 font-medium py-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Memuat ketersediaan cabang...
+                    </div>
+                  ) : branches.length === 0 ? (
+                    <div className="p-4 rounded-xl border border-amber-200 bg-amber-50">
+                      <p className="text-xs text-amber-800 font-medium">
+                        Maaf, stok produk ini sedang tidak tersedia di semua cabang.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {branches.map((b) => {
+                        const selected = pickupBranchId === b.id;
+                        return (
+                          <button
+                            key={b.id}
+                            type="button"
+                            onClick={() => {
+                              setPickupBranchId(b.id);
+                              if (returnBranchId === b.id) setReturnBranchId(null);
+                            }}
+                            className={`w-full p-3.5 rounded-xl border-2 text-left transition-all ${
+                              selected
+                                ? "border-emerald-600 bg-emerald-50/60"
+                                : "border-stone-200 bg-white hover:border-stone-300"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-start gap-3">
+                                <MapPin
+                                  className={`w-4 h-4 mt-0.5 shrink-0 ${
+                                    selected ? "text-emerald-600" : "text-forest"
+                                  }`}
+                                />
+                                <div>
+                                  <p className="text-sm font-bold text-slate-800">
+                                    {b.name}
+                                  </p>
+                                  <p className="text-xs text-stone-500 font-medium">
+                                    {b.address}
+                                    {b.city ? `, ${b.city}` : ""}
+                                  </p>
+                                  {b.operational_hours && (
+                                    <p className="text-[10px] text-stone-400 font-medium mt-0.5">
+                                      Jam operasional: {b.operational_hours}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <span
+                                className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-full ${
+                                  (b.stock || 0) > 0
+                                    ? "bg-emerald-100 text-emerald-700"
+                                    : "bg-stone-100 text-stone-500"
+                                }`}
+                              >
+                                {b.stock > 0 ? `Tersedia ${b.stock}` : "Habis"}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Pilih Cabang Pengembalian (cross-branch return) */}
+                {pickupBranchId && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-800">
+                      Lokasi Pengembalian
+                    </label>
+                    <select
+                      value={returnBranchId || ""}
+                      onChange={(e) => setReturnBranchId(e.target.value || null)}
+                      className="w-full p-3 border border-stone-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    >
+                      <option value="">
+                        Sama dengan lokasi pengambilan ({pickupBranch?.name})
+                      </option>
+                      {branches
+                        .filter((b) => b.id !== pickupBranchId)
+                        .map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name}
+                          </option>
+                        ))}
+                    </select>
+                    <p className="text-[10px] text-stone-400 font-medium">
+                      Boleh mengembalikan di cabang yang berbeda dari lokasi pengambilan.
                     </p>
                   </div>
-                </div>
+                )}
 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-800">
@@ -919,6 +1071,7 @@ Mohon konfirmasi pesanan saya ya!`;
                   !startDate ||
                   !endDate ||
                   !conditionData ||
+                  !pickupBranchId ||
                   !paymentMethod ||
                   (paymentMethod === "Transfer Bank" && !selectedBank)
                 }
@@ -927,6 +1080,7 @@ Mohon konfirmasi pesanan saya ya!`;
                   !startDate ||
                   !endDate ||
                   !conditionData ||
+                  !pickupBranchId ||
                   !paymentMethod ||
                   (paymentMethod === "Transfer Bank" && !selectedBank)
                     ? "bg-slate-200 text-slate-400"

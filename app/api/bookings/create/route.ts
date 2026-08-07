@@ -42,6 +42,76 @@ export async function POST(request: NextRequest) {
       await ensureUserRecord(orderData.user_id)
     }
 
+    // ===== Validasi cabang & stok per cabang =====
+    if (orderData?.pickup_branch_id) {
+      const branchIds = Array.from(
+        new Set([
+          orderData.pickup_branch_id,
+          orderData.return_branch_id || orderData.pickup_branch_id,
+        ])
+      )
+
+      const { data: branches, error: branchErr } = await supabaseAdmin
+        .from('branches')
+        .select('id, name, is_active')
+        .in('id', branchIds)
+
+      if (branchErr) {
+        return NextResponse.json(
+          { error: 'Failed to validate branch', detail: branchErr.message },
+          { status: 500 }
+        )
+      }
+
+      const pickupBranch = branches?.find(
+        (b: any) => b.id === orderData.pickup_branch_id
+      )
+      if (!pickupBranch || pickupBranch.is_active === false) {
+        return NextResponse.json(
+          { error: 'Cabang pengambilan tidak ditemukan atau tidak aktif' },
+          { status: 400 }
+        )
+      }
+      const returnBranch = branches?.find(
+        (b: any) => b.id === (orderData.return_branch_id || orderData.pickup_branch_id)
+      )
+
+      // Validasi stok di cabang pengambilan untuk semua item
+      const equipmentIds = itemsArray.map((item: any) => item.equipment_id)
+      const { data: invRows, error: invErr } = await supabaseAdmin
+        .from('branch_inventory')
+        .select('equipment_id, quantity')
+        .eq('branch_id', orderData.pickup_branch_id)
+        .in('equipment_id', equipmentIds)
+
+      if (invErr) {
+        return NextResponse.json(
+          { error: 'Failed to check branch stock', detail: invErr.message },
+          { status: 500 }
+        )
+      }
+      const invMap = new Map(
+        (invRows || []).map((r: any) => [r.equipment_id, Number(r.quantity) || 0])
+      )
+
+      for (const item of itemsArray) {
+        const available = invMap.get(item.equipment_id) ?? 0
+        if (Number(item.quantity) > available) {
+          return NextResponse.json(
+            {
+              error: `Stok di ${pickupBranch.name} tidak mencukupi`,
+              detail: `Butuh ${item.quantity} unit, tersedia ${available} unit`,
+            },
+            { status: 400 }
+          )
+        }
+      }
+
+      // Snapshot nama cabang untuk tampilan admin/WhatsApp
+      orderData.pickup_branch_name = pickupBranch.name
+      orderData.return_branch_name = returnBranch?.name || pickupBranch.name
+    }
+
     // Insert booking
     const { data: newBooking, error: bookingError } = await supabaseAdmin
       .from('bookings')
