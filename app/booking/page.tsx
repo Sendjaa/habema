@@ -379,6 +379,8 @@ function BookingContent() {
       if (!product) throw new Error("Produk tidak ditemukan.");
       if (!startDate || !endDate)
         throw new Error("Silakan pilih tanggal sewa terlebih dahulu.");
+      if (!conditionData)
+        throw new Error("Silakan lengkapi syarat dan kondisi terlebih dahulu.");
 
       // Item yang akan dipesan. Prioritaskan item dari keranjang (transaction),
       // fallback ke produk tunggal dari URL bila halaman dibuka langsung dari katalog.
@@ -736,42 +738,26 @@ Mohon konfirmasi pesanan saya ya!`;
               </div>
             </StepCard>
 
-            {/* Step 2: Syarat & Kondisi */}
+            {/* Step 2: Verifikasi Identitas */}
             <StepCard
               number={2}
-              title="Syarat & Kondisi"
-              completed={!!conditionData}
-              disabled={!startDate || !endDate}
-            >
-              <RentalConditionsChecklist
-                equipmentName={product.name}
-                onChecklistComplete={(data: ConditionChecklistData) => {
-                  setConditionData(data);
-                  localStorage.setItem("rentalConditions", JSON.stringify(data));
-                }}
-              />
-            </StepCard>
-
-            {/* Step 3: Verifikasi Identitas */}
-            <StepCard
-              number={3}
               title="Verifikasi Identitas"
               completed={!!idData}
-              disabled={!conditionData}
+              disabled={!startDate || !endDate}
             >
               <LazyWrapper>
                 <LazyIDVerificationForm
                   onVerificationComplete={(data: any) => {
                     setIdData(data);
                   }}
-                  disabled={!conditionData}
+                  disabled={!startDate || !endDate}
                 />
               </LazyWrapper>
             </StepCard>
 
-            {/* Step 4: Metode Pembayaran */}
+            {/* Step 3: Metode Pembayaran */}
             <StepCard
-              number={4}
+              number={3}
               title="Metode Pembayaran"
               completed={false}
               disabled={!idData}
@@ -914,6 +900,22 @@ Mohon konfirmasi pesanan saya ya!`;
                   )}
                 </Button>
               </div>
+            </StepCard>
+
+            {/* Step 4: Syarat & Kondisi */}
+            <StepCard
+              number={4}
+              title="Syarat & Kondisi"
+              completed={!!conditionData}
+              disabled={!startDate || !endDate}
+            >
+              <RentalConditionsChecklist
+                equipmentName={product.name}
+                onChecklistComplete={(data: ConditionChecklistData) => {
+                  setConditionData(data);
+                  localStorage.setItem("rentalConditions", JSON.stringify(data));
+                }}
+              />
             </StepCard>
           </div>
 
