@@ -77,9 +77,9 @@ export function FeaturedProducts() {
             </span>
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-2">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="h-full rounded-xl border border-slate-200 bg-white overflow-hidden animate-pulse">
+        <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-full w-56 sm:w-72 shrink-0 rounded-xl border border-slate-200 bg-white overflow-hidden animate-pulse">
               <div className="aspect-square bg-slate-200 rounded-t-xl" />
               <div className="p-2.5 space-y-2">
                 <div className="h-8 w-3/4 bg-slate-200 rounded" />
@@ -123,8 +123,8 @@ export function FeaturedProducts() {
           </Link>
         </div>
 
-        {/* Grid - 5 columns on desktop, 2 on mobile */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-2">
+        {/* Satu baris flex yang memenuhi lebar, scroll horizontal bila lebih */}
+        <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {Array.isArray(products) && products.length > 0 ? (
             products.map((product, index) => {
             const price = Number(product.price_per_night || 0);
@@ -136,6 +136,7 @@ export function FeaturedProducts() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 viewport={{ once: true }}
+                className="w-56 sm:w-72 shrink-0"
               >
                 <Link href={`/product/${product.id}`} className="group block relative h-full">
                   <div className="group flex flex-col h-full rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-all overflow-hidden cursor-pointer">
@@ -192,7 +193,7 @@ export function FeaturedProducts() {
             );
             })
           ) : (
-            <div className="col-span-full text-center py-12">
+            <div className="w-full text-center py-12">
               <p className="text-forest/60">
                 Memuat data produk...
               </p>
