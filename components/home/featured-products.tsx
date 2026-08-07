@@ -79,7 +79,7 @@ export function FeaturedProducts() {
         </div>
         <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-full w-56 sm:w-72 shrink-0 rounded-xl border border-slate-200 bg-white overflow-hidden animate-pulse">
+            <div key={i} className="h-full w-40 sm:w-56 shrink-0 rounded-xl border border-slate-200 bg-white overflow-hidden animate-pulse">
               <div className="aspect-square bg-slate-200 rounded-t-xl" />
               <div className="p-2.5 space-y-2">
                 <div className="h-8 w-3/4 bg-slate-200 rounded" />
@@ -136,7 +136,7 @@ export function FeaturedProducts() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="w-56 sm:w-72 shrink-0"
+                className="w-40 sm:w-56 shrink-0"
               >
                 <Link href={`/product/${product.id}`} className="group block relative h-full">
                   <div className="group flex flex-col h-full rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-all overflow-hidden cursor-pointer">
