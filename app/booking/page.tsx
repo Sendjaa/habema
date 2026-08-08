@@ -100,6 +100,7 @@ function BookingContent() {
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [pickupBranchId, setPickupBranchId] = useState<string | null>(null);
   const [returnBranchId, setReturnBranchId] = useState<string | null>(null);
+  const [branchPhone, setBranchPhone] = useState("6283898749357");
 
   // Kupon yang sudah diklaim user
   const [myCoupons, setMyCoupons] = useState<any[]>([]);

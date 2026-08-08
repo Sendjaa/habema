@@ -11,7 +11,7 @@ import { useOptimizedFetch } from '@/lib/optimized-fetch'
 interface Product {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   price_per_night: number;
   image_url: string;
   equipment_categories: {
