@@ -585,7 +585,7 @@ Mohon konfirmasi pesanan saya ya!`;
         }
 
         window.open(
-          `https://wa.me/${user ? "6289509162484" : "6283898749357"}?text=${encodeURIComponent(waMessage)}`,
+          `https://wa.me/${branchPhone}?text=${encodeURIComponent(waMessage)}`,
           "_blank",
         );
 
@@ -1094,7 +1094,7 @@ Mohon konfirmasi pesanan saya ya!`;
                     : "bg-emerald-600 hover:bg-emerald-700 text-white"
                 }`}
               >
-                {isProcessingPayment ? (
+                {isProcessingPayment ? (  
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Memproses Pembayaran...

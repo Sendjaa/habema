@@ -47,7 +47,7 @@ type Package = {
 };
 
 /* ─── CARD ───────────────────────────────────────── */
-function FeaturedBundlesCard({ pkg, index }: { pkg: Package; index: number }) {
+function FeaturedBundlesCard({ pkg, index, branchPhone }: { pkg: Package; index: number; branchPhone: string }) {
   const { ref, visible } = useInView();
 
   return (
@@ -168,7 +168,7 @@ function FeaturedBundlesCard({ pkg, index }: { pkg: Package; index: number }) {
 
           {/* CTA */}
           <a
-            href={`https://wa.me/6283898749357?text=Halo%20Habema%20Outdoor%2C%20saya%20tertarik%20dengan%20${encodeURIComponent(
+            href={`https://wa.me/${branchPhone}?text=Halo%20Habema%20Outdoor%2C%20saya%20tertarik%20dengan%20${encodeURIComponent(
               pkg.label
             )}`}
             target="_blank"
@@ -190,6 +190,23 @@ export function FeaturedBundles() {
     retryCount: 2,
     dedupe: true
   })
+  const [branchPhone, setBranchPhone] = useState("6283898749357")
+
+  // Fetch nomor telepon cabang
+  useEffect(() => {
+    const fetchBranchPhone = async () => {
+      try {
+        const res = await fetch('/api/branches')
+        const result = await res.json()
+        if (result.success && result.data?.length > 0 && result.data[0].phone) {
+          const cleaned = result.data[0].phone.replace(/[^0-9]/g, '')
+          const waNumber = cleaned.startsWith('0') ? '62' + cleaned.slice(1) : cleaned.startsWith('62') ? cleaned : '62' + cleaned
+          setBranchPhone(waNumber)
+        }
+      } catch {}
+    }
+    fetchBranchPhone()
+  }, [])
 
   // Extract actual bundles data from response
   const bundlesData = bundlesResponse?.success ? bundlesResponse.data : null
@@ -285,7 +302,7 @@ export function FeaturedBundles() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {Array.isArray(bundles) && bundles.length > 0 ? (
             bundles.map((pkg, i) => (
-              <FeaturedBundlesCard key={pkg?.id || `pkg-${i}`} pkg={pkg} index={i} />
+              <FeaturedBundlesCard key={pkg?.id || `pkg-${i}`} pkg={pkg} index={i} branchPhone={branchPhone} />
             ))
           ) : (
             <div className="col-span-full text-center py-12">

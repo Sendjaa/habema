@@ -433,6 +433,7 @@ export default function HabemaPromo() {
   const [promoProducts, setPromoProducts] = useState<PromoProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'promo' | 'kupon'>('promo')
+  const [branchPhone, setBranchPhone] = useState("6283898749357")
 
   const fetchDiscounts = useCallback(async () => {
     try {
@@ -473,6 +474,22 @@ export default function HabemaPromo() {
 
     return () => { supabase.removeChannel(channel) }
   }, [fetchDiscounts, fetchPromoProducts])
+
+  // Fetch nomor telepon cabang
+  useEffect(() => {
+    const fetchBranchPhone = async () => {
+      try {
+        const res = await fetch('/api/branches')
+        const result = await res.json()
+        if (result.success && result.data?.length > 0 && result.data[0].phone) {
+          const cleaned = result.data[0].phone.replace(/[^0-9]/g, '')
+          const waNumber = cleaned.startsWith('0') ? '62' + cleaned.slice(1) : cleaned.startsWith('62') ? cleaned : '62' + cleaned
+          setBranchPhone(waNumber)
+        }
+      } catch {}
+    }
+    fetchBranchPhone()
+  }, [])
 
   return (
     <div className="min-h-screen bg-[#f5f5f5]">
@@ -605,7 +622,7 @@ export default function HabemaPromo() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <a
-                      href="https://wa.me/6283898749357?text=Halo%20Habema%2C%20saya%20mau%20tanya%20soal%20promo"
+                      href={`https://wa.me/${branchPhone}?text=Halo%20Habema%2C%20saya%20mau%20tanya%20soal%20promo`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="group bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4 md:p-5 hover:bg-white/15 transition-all"
@@ -621,7 +638,7 @@ export default function HabemaPromo() {
                     </a>
 
                     <a
-                      href="tel:+6283898749357"
+                      href={`tel:${branchPhone}`}
                       className="group bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4 md:p-5 hover:bg-white/15 transition-all"
                     >
                       <div className="flex items-start gap-3">

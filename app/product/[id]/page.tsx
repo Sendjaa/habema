@@ -97,8 +97,25 @@ export default function ProductDetailPage({
     setDateQuery(str ? `&${str}` : "");
   }, []);
 
+  // Fetch nomor telepon cabang
+  useEffect(() => {
+    const fetchBranchPhone = async () => {
+      try {
+        const res = await fetch('/api/branches');
+        const result = await res.json();
+        if (result.success && result.data?.length > 0 && result.data[0].phone) {
+          const cleaned = result.data[0].phone.replace(/[^0-9]/g, '');
+          const waNumber = cleaned.startsWith('0') ? '62' + cleaned.slice(1) : cleaned.startsWith('62') ? cleaned : '62' + cleaned;
+          setBranchPhone(waNumber);
+        }
+      } catch {}
+    };
+    fetchBranchPhone();
+  }, []);
+
   const [helpfulCount, setHelpfulCount] = useState([12, 8, 5, 2, 1]);
   const [isLiked, setIsLiked] = useState([false, false, false, false, false]);
+  const [branchPhone, setBranchPhone] = useState("6283898749357");
   const addToCart = useCartStore((state) => state.addToCart);
   const setTransaction = useCartStore((state) => state.setTransaction);
   const claimedDiscount = useCartStore((state) => state.claimedDiscount);
@@ -1080,7 +1097,7 @@ export default function ProductDetailPage({
               className="flex-1 border-slate-200 text-slate-600 font-bold h-12 rounded-lg"
             >
               <a
-                href={`https://wa.me/6283898749357?text=${encodeURIComponent(
+                href={`https://wa.me/${branchPhone}?text=${encodeURIComponent(
                   `Halo Habema Outdoor, saya mau tanya soal produk *${product.name}* (${id}).`,
                 )}`}
                 target="_blank"

@@ -169,7 +169,7 @@ function Card({ pkg, index }: { pkg: Package; index: number }) {
 
           {/* CTA */}
           <a
-            href={`https://wa.me/6283898749357?text=Halo%20Habema%20Outdoor%2C%20saya%20tertarik%20dengan%20${encodeURIComponent(
+            href={`https://wa.me/${branchPhone}?text=Halo%20Habema%20Outdoor%2C%20saya%20tertarik%20dengan%20${encodeURIComponent(
               pkg.label
             )}`}
             target="_blank"
@@ -217,7 +217,7 @@ const HERO_SLIDES = [
   },
 ];
 
-function HeroCarousel() {
+function HeroCarousel({ branchPhone }: { branchPhone: string }) {
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const n = HERO_SLIDES.length;
@@ -272,13 +272,13 @@ function HeroCarousel() {
 
       {/* contact pill */}
       <a
-        href="https://wa.me/6283898749357"
+        href={`https://wa.me/${branchPhone}`}
         target="_blank"
         rel="noopener noreferrer"
         className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 text-xs font-bold text-stone-700 shadow hover:bg-white transition-all duration-300"
       >
         <span className="text-green-500">●</span>
-        083898749357
+        {branchPhone.replace('62', '0')}
       </a>
 
       {/* arrows */}
@@ -331,6 +331,7 @@ export default function HabemaOpenTrip() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [branchPhone, setBranchPhone] = useState("6283898749357");
   const titleRef = useInView(0.1);
 
   // Fetch packages from database
@@ -515,6 +516,22 @@ export default function HabemaOpenTrip() {
     fetchPackages();
   }, []);
 
+  // Fetch nomor telepon cabang
+  useEffect(() => {
+    const fetchBranchPhone = async () => {
+      try {
+        const res = await fetch('/api/branches');
+        const result = await res.json();
+        if (result.success && result.data?.length > 0 && result.data[0].phone) {
+          const cleaned = result.data[0].phone.replace(/[^0-9]/g, '');
+          const waNumber = cleaned.startsWith('0') ? '62' + cleaned.slice(1) : cleaned.startsWith('62') ? cleaned : '62' + cleaned;
+          setBranchPhone(waNumber);
+        }
+      } catch {}
+    };
+    fetchBranchPhone();
+  }, []);
+
   const filtered =
     active === "Semua"
       ? packages
@@ -576,7 +593,7 @@ export default function HabemaOpenTrip() {
       `}</style>
 
       {/* HERO CAROUSEL */}
-      <HeroCarousel />
+      <HeroCarousel branchPhone={branchPhone} />
 
       {/* MAIN CONTENT */}
       <main className="max-w-6xl mx-auto px-4 md:px-8 pt-10 pb-24">
@@ -707,7 +724,7 @@ export default function HabemaOpenTrip() {
             </div>
             <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
               <a
-                href="https://wa.me/6283898749357"
+                href={`https://wa.me/${branchPhone}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-7 py-3.5 rounded-2xl font-bold text-sm bg-emerald-500 hover:bg-emerald-400 text-white transition-all duration-300 text-center shadow-lg"

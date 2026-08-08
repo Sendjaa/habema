@@ -142,7 +142,7 @@ function PackageCard({ pkg, index }: { pkg: Package; index: number }) {
           </div>
 
           <a
-            href={`https://wa.me/6283898749357?text=Halo%20Habema%20Outdoor%2C%20saya%20tertarik%20dengan%20${encodeURIComponent(pkg.label)}`}
+            href={`https://wa.me/${branchPhone}?text=Halo%20Habema%20Outdoor%2C%20saya%20tertarik%20dengan%20${encodeURIComponent(pkg.label)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-3 block text-center py-3.5 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 hover:opacity-85 active:scale-[0.98] shadow-sm"
@@ -166,6 +166,7 @@ const colorMap: Record<string, { accent: string; accentLight: string }> = {
 export default function PackagesPage() {
   const [packages, setPackages] = useState<Package[]>([])
   const [loading, setLoading] = useState(true)
+  const [branchPhone, setBranchPhone] = useState("6283898749357")
   const titleRef = useInView(0.1)
 
   useEffect(() => {
@@ -183,6 +184,22 @@ export default function PackagesPage() {
       }
     }
     fetchPackages()
+  }, [])
+
+  // Fetch nomor telepon cabang
+  useEffect(() => {
+    const fetchBranchPhone = async () => {
+      try {
+        const res = await fetch('/api/branches')
+        const result = await res.json()
+        if (result.success && result.data?.length > 0 && result.data[0].phone) {
+          const cleaned = result.data[0].phone.replace(/[^0-9]/g, '')
+          const waNumber = cleaned.startsWith('0') ? '62' + cleaned.slice(1) : cleaned.startsWith('62') ? cleaned : '62' + cleaned
+          setBranchPhone(waNumber)
+        }
+      } catch {}
+    }
+    fetchBranchPhone()
   }, [])
 
   return (
@@ -249,7 +266,7 @@ export default function PackagesPage() {
             Tim Habema siap membantu meracik paket perlengkapan sesuai kebutuhan petualanganmu.
           </p>
           <a
-            href="https://wa.me/6283898749357?text=Halo%20Habema%2C%20saya%20mau%20tanya%20soal%20paket%20bundling"
+            href={`https://wa.me/${branchPhone}?text=Halo%20Habema%2C%20saya%20mau%20tanya%20soal%20paket%20bundling`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl font-bold text-sm bg-emerald-600 hover:bg-emerald-700 text-white transition-all duration-300 shadow-lg"
