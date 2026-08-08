@@ -332,6 +332,24 @@ function BookingContent() {
     fetchBranches();
   }, [product, startDate, endDate]);
 
+  // Fetch nomor telepon cabang untuk WhatsApp
+  useEffect(() => {
+    const fetchBranchPhone = async () => {
+      try {
+        const res = await fetch('/api/branches');
+        const result = await res.json();
+        if (result.success && result.data?.length > 0 && result.data[0].phone) {
+          const cleaned = result.data[0].phone.replace(/[^0-9]/g, '');
+          const waNumber = cleaned.startsWith('0') ? '62' + cleaned.slice(1) : cleaned.startsWith('62') ? cleaned : '62' + cleaned;
+          setBranchPhone(waNumber);
+        }
+      } catch {
+        // fallback ke default
+      }
+    };
+    fetchBranchPhone();
+  }, []);
+
   // ==================== CALCULATIONS ====================
   const days =
     startDate && endDate ? Math.max(1, calculateDaysBetween(startDate, endDate)) : 0;
