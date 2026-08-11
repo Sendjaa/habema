@@ -78,6 +78,13 @@ export interface TransactionData {
     start: string | undefined;
     end: string | undefined;
   };
+  identity?: {
+    fullName?: string;
+    idType?: string;
+    idNumber?: string;
+    phone?: string;
+    address?: string;
+  } | null;
   pickupBranch?: {
     id: string;
     name: string;

@@ -197,7 +197,9 @@ function CatalogContent() {
         break;
       case "rating":
         result.sort(
-          (a, b) => ((b as any).rating || 0) - ((a as any).rating || 0),
+          (a, b) =>
+            Number((b as any).average_rating || 0) -
+            Number((a as any).average_rating || 0),
         );
         break;
       default:

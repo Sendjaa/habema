@@ -81,6 +81,11 @@ export function sortEquipment(
     case 'name':
       return sorted.sort((a, b) => a.name.localeCompare(b.name))
     case 'rating':
+      return sorted.sort(
+        (a, b) =>
+          Number((b as any).average_rating || 0) -
+          Number((a as any).average_rating || 0)
+      )
     default:
       return sorted
   }

@@ -192,7 +192,11 @@ export type Database = {
           cancel_note: string | null
           cancel_reason: string | null
           created_at: string | null
+          customer_full_name: string | null
+          customer_id_number: string | null
+          customer_id_type: string | null
           customer_note: string | null
+          customer_phone: string | null
           delivery_accessibility_notes: string | null
           delivery_address: string | null
           delivery_cost: number | null
@@ -237,7 +241,11 @@ export type Database = {
           cancel_note?: string | null
           cancel_reason?: string | null
           created_at?: string | null
+          customer_full_name?: string | null
+          customer_id_number?: string | null
+          customer_id_type?: string | null
           customer_note?: string | null
+          customer_phone?: string | null
           delivery_accessibility_notes?: string | null
           delivery_address?: string | null
           delivery_cost?: number | null
@@ -282,7 +290,11 @@ export type Database = {
           cancel_note?: string | null
           cancel_reason?: string | null
           created_at?: string | null
+          customer_full_name?: string | null
+          customer_id_number?: string | null
+          customer_id_type?: string | null
           customer_note?: string | null
+          customer_phone?: string | null
           delivery_accessibility_notes?: string | null
           delivery_address?: string | null
           delivery_cost?: number | null

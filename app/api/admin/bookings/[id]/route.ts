@@ -44,6 +44,7 @@ export async function GET(
 
     // Fetch user profile
     let userProfile = null
+    let userIdentity = null
     if (booking.user_id) {
       const { data: user } = await supabaseAdmin
         .from('users')
@@ -51,11 +52,21 @@ export async function GET(
         .eq('id', booking.user_id)
         .single()
       userProfile = user || null
+
+      const { data: identity } = await supabaseAdmin
+        .from('user_identity')
+        .select('*')
+        .eq('user_id', booking.user_id)
+        .maybeSingle()
+      userIdentity = identity || null
     }
 
     return NextResponse.json({
       success: true,
-      data: { booking: { ...booking, user_profile: userProfile }, items: items || [] },
+      data: {
+        booking: { ...booking, user_profile: userProfile, user_identity: userIdentity },
+        items: items || [],
+      },
     })
   } catch (error) {
     console.error('Admin booking detail API Error:', error)

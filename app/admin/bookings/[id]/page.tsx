@@ -23,7 +23,17 @@ import { toast } from "sonner";
 interface Booking {
   id: string;
   user_id: string | null;
-  user_profile?: { email?: string } | null;
+  user_profile?: { email?: string; full_name?: string | null } | null;
+  user_identity?: {
+    id_type?: string;
+    id_number?: string;
+    id_photo_url?: string | null;
+    verification_status?: string | null;
+  } | null;
+  customer_full_name?: string | null;
+  customer_id_type?: string | null;
+  customer_id_number?: string | null;
+  customer_phone?: string | null;
   status: string;
   start_date: string;
   end_date: string;
@@ -62,6 +72,9 @@ export default function BookingDetailsPage() {
     returned: 'Selesai',
     cancelled: 'Dibatalkan',
   }
+
+  const idTypeLabel = (t?: string) =>
+    ({ ktp: 'KTP', sim: 'SIM', passport: 'Paspor', npwp: 'NPWP' } as Record<string, string>)[t || ''] || t || '-'
 
   useEffect(() => {
     if (bookingId) {
@@ -179,6 +192,15 @@ export default function BookingDetailsPage() {
       </div>
     );
   }
+
+  const identityName =
+    booking.customer_full_name ||
+    booking.user_profile?.full_name ||
+    (booking.user_id ? booking.user_profile?.email || 'Pengguna Terdaftar' : 'Pengguna Tamu');
+  const idType = booking.customer_id_type || booking.user_identity?.id_type;
+  const idNumber = booking.customer_id_number || booking.user_identity?.id_number;
+  const phone = booking.customer_phone;
+  const hasIdentity = Boolean(booking.customer_full_name || idType || idNumber || phone);
 
   return (
     <div className="min-h-screen bg-[#F1EFE8]">
@@ -336,6 +358,37 @@ export default function BookingDetailsPage() {
                     </>
                   )}
                 </div>
+
+                {hasIdentity && (
+                  <div className="pt-3 mt-3 border-t border-stone-200 space-y-2">
+                    <div className="flex justify-between gap-2">
+                      <span className="text-xs text-stone-400 shrink-0">Nama Penyewa</span>
+                      <span className="text-sm text-stone-800 font-medium text-right truncate">{identityName}</span>
+                    </div>
+                    {(idType || idNumber) && (
+                      <div className="flex justify-between gap-2">
+                        <span className="text-xs text-stone-400 shrink-0">No. {idTypeLabel(idType)}</span>
+                        <span className="text-sm text-stone-800 font-medium text-right break-all">{idNumber || '-'}</span>
+                      </div>
+                    )}
+                    {phone && (
+                      <div className="flex justify-between gap-2">
+                        <span className="text-xs text-stone-400 shrink-0">No. Telepon</span>
+                        <span className="text-sm text-stone-800 font-medium text-right break-all">{phone}</span>
+                      </div>
+                    )}
+                    {booking.user_identity?.verification_status && (
+                      <div className="flex justify-between gap-2">
+                        <span className="text-xs text-stone-400 shrink-0">Status Verifikasi</span>
+                        <Badge className={`text-[10px] ${booking.user_identity.verification_status === 'verified'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                          {booking.user_identity.verification_status === 'verified' ? 'Terverifikasi' : booking.user_identity.verification_status}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </Card>
 

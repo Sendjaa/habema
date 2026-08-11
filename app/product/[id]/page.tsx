@@ -279,57 +279,53 @@ export default function ProductDetailPage({
     const fetchProduct = async (attempt = 1) => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from("equipment")
-          .select(`*, equipment_categories(name)`)
-          .eq("id", id)
-          .single();
+        // Fetch from API (real-time)
+        const res = await fetch(`/api/products/${id}`);
+        const data = await res.json();
 
-        if (error) {
-          // PGRST116 = tidak ditemukan di tabel equipment. Mungkin produk beli
-          // (shop_products) — coba cari di sana sebelum menampilkan not-found.
-          if (error.code === "PGRST116") {
-            const { data: shopData, error: shopError } = await supabase
-              .from("shop_products")
-              .select("*")
+        if (!res.ok || !data) {
+          // Fallback: coba produk jual, lalu produk sewa (equipment)
+          const { data: shopData } = await supabase
+            .from("shop_products")
+            .select("*")
+            .eq("id", id)
+            .single();
+
+          if (shopData) {
+            setIsShop(true);
+            setProduct({
+              ...shopData,
+              average_rating: 0,
+              review_count: 0,
+            });
+          } else {
+            const { data: rentalData } = await supabase
+              .from("equipment")
+              .select("*, equipment_categories(name)")
               .eq("id", id)
               .single();
 
-            if (!shopError && shopData) {
-              setIsShop(true);
-              setProduct({
-                ...(shopData as any),
-                specs: (shopData as any).specifications || {},
-              });
+            if (rentalData) {
+              setIsShop(false);
+              setProduct(rentalData);
             } else {
               setProduct(null);
             }
-            setLoading(false);
-            return;
           }
-          // Error lain (network/permission) — retry sekali sebelum menyerah.
-          if (attempt < 2) {
-            setTimeout(() => fetchProduct(attempt + 1), 1200);
-            return;
-          }
-          console.error("Error fetching product:", error?.message || error);
-          setProduct(null);
-        } else {
-          setIsShop(false);
-          setProduct({
-            ...(data as any),
-            specs: (data as any).specifications || {},
-          });
+          return;
         }
+
+        setIsShop(data.type !== "rental");
+        setProduct(data);
       } catch (err) {
         if (attempt < 2) {
           setTimeout(() => fetchProduct(attempt + 1), 1200);
           return;
         }
-        console.error("Error fetching product:", err);
         setProduct(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchProduct();
   }, [id]);
@@ -595,12 +591,20 @@ export default function ProductDetailPage({
                 <div className="flex items-center gap-3 text-sm">
                   <div className="flex items-center text-amber-500 font-bold">
                     <Star className="w-4 h-4 fill-current mr-1" />{" "}
-                    {(Number(product.rating) || 0).toFixed(1)}
+                    {product.average_rating?.toFixed(1) || "0.0"}
                   </div>
                   <span className="text-slate-300">|</span>
                   <span className="text-slate-500">
                     Terjual {Number(product.sold_count || 0)}x
                   </span>
+                  {product.review_count > 0 && (
+                    <>
+                      <span className="text-slate-300">|</span>
+                      <span className="text-slate-500">
+                        {product.review_count} Ulasan
+                      </span>
+                    </>
+                  )}
                   {product.rating_label && (
                     <>
                       <span className="text-slate-300">|</span>

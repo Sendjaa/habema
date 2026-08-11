@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useCartStore } from '@/lib/store'
-import { CheckCircle, ArrowLeft, Home, Download } from 'lucide-react'
+import { CheckCircle, ArrowLeft, Home, Download, IdCard } from 'lucide-react'
 
 export default function OrderConfirmationPage() {
   const router = useRouter()
@@ -19,165 +19,253 @@ export default function OrderConfirmationPage() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    canvas.width = 800
-    canvas.height = 1200
+    const W = 800
+    const M = 50
+    const CW = W - M * 2
+    canvas.width = W
+    canvas.height = 1250
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
-    gradient.addColorStop(0, '#ffffff')
-    gradient.addColorStop(1, '#f8fafc')
-    ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-    ctx.strokeStyle = '#e2e8f0'
-    ctx.lineWidth = 2
-    ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40)
-
-    const img = new window.Image()
-    img.onload = () => {
-      const logoSize = 80
-      const logoX = canvas.width / 2 - logoSize / 2
-      ctx.drawImage(img, logoX, 40, logoSize, logoSize)
-
-      ctx.fillStyle = '#1B4332'
-      ctx.font = 'bold 28px Arial'
-      ctx.textAlign = 'center'
-      ctx.fillText('HABEMA OUTDOOR', canvas.width / 2, 140)
-
-      ctx.font = 'bold 20px Arial'
-      ctx.fillStyle = '#64748b'
-      ctx.fillText('INVOICE PEMESANAN', canvas.width / 2, 170)
-
-      ctx.strokeStyle = '#1B4332'
-      ctx.lineWidth = 3
+    // ==================== HELPERS ====================
+    const roundedRect = (x: number, y: number, w: number, h: number, r: number) => {
       ctx.beginPath()
-      ctx.moveTo(100, 190)
-      ctx.lineTo(canvas.width - 100, 190)
-      ctx.stroke()
+      ctx.moveTo(x + r, y)
+      ctx.arcTo(x + w, y, x + w, y + h, r)
+      ctx.arcTo(x + w, y + h, x, y + h, r)
+      ctx.arcTo(x, y + h, x, y, r)
+      ctx.arcTo(x, y, x + w, y, r)
+      ctx.closePath()
+    }
 
-      ctx.fillStyle = '#1B4332'
-      ctx.font = 'bold 16px Arial'
-      ctx.textAlign = 'left'
-      ctx.fillText('Detail Pesanan', 50, 230)
-
-      ctx.fillStyle = '#f1f5f9'
-      ctx.fillRect(50, 240, canvas.width - 100, 80)
-
-      ctx.fillStyle = '#475569'
-      ctx.font = '14px Arial'
-      ctx.fillText(`Order ID: ${orderId}`, 70, 265)
-      ctx.fillText(`Tanggal: ${new Date().toLocaleDateString('id-ID')}`, 70, 285)
-      ctx.fillText(`Waktu: ${new Date().toLocaleTimeString('id-ID')}`, 70, 305)
-
-      const paymentMethod = isWhatsAppBooking ? 'WhatsApp Konfirmasi' : 'Pembayaran Online'
-      const badgeColor = isWhatsAppBooking ? '#10b981' : '#3b82f6'
-
-      ctx.fillStyle = badgeColor
-      ctx.fillRect(canvas.width - 250, 255, 200, 40)
-      ctx.fillStyle = '#ffffff'
-      ctx.font = 'bold 14px Arial'
-      ctx.textAlign = 'center'
-      ctx.fillText(paymentMethod, canvas.width - 150, 280)
-
-      ctx.textAlign = 'left'
-      ctx.fillStyle = '#1B4332'
-      ctx.font = 'bold 16px Arial'
-      ctx.fillText('Detail Produk', 50, 360)
-
-      ctx.fillStyle = '#e2e8f0'
-      ctx.fillRect(50, 370, canvas.width - 100, 40)
-
-      ctx.fillStyle = '#475569'
-      ctx.font = 'bold 12px Arial'
-      ctx.fillText('No', 70, 395)
-      ctx.fillText('Produk', 120, 395)
-      ctx.fillText('Harga', 400, 395)
-      ctx.fillText('Jumlah', 500, 395)
-      ctx.fillText('Subtotal', 600, 395)
-
-      let yPosition = 430
-      ctx.font = '12px Arial';
-
-      (itemsArray ?? []).forEach((item: any, index: number) => {
-        if (index % 2 === 0) {
-          ctx.fillStyle = '#f8fafc'
-          ctx.fillRect(50, yPosition - 15, canvas.width - 100, 35)
-        }
-
-        const itemPrice = typeof item.price === 'number' && !isNaN(item.price) ? item.price : 0
-        const itemQuantity = typeof item.quantity === 'number' && !isNaN(item.quantity) ? item.quantity : 1
-        const subtotal = itemPrice * itemQuantity
-
-        ctx.fillStyle = '#334155'
-        ctx.fillText(`${index + 1}`, 70, yPosition)
-        ctx.fillText(item.name || 'Produk Tidak Diketahui', 120, yPosition)
-        ctx.fillText(`Rp ${itemPrice.toLocaleString('id-ID')}`, 400, yPosition)
-        ctx.fillText(`${item.days || itemQuantity} hari`, 500, yPosition)
-        ctx.fillText(`Rp ${subtotal.toLocaleString('id-ID')}`, 600, yPosition)
-
-        yPosition += 35
-      })
-
-      const totalPrice = isWhatsAppBooking
-        ? (itemsArray ?? []).reduce((total: number, item: any) => {
-            const itemPrice = typeof item.price === 'number' && !isNaN(item.price) ? item.price : 0
-            const itemQuantity = typeof item.quantity === 'number' && !isNaN(item.quantity) ? item.quantity : 1
-            return total + (itemPrice * itemQuantity)
-          }, 0)
-        : (typeof transactionData?.totalPrice === 'number' && !isNaN(transactionData.totalPrice) ? transactionData.totalPrice : 0)
-
-      ctx.fillStyle = '#1B4332'
-      ctx.fillRect(canvas.width - 250, yPosition + 20, 200, 80)
-      ctx.fillStyle = '#ffffff'
-      ctx.font = 'bold 14px Arial'
-      ctx.fillText('Total:', canvas.width - 230, yPosition + 45)
-      ctx.font = 'bold 18px Arial'
-      ctx.fillText(`Rp ${totalPrice.toLocaleString('id-ID')}`, canvas.width - 230, yPosition + 75)
-
-      const status = isWhatsAppBooking ? 'Menunggu Konfirmasi' : 'Lunas'
-      const statusColor = isWhatsAppBooking ? '#f59e0b' : '#10b981'
-
-      ctx.fillStyle = statusColor
-      ctx.fillRect(50, yPosition + 120, 150, 40)
-      ctx.fillStyle = '#ffffff'
-      ctx.font = 'bold 14px Arial'
-      ctx.textAlign = 'center'
-      ctx.fillText(status, 125, yPosition + 145)
-
-      ctx.textAlign = 'left'
-      ctx.fillStyle = '#64748b'
-      ctx.font = '12px Arial'
-      const instructionText = isWhatsAppBooking
-        ? 'Pembayaran akan dilakukan secara personal melalui WhatsApp. Admin kami akan menghubungi Anda segera.'
-        : 'Pembayaran telah berhasil diproses. Terima kasih atas kepercayaan Anda.'
-
-      const maxWidth = canvas.width - 100
-      const words = instructionText.split(' ')
+    const wrapText = (text: string, x: number, y0: number, maxW: number, lineH: number): number => {
+      const words = text.split(' ')
       let line = ''
-      let instructionY = yPosition + 180
-
-      for (let n = 0; n < words.length; n++) {
-        const testLine = line + words[n] + ' '
-        const metrics = ctx.measureText(testLine)
-        const testWidth = metrics.width
-        if (testWidth > maxWidth && n > 0) {
-          ctx.fillText(line, 50, instructionY)
-          line = words[n] + ' '
-          instructionY += 20
+      let ly = y0
+      for (const w of words) {
+        const test = line ? `${line} ${w}` : w
+        if (ctx.measureText(test).width > maxW && line) {
+          ctx.fillText(line, x, ly)
+          line = w
+          ly += lineH
         } else {
-          line = testLine
+          line = test
         }
       }
-      ctx.fillText(line, 50, instructionY)
+      if (line) {
+        ctx.fillText(line, x, ly)
+        ly += lineH
+      }
+      return ly
+    }
+
+    const truncate = (text: string, maxW: number): string => {
+      let t = text
+      while (ctx.measureText(t).width > maxW && t.length > 1) t = t.slice(0, -1)
+      return t !== text ? `${t}…` : t
+    }
+
+    // ==================== DATA ====================
+    const isRental =
+      isWhatsAppBooking ||
+      Boolean(transactionData?.days) ||
+      Boolean(transactionData?.duration)
+
+    const items = (itemsArray ?? []).map((item: any) => {
+      const price = typeof item.price === 'number' && !isNaN(item.price) ? item.price : 0
+      const qty = typeof item.quantity === 'number' && !isNaN(item.quantity) ? item.quantity : 1
+      const days = isRental ? Number(item.days || totalDays || 1) : 1
+      return { ...item, price, qty, days, subtotal: price * qty * days }
+    })
+
+    const subtotalTotal = items.reduce((s, it) => s + it.subtotal, 0)
+    const storedTotal =
+      (typeof transactionData?.totalPrice === 'number' && !isNaN(transactionData.totalPrice)
+        ? transactionData.totalPrice
+        : Number(recentBooking?.totalPrice) || 0)
+    const invoiceTotal = storedTotal > 0 ? storedTotal : subtotalTotal
+    const discount = Math.max(0, subtotalTotal - invoiceTotal)
+
+    const paymentMethod = isWhatsAppBooking ? 'WhatsApp Konfirmasi' : 'Pembayaran Online'
+    const status = isWhatsAppBooking ? 'Menunggu Konfirmasi' : 'Lunas'
+    const statusColor = isWhatsAppBooking ? '#f59e0b' : '#10b981'
+
+    const instructionText = isWhatsAppBooking
+      ? 'Pembayaran akan dilakukan secara personal melalui WhatsApp. Admin kami akan menghubungi Anda segera.'
+      : 'Pembayaran telah berhasil diproses. Terima kasih atas kepercayaan Anda.'
+
+    const extendText =
+      'Perpanjangan masa sewa dikenakan biaya sesuai tarif sewa harian × jumlah hari tambahan, dan wajib dikonfirmasi ke admin sebelum jatuh tempo. Keterlambatan pengembalian tanpa pemberitahuan dikenakan biaya: 1-6 jam = 10% tarif harian, 6-24 jam = 50% tarif harian, dan lebih dari 24 jam = 100% tarif harian hari berikutnya.'
+
+    // ==================== RENDER ====================
+    const render = (withLogo: boolean) => {
+      // Background
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
+      gradient.addColorStop(0, '#ffffff')
+      gradient.addColorStop(1, '#f8fafc')
+      ctx.fillStyle = gradient
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      ctx.strokeStyle = '#e2e8f0'
+      ctx.lineWidth = 2
+      ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40)
+
+      // Header
+      if (withLogo) {
+        const logoSize = 68
+        ctx.drawImage(img, W / 2 - logoSize / 2, 40, logoSize, logoSize)
+      }
+      ctx.fillStyle = '#1B4332'
+      ctx.font = 'bold 30px Arial'
+      ctx.textAlign = 'center'
+      ctx.fillText('HABEMA OUTDOOR', W / 2, withLogo ? 138 : 78)
+      ctx.font = 'bold 17px Arial'
+      ctx.fillStyle = '#64748b'
+      ctx.fillText('INVOICE PEMESANAN', W / 2, withLogo ? 166 : 106)
+
+      ctx.strokeStyle = '#1B4332'
+      ctx.lineWidth = 2.5
+      ctx.beginPath()
+      ctx.moveTo(M, withLogo ? 192 : 132)
+      ctx.lineTo(W - M, withLogo ? 192 : 132)
+      ctx.stroke()
+
+      // Detail Pesanan
+      let y = withLogo ? 220 : 160
+      ctx.fillStyle = '#f1f5f9'
+      roundedRect(M, y, CW, 112, 12)
+      ctx.fill()
+
+      const meta = [
+        { label: 'Order ID', value: orderId || '-' },
+        { label: 'Tanggal', value: new Date().toLocaleDateString('id-ID') },
+        { label: 'Waktu', value: new Date().toLocaleTimeString('id-ID') },
+        { label: 'Metode', value: paymentMethod },
+      ]
+      ctx.textAlign = 'left'
+      let my = y + 30
+      for (const m of meta) {
+        ctx.fillStyle = '#94a3b8'
+        ctx.font = '13px Arial'
+        ctx.fillText(m.label, M + 24, my)
+        ctx.fillStyle = '#334155'
+        ctx.font = 'bold 14px Arial'
+        ctx.fillText(truncate(m.value, 200), M + 150, my)
+        my += 24
+      }
+
+      ctx.fillStyle = statusColor
+      roundedRect(W - M - 186, y + 34, 162, 28, 14)
+      ctx.fill()
+      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 12px Arial'
+      ctx.textAlign = 'center'
+      ctx.fillText(status, W - M - 105, y + 53)
+      ctx.textAlign = 'left'
+
+      // Tabel Produk
+      y += 118
+      ctx.fillStyle = '#1B4332'
+      roundedRect(M, y, CW, 40, 10)
+      ctx.fill()
+
+      const cols = isRental
+        ? { no: 70, name: 110, price: 330, qty: 460, days: 545, sub: 645 }
+        : { no: 70, name: 110, price: 330, qty: 520, days: null, sub: 630 }
+      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 12px Arial'
+      ctx.fillText('No', cols.no, y + 25)
+      ctx.fillText('Produk', cols.name, y + 25)
+      ctx.fillText(isRental ? 'Harga/Hari' : 'Harga', cols.price, y + 25)
+      ctx.fillText('Qty', cols.qty, y + 25)
+      if (isRental) ctx.fillText('Durasi', cols.days!, y + 25)
+      ctx.fillText('Subtotal', cols.sub, y + 25)
+
+      y += 40
+      ctx.font = '12px Arial'
+      let row = 0
+      for (const item of items) {
+        if (row % 2 === 0) {
+          ctx.fillStyle = '#f8fafc'
+          ctx.fillRect(M, y - 2, CW, 32)
+        }
+        ctx.fillStyle = '#334155'
+        ctx.fillText(String(row + 1), cols.no, y + 20)
+        ctx.font = 'bold 12px Arial'
+        ctx.fillText(truncate(item.name || 'Produk Tidak Diketahui', 200), cols.name, y + 20)
+        ctx.font = '12px Arial'
+        ctx.fillText(`Rp ${item.price.toLocaleString('id-ID')}`, cols.price, y + 20)
+        ctx.fillText(String(item.qty), cols.qty, y + 20)
+        if (isRental) ctx.fillText(`${item.days} hari`, cols.days!, y + 20)
+        ctx.fillStyle = '#1B4332'
+        ctx.font = 'bold 12px Arial'
+        ctx.fillText(`Rp ${item.subtotal.toLocaleString('id-ID')}`, cols.sub, y + 20)
+        ctx.font = '12px Arial'
+        row++
+        y += 34
+      }
+
+      // Ringkasan harga
+      y += 16
+      const summaryX = W - M - 280
+      ctx.textAlign = 'right'
+      ctx.fillStyle = '#64748b'
+      ctx.font = '13px Arial'
+      ctx.fillText('Subtotal', summaryX, y + 14)
+      ctx.fillStyle = '#334155'
+      ctx.font = 'bold 13px Arial'
+      ctx.fillText(`Rp ${subtotalTotal.toLocaleString('id-ID')}`, W - M - 20, y + 14)
+
+      if (discount > 0) {
+        y += 24
+        ctx.fillStyle = '#64748b'
+        ctx.font = '13px Arial'
+        ctx.fillText('Diskon', summaryX, y + 14)
+        ctx.fillStyle = '#dc2626'
+        ctx.font = 'bold 13px Arial'
+        ctx.fillText(`-Rp ${discount.toLocaleString('id-ID')}`, W - M - 20, y + 14)
+      }
+
+      y += 32
+      ctx.fillStyle = '#1B4332'
+      roundedRect(W - M - 250, y, 230, 74, 10)
+      ctx.fill()
+      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 14px Arial'
+      ctx.fillText('TOTAL', W - M - 42, y + 30)
+      ctx.font = 'bold 19px Arial'
+      ctx.fillText(`Rp ${invoiceTotal.toLocaleString('id-ID')}`, W - M - 42, y + 60)
+      ctx.textAlign = 'left'
+
+      // Penjelasan Extend Charge
+      y += 104
+      ctx.fillStyle = '#fffbeb'
+      roundedRect(M, y, CW, 110, 10)
+      ctx.fill()
+      ctx.strokeStyle = '#f59e0b'
+      ctx.lineWidth = 1.2
+      roundedRect(M, y, CW, 110, 10)
+      ctx.stroke()
+
+      ctx.fillStyle = '#b45309'
+      ctx.font = 'bold 13px Arial'
+      ctx.fillText('BIYA PERPANJANGAN SEWA (EXTEND CHARGE)', M + 24, y + 28)
+      ctx.fillStyle = '#78350f'
+      ctx.font = '12px Arial'
+      wrapText(extendText, M + 24, y + 50, CW - 48, 18)
+
+      // Instruksi & footer
+      ctx.fillStyle = '#64748b'
+      ctx.font = '12px Arial'
+      const instrEnd = wrapText(instructionText, M, y + 130, CW, 18)
 
       ctx.fillStyle = '#1B4332'
       ctx.font = 'bold 14px Arial'
       ctx.textAlign = 'center'
-      ctx.fillText('Terima kasih telah menggunakan layanan Habema Outdoor!', canvas.width / 2, canvas.height - 80)
-
+      ctx.fillText('Terima kasih telah menggunakan layanan Habema Outdoor!', W / 2, canvas.height - 88)
       ctx.fillStyle = '#64748b'
       ctx.font = '12px Arial'
-      ctx.fillText('Hubungi kami: WhatsApp +6289509162484', canvas.width / 2, canvas.height - 60)
-      ctx.fillText('www.habemaoutdoor.com', canvas.width / 2, canvas.height - 40)
+      ctx.fillText('Hubungi kami: WhatsApp +6289509162484', W / 2, canvas.height - 66)
+      ctx.fillText('www.habemaoutdoor.com', W / 2, canvas.height - 46)
+      ctx.textAlign = 'left'
 
       canvas.toBlob((blob) => {
         if (blob) {
@@ -193,6 +281,9 @@ export default function OrderConfirmationPage() {
       }, 'image/jpeg', 0.95)
     }
 
+    const img = new window.Image()
+    img.onload = () => render(true)
+    img.onerror = () => render(false)
     img.src = '/images/logo-dark.webp'
   }
 
@@ -234,8 +325,8 @@ export default function OrderConfirmationPage() {
       itemsArray = [{
         id: recentBooking.id,
         name: recentBooking.product,
-        price: recentBooking.totalPrice,
-        quantity: 1,
+        price: recentBooking.pricePerNight,
+        quantity: recentBooking.quantity || 1,
         category: "Equipment",
         days: recentBooking.days
       }];
@@ -253,6 +344,9 @@ export default function OrderConfirmationPage() {
 
   const recentBooking = !currentTransaction ? getRecentBooking() : null
   const totalDays = transactionData?.duration || transactionData?.days || recentBooking?.days || 1
+
+  const idTypeLabel = (t?: string) =>
+    ({ ktp: 'KTP', sim: 'SIM', passport: 'Paspor', npwp: 'NPWP' } as Record<string, string>)[t || ''] || t || '-'
 
   return (
     <div className="min-h-screen bg-cream">
@@ -351,6 +445,47 @@ export default function OrderConfirmationPage() {
                 </div>
               </div>
             </Card>
+
+            {transactionData?.identity && (transactionData.identity.fullName || transactionData.identity.idNumber) && (
+              <Card className="rounded-xl border border-stone-200 bg-white shadow-sm">
+                <div className="p-4 sm:p-6">
+                  <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight text-forest mb-4 sm:mb-6">Data Pemesan</h3>
+                  <div className="bg-cream rounded-xl p-4 sm:p-5">
+                    <div className="flex items-center gap-3 sm:gap-4 pb-3">
+                      <div className="w-11 h-11 rounded-full bg-forest/10 flex items-center justify-center shrink-0">
+                        <IdCard className="w-5 h-5 text-forest" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-stone-500 font-medium">Nama Lengkap</p>
+                        <p className="font-bold text-forest truncate">{transactionData.identity.fullName || '-'}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-stone-200">
+                      <div>
+                        <p className="text-xs text-stone-500 font-medium">Tipe Identitas</p>
+                        <p className="font-bold text-stone-800 mt-0.5 capitalize">{idTypeLabel(transactionData.identity.idType)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-stone-500 font-medium">Nomor Identitas</p>
+                        <p className="font-bold text-stone-800 mt-0.5 break-all">{transactionData.identity.idNumber || '-'}</p>
+                      </div>
+                      {transactionData.identity.phone && (
+                        <div>
+                          <p className="text-xs text-stone-500 font-medium">No. Telepon</p>
+                          <p className="font-bold text-stone-800 mt-0.5">{transactionData.identity.phone}</p>
+                        </div>
+                      )}
+                      {transactionData.identity.address && (
+                        <div>
+                          <p className="text-xs text-stone-500 font-medium">Alamat</p>
+                          <p className="font-bold text-stone-800 mt-0.5 break-words">{transactionData.identity.address}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
 
             <Card className="rounded-xl border border-stone-200 bg-white shadow-sm">
               <div className="p-4 sm:p-6">

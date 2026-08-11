@@ -52,6 +52,15 @@ declare global {
   }
 }
 
+// ==================== HELPERS ====================
+// Ubah nomor cabang menjadi format WhatsApp internasional (62xxx).
+function formatPhoneWa(phone: string): string {
+  const cleaned = phone.replace(/[^0-9]/g, "");
+  if (cleaned.startsWith("0")) return "62" + cleaned.slice(1);
+  if (cleaned.startsWith("62")) return cleaned;
+  return cleaned ? "62" + cleaned : "";
+}
+
 // ==================== MAIN COMPONENT ====================
 function BookingContent() {
   const searchParams = useSearchParams();
@@ -92,6 +101,7 @@ function BookingContent() {
   const skipAuthCheck = useRef(false);
   const idFormRef = useRef<any>(null);
   const idDataRef = useRef<any>(null);
+  const waWindowRef = useRef<Window | null>(null);
 
   const [customerNote, setCustomerNote] = useState("");
 
@@ -100,7 +110,6 @@ function BookingContent() {
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [pickupBranchId, setPickupBranchId] = useState<string | null>(null);
   const [returnBranchId, setReturnBranchId] = useState<string | null>(null);
-  const [branchPhone, setBranchPhone] = useState("6283898749357");
 
   // Kupon yang sudah diklaim user
   const [myCoupons, setMyCoupons] = useState<any[]>([]);
@@ -332,24 +341,6 @@ function BookingContent() {
     fetchBranches();
   }, [product, startDate, endDate]);
 
-  // Fetch nomor telepon cabang untuk WhatsApp
-  useEffect(() => {
-    const fetchBranchPhone = async () => {
-      try {
-        const res = await fetch('/api/branches');
-        const result = await res.json();
-        if (result.success && result.data?.length > 0 && result.data[0].phone) {
-          const cleaned = result.data[0].phone.replace(/[^0-9]/g, '');
-          const waNumber = cleaned.startsWith('0') ? '62' + cleaned.slice(1) : cleaned.startsWith('62') ? cleaned : '62' + cleaned;
-          setBranchPhone(waNumber);
-        }
-      } catch {
-        // fallback ke default
-      }
-    };
-    fetchBranchPhone();
-  }, []);
-
   // ==================== CALCULATIONS ====================
   const days =
     startDate && endDate ? Math.max(1, calculateDaysBetween(startDate, endDate)) : 0;
@@ -439,12 +430,33 @@ function BookingContent() {
   // (bila belum), lalu proses booking & pembayaran.
   const handleCheckout = async () => {
     try {
+      // Buka tab kosong WhatsApp di awal (masih dalam gestur klik pengguna)
+      // agar tidak diblokir popup blocker. Isi URL-nya dilakukan di
+      // handleFinalAction setelah booking tersimpan.
+      if (
+        paymentMethod === "WhatsApp Konfirmasi" &&
+        !waWindowRef.current
+      ) {
+        waWindowRef.current = window.open("", "_blank");
+      }
+
       if (!idDataRef.current) {
         const result = await idFormRef.current?.submit();
-        if (!result) return;
+        if (!result) {
+          // Batal saat validasi: tutup tab kosong yang tadi dibuka
+          if (waWindowRef.current) {
+            waWindowRef.current.close();
+            waWindowRef.current = null;
+          }
+          return;
+        }
       }
       await handleFinalAction();
     } catch (error: any) {
+      if (waWindowRef.current) {
+        waWindowRef.current.close();
+        waWindowRef.current = null;
+      }
       toast.error(`Gagal memproses pesanan: ${error?.message || "Terjadi kesalahan sistem"}`);
     }
   };
@@ -489,6 +501,10 @@ function BookingContent() {
         delivery_option: "pickup",
         delivery_address: null,
         customer_note: customerNote || null,
+        customer_full_name: identity?.fullName || null,
+        customer_id_type: identity?.idType || null,
+        customer_id_number: identity?.idNumber || null,
+        customer_phone: identity?.phone || null,
         total_cost: totalPrice,
         rental_days: days,
         subtotal: subtotal,
@@ -565,6 +581,15 @@ function BookingContent() {
           start: startDate.toISOString(),
           end: endDate.toISOString(),
         },
+        identity: identity
+          ? {
+              fullName: identity.fullName,
+              idType: identity.idType,
+              idNumber: identity.idNumber,
+              phone: identity.phone,
+              address: identity.address,
+            }
+          : null,
       });
 
       // ===== Alur WhatsApp =====
@@ -603,11 +628,23 @@ Mohon konfirmasi pesanan saya ya!`;
           );
         }
 
-        window.open(
-          `https://wa.me/${branchPhone}?text=${encodeURIComponent(waMessage)}`,
-          "_blank",
-        );
+        // Nomor WhatsApp mengikuti cabang pengambilan yang dipilih user.
+        const waPhone =
+          formatPhoneWa(pickupBranch?.phone || "") ||
+          "6283898749357";
+        const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(waMessage)}`;
 
+        // Buka WhatsApp di tab baru. Tab kosong sudah disiapkan lebih awal di
+        // handleCheckout agar lolos popup blocker; isi URL-nya di sini.
+        const waWin = waWindowRef.current;
+        if (waWin) {
+          waWin.location.href = waUrl;
+        } else {
+          window.open(waUrl, "_blank");
+        }
+        waWindowRef.current = null;
+
+        // Halaman website tetap lanjut ke halaman konfirmasi pesanan.
         router.push("/order-confirmation");
         return;
       }

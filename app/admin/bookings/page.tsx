@@ -42,6 +42,10 @@ interface Booking {
   deposit_amount: number;
   created_at: string;
   notes?: string;
+  customer_full_name?: string | null;
+  customer_id_type?: string | null;
+  customer_id_number?: string | null;
+  customer_phone?: string | null;
   pickup_branch_id: string | null;
   pickup_branch_name: string | null;
   return_branch_id: string | null;
@@ -208,11 +212,14 @@ export default function BookingManagement() {
 
       // Convert to CSV
       const csv = [
-        "Booking ID,Customer,Status,Cabang Pengambilan,Cabang Pengembalian,Start Date,End Date,Total,Created At",
-        ...(data || []).map(booking => {
+        "Booking ID,Customer,Nomor Identitas,Tipe ID,Telepon,Status,Cabang Pengambilan,Cabang Pengembalian,Start Date,End Date,Total,Created At",
+        ...(data || []).map((booking: any) => {
           return [
             booking.id.slice(0, 8),
-            booking.user_profile?.email || (booking.user_id ? "Registered User" : "Guest"),
+            booking.customer_full_name || booking.user_profile?.email || (booking.user_id ? "Registered User" : "Guest"),
+            booking.customer_id_number || '-',
+            booking.customer_id_type || '-',
+            booking.customer_phone || '-',
             booking.status,
             booking.pickup_branch_name || '-',
             booking.return_branch_name || '-',
@@ -474,7 +481,7 @@ export default function BookingManagement() {
                     </div>
                     
                     <div className="text-xs text-stone-600 space-y-1">
-                      <p><span className="text-stone-400">Pelanggan:</span> {booking.user_profile?.email || 'Tamu'}</p>
+                      <p><span className="text-stone-400">Pelanggan:</span> {booking.customer_full_name || booking.user_profile?.email || 'Tamu'}</p>
                       {booking.booking_items && booking.booking_items.length > 0 && (
                         <div className="flex items-center gap-1.5 flex-wrap pt-1">
                           {booking.booking_items.slice(0, 3).map((item: any) => (
@@ -551,7 +558,7 @@ export default function BookingManagement() {
                               <Users className="w-3.5 h-3.5 text-emerald-600" />
                             </div>
                             <span className="text-sm text-stone-700 truncate max-w-40" title={booking.user_profile?.email || ''}>
-                              {booking.user_profile?.email || 'Terdaftar'}
+                              {booking.customer_full_name || booking.user_profile?.email || 'Terdaftar'}
                             </span>
                           </>
                         ) : (
@@ -559,7 +566,9 @@ export default function BookingManagement() {
                             <div className="w-7 h-7 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
                               <Users className="w-3.5 h-3.5 text-amber-600" />
                             </div>
-                            <span className="text-sm text-stone-500">Tamu</span>
+                            <span className="text-sm text-stone-500 truncate max-w-40">
+                              {booking.customer_full_name || 'Tamu'}
+                            </span>
                           </>
                         )}
                       </div>
@@ -724,12 +733,27 @@ export default function BookingManagement() {
                     </div>
                     <div>
                       <span className="text-stone-400 text-xs">Pelanggan</span>
-                      <p className="text-stone-800">{selectedBooking.user_profile?.email || (selectedBooking.user_id ? 'Terdaftar' : 'Tamu')}</p>
+                      <p className="text-stone-800">{selectedBooking.customer_full_name || selectedBooking.user_profile?.email || (selectedBooking.user_id ? 'Terdaftar' : 'Tamu')}</p>
                     </div>
                     <div>
                       <span className="text-stone-400 text-xs">Dibuat</span>
                       <p className="text-stone-800">{formatDate(selectedBooking.created_at)}</p>
                     </div>
+                    {(selectedBooking.customer_id_type || selectedBooking.customer_id_number) && (
+                      <div>
+                        <span className="text-stone-400 text-xs">No. Identitas</span>
+                        <p className="text-stone-800 break-all">
+                          {selectedBooking.customer_id_number || '-'}
+                          {selectedBooking.customer_id_type && ` (${selectedBooking.customer_id_type})`}
+                        </p>
+                      </div>
+                    )}
+                    {selectedBooking.customer_phone && (
+                      <div>
+                        <span className="text-stone-400 text-xs">Telepon</span>
+                        <p className="text-stone-800 break-all">{selectedBooking.customer_phone}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
