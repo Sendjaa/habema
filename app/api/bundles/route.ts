@@ -82,6 +82,10 @@ export async function GET() {
 
       const colors = getAccentColors(bundle.target_audience)
 
+      // includes/excludes dikelola dari admin; normalisasi ke string[].
+      const toList = (v: unknown): string[] =>
+        Array.isArray(v) ? v.map((x) => String(x)).map((s) => s.trim()).filter(Boolean) : []
+
       return {
         id: bundle.id,
         category: bundle.target_audience || 'General',
@@ -92,8 +96,8 @@ export async function GET() {
         unit: getUnit(bundle.target_audience, bundle.bundle_price),
         desc: bundle.description,
         image: bundle.image_url || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80',
-        include: [],
-        exclude: [],
+        include: toList(bundle.includes),
+        exclude: toList(bundle.excludes),
         accent: colors.accent,
         accentLight: colors.accentLight,
       }

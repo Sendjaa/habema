@@ -26,6 +26,7 @@ import {
   History,
   AlertCircle,
   Package,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,6 +67,12 @@ const layananItems = [
     href: "/packages",
     icon: Package,
     description: "Paket bundling perlengkapan",
+  },
+  {
+    label: "Katalog Digital",
+    href: "/katalog-digital",
+    icon: BookOpen,
+    description: "Buku katalog interaktif",
   },
 ];
 

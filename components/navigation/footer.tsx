@@ -73,6 +73,7 @@ export function Footer() {
             <ul className="space-y-1.5 text-xs">
               <li><Link href="/catalog_rental" className="hover:text-gold transition-colors">Katalog Sewa</Link></li>
               <li><Link href="/catalog_shop" className="hover:text-gold transition-colors">Katalog Beli</Link></li>
+              <li><Link href="/katalog-digital" className="hover:text-gold transition-colors">Katalog Digital</Link></li>
               <li><Link href="/packages" className="hover:text-gold transition-colors">Paket Bundling</Link></li>
               <li><Link href="/bundles" className="hover:text-gold transition-colors">Promo</Link></li>
               <li><Link href="/faq" className="hover:text-gold transition-colors">Tanya Jawab</Link></li>

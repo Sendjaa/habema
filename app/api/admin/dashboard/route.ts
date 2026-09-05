@@ -38,15 +38,32 @@ export async function GET(_request: NextRequest) {
     const { data: activeBookings } = await supabaseAdmin
       .from('bookings')
       .select(`
-        id, status, start_date, end_date, total_cost, created_at, user_id
+        id, status, start_date, end_date, total_cost, created_at, user_id,
+        payment_status, payment_method
       `)
       .in('status', ['pending', 'confirmed', 'picked_up'])
       .order('created_at', { ascending: false })
       .limit(20)
 
-    // Fetch user profiles for active bookings
+    // Antrean verifikasi pembayaran: QRIS manual + bukti sudah diupload,
+    // payment_status masih pending.
+    const { data: needsVerification } = await supabaseAdmin
+      .from('bookings')
+      .select(`
+        id, status, payment_status, payment_method, total_cost,
+        created_at, user_id, payment_proof_uploaded_at
+      `)
+      .eq('payment_status', 'pending')
+      .not('payment_proof_url', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(20)
+
+    // Fetch user profiles for active bookings + verification queue
     let userMap: Record<string, any> = {}
-    const userIds = [...new Set((activeBookings || []).map((b: any) => b.user_id).filter(Boolean))]
+    const userIds = [...new Set([
+      ...((activeBookings || []).map((b: any) => b.user_id)),
+      ...((needsVerification || []).map((b: any) => b.user_id)),
+    ].filter(Boolean))]
     if (userIds.length > 0) {
       const { data: users } = await supabaseAdmin
         .from('users')
@@ -77,6 +94,10 @@ export async function GET(_request: NextRequest) {
         pickedUp: pickedUp || [],
         confirmed: confirmed || [],
         activeBookings: enrichedActive,
+        needsVerification: (needsVerification || []).map((b: any) => ({
+          ...b,
+          users: b.user_id ? userMap[b.user_id] || null : null,
+        })),
         unreadCount: unreadCount || 0,
       },
     })

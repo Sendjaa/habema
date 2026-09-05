@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Bell, BellRing, X, CheckCircle, Clock, User } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { Bell, BellRing, X, CheckCircle, Clock, User, CreditCard, IdCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,22 +21,80 @@ interface Notification {
   created_at: string;
 }
 
+const POLL_MS = 30000;
+
 export function NotificationsPanel() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const knownIds = useRef<Set<string>>(new Set());
+  const firstLoad = useRef(true);
+
+  const applyPayload = useCallback((data: Notification[], unread: number) => {
+    // Toast untuk notifikasi yang benar-benar baru (lewati load pertama).
+    if (!firstLoad.current) {
+      const fresh = data.filter((n) => !knownIds.current.has(n.id));
+      for (const n of fresh.slice(0, 3)) {
+        toast.info(n.title, { description: n.message.slice(0, 120) });
+      }
+    }
+    knownIds.current = new Set(data.map((n) => n.id));
+    setNotifications(data);
+    setUnreadCount(unread);
+    firstLoad.current = false;
+  }, []);
+
+  const fetchNotifications = useCallback(async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      const res = await fetch("/api/admin/notifications?limit=30");
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok || !result.success) throw new Error(result?.error || `HTTP ${res.status}`);
+      applyPayload(result.data || [], result.unreadCount ?? 0);
+    } catch (error) {
+      console.error("[notifications] fetch failed:", error);
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [applyPayload]);
 
   useEffect(() => {
-    // Simplified notification setup - just fetch once
     fetchNotifications();
-  }, []);
+
+    // Realtime: INSERT baru di tabel notifications.
+    // Bila tabel belum masuk publikasi realtime, tidak ada event masuk
+    // dan polling di bawah tetap menjaga data segar.
+    let channel: any = null;
+    try {
+      channel = supabase
+        .channel("admin-notifications")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "notifications" },
+          () => fetchNotifications(true),
+        )
+        .subscribe();
+    } catch (e) {
+      console.warn("[notifications] realtime unavailable, memakai polling:", e);
+    }
+
+    const timer = setInterval(() => fetchNotifications(true), POLL_MS);
+    const onFocus = () => fetchNotifications(true);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [fetchNotifications]);
 
   // Close notification panel when clicking outside or pressing Escape
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-      if (isOpen && 
-          event.target instanceof Element && 
+      if (isOpen &&
+          event.target instanceof Element &&
           !event.target.closest('.notification-panel')) {
         setIsOpen(false);
       }
@@ -47,7 +106,6 @@ export function NotificationsPanel() {
       }
     };
 
-    // Add multiple event listeners for better compatibility
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('touchstart', handleClickOutside);
     document.addEventListener('keydown', handleKeyDown);
@@ -59,54 +117,51 @@ export function NotificationsPanel() {
     };
   }, [isOpen]);
 
-  const fetchNotifications = async () => {
-    // Temporarily disable notifications completely to prevent errors
-    console.log('Notifications temporarily disabled - using empty state');
-    setNotifications([]);
-    setUnreadCount(0);
-    setLoading(false);
-  };
-
-  const markAsRead = async (notificationId: string) => {
+  const markAsRead = async (notificationId: string, bookingId?: string | null) => {
+    // Optimistic update
+    setNotifications(prev =>
+      prev.map(n =>
+        n.id === notificationId
+          ? { ...n, is_read: true, read_at: new Date().toISOString() }
+          : n
+      )
+    );
+    setUnreadCount(prev => Math.max(0, prev - 1));
     try {
-      // Since we're using bookings as notifications, we'll just update local state
-      // In a real implementation, you might want to add a read_status field to bookings
-      console.log('Marking notification as read:', notificationId);
-      
-      // Update local state
-      setNotifications(prev => 
-        prev.map(n => 
-          n.id === notificationId 
-            ? { ...n, is_read: true, read_at: new Date().toISOString() }
-            : n
-        )
-      );
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      await fetch("/api/admin/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: notificationId }),
+      });
     } catch (error) {
-      console.error("Error:", error);
+      console.error("[notifications] mark read failed:", error);
+    }
+    if (bookingId) {
+      setIsOpen(false);
+      router.push(`/admin/bookings/${bookingId}`);
     }
   };
 
   const markAllAsRead = async () => {
+    if (unreadCount === 0) return;
+    setNotifications(prev =>
+      prev.map(n => ({ ...n, is_read: true, read_at: new Date().toISOString() }))
+    );
+    setUnreadCount(0);
     try {
-      const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
-      
-      if (unreadIds.length === 0) return;
-
-      console.log('Marking all notifications as read:', unreadIds);
-
-      // Update local state
-      setNotifications(prev => 
-        prev.map(n => ({ ...n, is_read: true, read_at: new Date().toISOString() }))
-      );
-      setUnreadCount(0);
+      await fetch("/api/admin/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
       toast.success("Semua notifikasi ditandai sebagai dibaca");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("[notifications] mark all failed:", error);
     }
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return "-";
     const date = new Date(dateString);
     const now = new Date();
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
@@ -119,6 +174,12 @@ export function NotificationsPanel() {
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
+      case "payment_proof":
+        return <CreditCard className="w-4 h-4 text-amber-500" />;
+      case "id_verification":
+        return <IdCard className="w-4 h-4 text-blue-500" />;
+      case "new_booking":
+        return <CheckCircle className="w-4 h-4 text-emerald-500" />;
       case "anonymous_booking":
         return <User className="w-4 h-4 text-amber-500" />;
       default:
@@ -146,10 +207,7 @@ export function NotificationsPanel() {
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => {
-          console.log('Notification button clicked, current state:', { isOpen, unreadCount });
-          setIsOpen(!isOpen);
-        }}
+        onClick={() => setIsOpen(!isOpen)}
         className="relative hover:bg-gray-100 transition-colors"
         aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : 'No notifications'}`}
       >
@@ -159,14 +217,14 @@ export function NotificationsPanel() {
           <Bell className="w-5 h-5 text-gray-500" />
         )}
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-bounce">
-            {unreadCount}
+          <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs rounded-full min-w-5 h-5 px-1 flex items-center justify-center">
+            {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
       </Button>
 
       {isOpen && (
-        <Card className="notification-panel absolute right-0 top-12 w-96 max-h-96 overflow-hidden shadow-lg border z-[60]">
+        <Card className="notification-panel absolute right-0 top-12 w-96 max-w-[calc(100vw-2rem)] max-h-96 overflow-hidden shadow-lg border z-[60]">
           <div className="p-4 border-b bg-gray-50">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-900">Notifikasi</h3>
@@ -205,7 +263,7 @@ export function NotificationsPanel() {
                   <div
                     key={notification.id}
                     className={`p-4 cursor-pointer transition-colors ${getNotificationColor(notification)}`}
-                    onClick={() => !notification.is_read && markAsRead(notification.id)}
+                    onClick={() => !notification.is_read && markAsRead(notification.id, notification.booking_id)}
                   >
                     <div className="flex items-start gap-3">
                       <div className="mt-1">
@@ -235,6 +293,18 @@ export function NotificationsPanel() {
                             </>
                           )}
                         </div>
+                        {notification.booking_id && (
+                          <Badge
+                            variant="outline"
+                            className="mt-2 text-[10px] cursor-pointer hover:bg-emerald-50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markAsRead(notification.id, notification.booking_id);
+                            }}
+                          >
+                            Buka booking →
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>

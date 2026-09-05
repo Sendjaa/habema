@@ -4,6 +4,7 @@ import { ReactNode, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { NotificationsPanel } from "@/components/admin/notifications-panel";
 import {
   LayoutDashboard,
   Package,
@@ -18,6 +19,7 @@ import {
   Mountain,
   Store,
   MapPin,
+  Layers,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -27,6 +29,7 @@ const NAV_ITEMS = [
   { href: "/admin/branches", label: "Cabang", icon: MapPin },
   { href: "/admin/catalog-shop", label: "Katalog Toko", icon: Store },
   { href: "/admin/orders-shop", label: "Order Toko", icon: ShoppingCart },
+  { href: "/admin/bundles", label: "Bundles", icon: Layers },
   { href: "/admin/users", label: "Pengguna", icon: Users },
   { href: "/admin/discounts", label: "Diskon", icon: Tag },
   { href: "/admin/products-promo", label: "Promo Produk", icon: Percent },
@@ -121,18 +124,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-screen">
-        {/* Mobile header */}
-        <header className="lg:hidden bg-white border-b border-stone-200 sticky top-0 z-30">
-          <div className="px-4 py-3 flex items-center gap-3">
+        {/* Main content */}
+      <div className="flex-1 flex flex-col min-h-screen min-w-0">
+        {/* Header: bel notifikasi (semua ukuran layar) */}
+        <header className="bg-white border-b border-stone-200 sticky top-0 z-30">
+          <div className="px-4 py-2.5 flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="w-8 h-8 rounded-lg border border-stone-200 flex items-center justify-center text-stone-500 hover:bg-stone-50"
+              className="lg:hidden w-8 h-8 rounded-lg border border-stone-200 flex items-center justify-center text-stone-500 hover:bg-stone-50"
             >
               <Menu className="w-4 h-4" />
             </button>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 lg:hidden">
               <div className="w-7 h-7 rounded-lg bg-emerald-800 flex items-center justify-center">
                 <Mountain className="w-3.5 h-3.5 text-white" />
               </div>
@@ -142,6 +145,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               >
                 Habema Admin
               </span>
+            </div>
+            <div className="ml-auto">
+              <NotificationsPanel />
             </div>
           </div>
         </header>

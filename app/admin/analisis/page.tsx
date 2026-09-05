@@ -19,6 +19,12 @@ interface CategoryRevenue {
   revenue: number
 }
 
+interface MethodRevenue {
+  method: string
+  revenue: number
+  count: number
+}
+
 const FORMAT_CURRENCY = (amount: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount)
 
@@ -36,25 +42,37 @@ export default function AnalisisPage() {
   const [dailyRevenue, setDailyRevenue] = useState<RevenueItem[]>([])
   const [monthlyRevenueTrend, setMonthlyRevenueTrend] = useState<MonthlyRevenue[]>([])
   const [revenueByCategory, setRevenueByCategory] = useState<CategoryRevenue[]>([])
+  const [realizedRevenue, setRealizedRevenue] = useState(0)
+  const [pendingRevenue, setPendingRevenue] = useState(0)
+  const [cancelledRevenue, setCancelledRevenue] = useState(0)
+  const [methodBreakdown, setMethodBreakdown] = useState<MethodRevenue[]>([])
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  const fetchData = async () => {
+    setLoadError(null)
+    try {
+      const res = await fetch('/api/admin/stats')
+      if (!res.ok) throw new Error('Failed to fetch stats')
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error)
+
+      setRevenueByStatus(result.data.revenueByStatus || {})
+      setDailyRevenue(result.data.dailyRevenue || [])
+      setMonthlyRevenueTrend(result.data.monthlyRevenueTrend || [])
+      setRevenueByCategory(result.data.revenueByCategory || [])
+      setRealizedRevenue(result.data.totalRevenue || 0)
+      setPendingRevenue(result.data.pendingRevenue || 0)
+      setCancelledRevenue(result.data.cancelledRevenue || 0)
+      setMethodBreakdown(result.data.paymentMethodBreakdown || [])
+    } catch (err: any) {
+      console.error('Failed to load analisis data:', err)
+      setLoadError(err?.message || 'Gagal memuat data analisis')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch('/api/admin/stats')
-        if (!res.ok) throw new Error('Failed to fetch stats')
-        const result = await res.json()
-        if (!result.success) throw new Error(result.error)
-
-        setRevenueByStatus(result.data.revenueByStatus || {})
-        setDailyRevenue(result.data.dailyRevenue || [])
-        setMonthlyRevenueTrend(result.data.monthlyRevenueTrend || [])
-        setRevenueByCategory(result.data.revenueByCategory || [])
-      } catch (err) {
-        console.error('Failed to load analisis data:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
     fetchData()
   }, [])
 
@@ -69,6 +87,37 @@ export default function AnalisisPage() {
   return (
     <div className="min-h-screen bg-[#F1EFE8] font-body">
       <div className="px-4 sm:px-6 py-6 space-y-5 max-w-[1400px] mx-auto mt-4">
+        {loadError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-5 py-3 rounded-xl text-sm flex items-center gap-3">
+            <span>⚠️ Gagal memuat data: {loadError}</span>
+            <button
+              onClick={() => { setLoading(true); fetchData(); }}
+              className="ml-auto shrink-0 text-xs font-semibold underline"
+            >
+              Coba Lagi
+            </button>
+          </div>
+        )}
+
+        {/* KPI: hanya uang lunas yang dihitung realisasi */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card className="bg-white border border-emerald-200 rounded-xl p-5 shadow-none">
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Realisasi (Lunas)</p>
+            <p className="text-2xl font-bold text-emerald-700">{FORMAT_CURRENCY(realizedRevenue)}</p>
+            <p className="text-[11px] text-stone-400 mt-1">Pembayaran terverifikasi / sukses</p>
+          </Card>
+          <Card className="bg-white border border-amber-200 rounded-xl p-5 shadow-none">
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Menunggu Pembayaran</p>
+            <p className="text-2xl font-bold text-amber-700">{FORMAT_CURRENCY(pendingRevenue)}</p>
+            <p className="text-[11px] text-stone-400 mt-1">Belum lunas, bukan pendapatan</p>
+          </Card>
+          <Card className="bg-white border border-stone-200 rounded-xl p-5 shadow-none">
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Batal / Gagal</p>
+            <p className="text-2xl font-bold text-stone-500">{FORMAT_CURRENCY(cancelledRevenue)}</p>
+            <p className="text-[11px] text-stone-400 mt-1">Dikecualikan dari pendapatan</p>
+          </Card>
+        </div>
+
         <Card className="bg-white border border-stone-200 rounded-xl p-5 shadow-none">
           <div className="flex items-center gap-2 mb-5">
             <DollarSign className="w-5 h-5 text-emerald-700" />
@@ -172,6 +221,30 @@ export default function AnalisisPage() {
               </div>
             ) : (
               <p className="text-sm text-stone-400 py-4 text-center">Belum ada data pendapatan per kategori</p>
+            )}
+          </div>
+
+          {/* Revenue by Payment Method (hanya yang lunas) */}
+          <div className="mt-6">
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Pendapatan per Metode Bayar</p>
+            {methodBreakdown.length > 0 ? (
+              <div className="space-y-1.5">
+                {(() => {
+                  const maxM = Math.max(...methodBreakdown.map(m => m.revenue), 1)
+                  return methodBreakdown.map((m) => (
+                    <div key={m.method} className="flex items-center gap-2">
+                      <span className="text-[10px] text-stone-500 w-28 shrink-0 truncate" title={m.method}>{m.method}</span>
+                      <div className="flex-1 h-5 bg-stone-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-teal-500 rounded-full transition-all duration-300" style={{ width: `${(m.revenue / maxM) * 100}%` }} />
+                      </div>
+                      <span className="text-[10px] text-stone-400 w-14 shrink-0">{m.count}x</span>
+                      <span className="text-[10px] text-stone-600 w-24 text-right font-medium">{FORMAT_CURRENCY(m.revenue)}</span>
+                    </div>
+                  ))
+                })()}
+              </div>
+            ) : (
+              <p className="text-sm text-stone-400 py-4 text-center">Belum ada pembayaran lunas</p>
             )}
           </div>
         </Card>

@@ -30,15 +30,28 @@ export async function GET() {
     // Bookings
     const { data: bookings } = await supabaseAdmin
       .from('bookings')
-      .select('id, status, total_cost, created_at')
+      .select('id, status, total_cost, created_at, payment_status, payment_method')
+
+    // Klasifikasi uang: hanya payment_status=paid yang dihitung realisasi.
+    // Booking batal/gagal/expired/refund TIDAK dihitung sebagai pendapatan.
+    const isRealized = (b: any) =>
+      b.payment_status === 'paid' &&
+      b.status !== 'cancelled' &&
+      b.payment_status !== 'refunded'
+    const isPendingMoney = (b: any) =>
+      b.payment_status === 'pending' && b.status !== 'cancelled'
+    const isVoid = (b: any) =>
+      b.status === 'cancelled' ||
+      ['failed', 'cancelled', 'expired', 'refunded'].includes(b.payment_status)
 
     if (bookings) {
+      const realized = bookings.filter(isRealized)
       totalBookings = bookings.length
       pendingBookings = bookings.filter((b: any) => b.status === 'pending').length
       confirmedBookings = bookings.filter((b: any) => b.status === 'confirmed').length
-      totalRevenue = bookings.reduce((sum: number, b: any) => sum + (b.total_cost || 0), 0)
+      totalRevenue = realized.reduce((sum: number, b: any) => sum + (b.total_cost || 0), 0)
 
-      monthlyRevenue = bookings
+      monthlyRevenue = realized
         .filter((b: any) => b.created_at && new Date(b.created_at) >= firstDay)
         .reduce((sum: number, b: any) => sum + (b.total_cost || 0), 0)
     }
@@ -54,10 +67,11 @@ export async function GET() {
       }
     }
 
-    // Daily revenue for current month
+    // Daily revenue for current month (hanya yang lunas)
     const dailyRevenueMap: Record<string, number> = {}
     if (bookings) {
       for (const b of bookings) {
+        if (!isRealized(b)) continue
         if (b.created_at) {
           const d = new Date(b.created_at)
           if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
@@ -81,6 +95,7 @@ export async function GET() {
     const monthlyRevenueMap: Record<string, number> = {}
     if (bookings) {
       for (const b of bookings) {
+        if (!isRealized(b)) continue
         if (b.created_at) {
           const key = b.created_at.substring(0, 7)
           if (months.includes(key)) {
@@ -94,10 +109,14 @@ export async function GET() {
       revenue: monthlyRevenueMap[month] || 0,
     }))
 
-    // Revenue by category
+    // Revenue by category (hanya item dari booking yang lunas)
     const { data: bookingItems } = await supabaseAdmin
       .from('booking_items')
-      .select('subtotal, equipment_id')
+      .select('subtotal, equipment_id, booking_id')
+
+    const paidBookingIds = new Set(
+      (bookings || []).filter(isRealized).map((b: any) => b.id),
+    )
 
     const revenueByCategory: { category_name: string; revenue: number }[] = []
     if (bookingItems && bookingItems.length > 0) {
@@ -123,6 +142,7 @@ export async function GET() {
 
       const categoryRevenue = new Map<string, number>()
       for (const item of bookingItems) {
+        if (!paidBookingIds.has((item as any).booking_id)) continue
         const catId = equipmentCategoryMap.get(item.equipment_id)
         if (catId) {
           const catName = categoryMap.get(catId) || 'Unknown'
@@ -158,6 +178,32 @@ export async function GET() {
       lowStockItems = equipment.filter((e: any) => (e.stock_quantity || 0) <= 3).length
     }
 
+    // Ringkasan uang menunggu vs hangus + komposisi metode bayar (yang lunas).
+    let pendingRevenue = 0
+    let cancelledRevenue = 0
+    const paymentMethodBreakdown: { method: string; revenue: number; count: number }[] = []
+    if (bookings) {
+      pendingRevenue = bookings
+        .filter(isPendingMoney)
+        .reduce((sum: number, b: any) => sum + (b.total_cost || 0), 0)
+      cancelledRevenue = bookings
+        .filter(isVoid)
+        .reduce((sum: number, b: any) => sum + (b.total_cost || 0), 0)
+
+      const byMethod = new Map<string, { revenue: number; count: number }>()
+      for (const b of bookings.filter(isRealized)) {
+        const method = (b.payment_method as string) || 'Lainnya'
+        const cur = byMethod.get(method) || { revenue: 0, count: 0 }
+        cur.revenue += b.total_cost || 0
+        cur.count += 1
+        byMethod.set(method, cur)
+      }
+      for (const [method, v] of byMethod) {
+        paymentMethodBreakdown.push({ method, revenue: v.revenue, count: v.count })
+      }
+      paymentMethodBreakdown.sort((a, b) => b.revenue - a.revenue)
+    }
+
     let recentBookings: any[] = []
     if (bookings) {
       recentBookings = bookings
@@ -175,6 +221,9 @@ export async function GET() {
         confirmedBookings,
         totalRevenue,
         monthlyRevenue,
+        pendingRevenue,
+        cancelledRevenue,
+        paymentMethodBreakdown,
         totalUsers,
         newUsersThisMonth,
         totalEquipment,
