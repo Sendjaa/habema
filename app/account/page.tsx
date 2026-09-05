@@ -56,11 +56,14 @@ export default function AccountPage() {
   }
   if (!user) return null;
 
-  const fullName = user.user_metadata?.full_name || "Petualang Habema";
+  const fullName = (user as any).full_name || user.user_metadata?.full_name || "Petualang Habema";
   const email = user.email ?? "";
-  const phone = user.phone || null;
+  const phone = (user as any).phone || null;
+  const avatarUrl = (user as any).avatar_url || user.user_metadata?.avatar_url || null;
+  const provider = (user as any).provider || user.app_metadata?.provider || "email";
+  const emailConfirmed = (user as any).email_confirmed ?? !!user.email_confirmed_at;
   const initials = getInitials(fullName);
-  const joinDate = formatDate(user.created_at);
+  const joinDate = formatDate((user as any).created_at || user.created_at);
 
   // ── Stats rental ──
   const rentalPending = bookings.filter((o) => o.status === "pending").length;
@@ -86,11 +89,17 @@ export default function AccountPage() {
   const shopTotalSpend = shopOrders.reduce((acc, o) => acc + (o.total_amount ?? 0), 0);
 
   const verifications = [
-    { label: "Email",          icon: Mail,     status: user.email_confirmed_at ? "ok" : "missing" },
-    { label: "Nomor HP",       icon: Phone,    status: user.phone || user.user_metadata?.phone ? "ok" : "missing" },
+    { label: "Email",          icon: Mail,     status: emailConfirmed ? "ok" : "missing" },
+    { label: "Nomor HP",       icon: Phone,    status: phone || user.user_metadata?.phone ? "ok" : "missing" },
     { label: "KTP / Identitas", icon: User,    status: user.user_metadata?.identity_verified ? "ok" : "pending" },
     { label: "Alamat",         icon: MapPin,   status: addresses.length > 0 ? "ok" : "missing" },
   ] as const;
+
+  const loginMethod = provider === "google"
+    ? "Login via Google"
+    : provider === "email"
+      ? "Login via Email"
+      : `Login via ${provider}`;
 
   const completedCount = verifications.filter((v) => v.status === "ok").length;
 
@@ -141,8 +150,13 @@ export default function AccountPage() {
           <div className="flex items-center gap-4 sm:gap-5">
             {/* Avatar */}
             <div className="relative flex-shrink-0">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <span className="text-xl sm:text-2xl font-bold text-white tracking-tight">{initials}</span>
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center shadow-lg overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-600">
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatarUrl} alt={fullName} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xl sm:text-2xl font-bold text-white tracking-tight">{initials}</span>
+                )}
               </div>
               <button
                 onClick={() => router.push("/account/edit")}
@@ -172,6 +186,12 @@ export default function AccountPage() {
                   <span className="flex items-center gap-1.5">
                     <Phone className="w-3.5 h-3.5" />
                     {phone}
+                  </span>
+                )}
+                {provider === "google" && avatarUrl && (
+                  <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    {loginMethod}
                   </span>
                 )}
               </div>

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +13,6 @@ import {
   Filter, 
   Eye, 
   Edit, 
-  Trash2, 
   Calendar,
   Users,
   Package,
@@ -50,6 +48,9 @@ interface Booking {
   pickup_branch_name: string | null;
   return_branch_id: string | null;
   return_branch_name: string | null;
+  payment_method?: string | null;
+  payment_status?: string | null;
+  payment_proof_url?: string | null;
   booking_items: Array<{
     id: string;
     equipment_id: string;
@@ -78,9 +79,7 @@ export default function BookingManagement() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [updating, setUpdating] = useState(false);
 
   const itemsPerPage = 10;
 
@@ -146,59 +145,6 @@ export default function BookingManagement() {
       setTotalPages(0)
     } finally {
       setLoading(false)
-    }
-  };
-
-  const updateBookingStatus = async (bookingId: string, newStatus: string) => {
-    try {
-      setUpdating(true);
-      
-      const { error } = await supabase
-        .from("bookings")
-        .update({ status: newStatus })
-        .eq("id", bookingId);
-
-      if (error) throw error;
-
-      toast.success(`Booking status updated to ${newStatus}`);
-      fetchBookings();
-      
-      if (showDetailModal) {
-        setShowDetailModal(false);
-        setSelectedBooking(null);
-      }
-    } catch (error) {
-      console.error("Error updating booking:", error);
-      toast.error("Failed to update booking status");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const deleteBooking = async (bookingId: string) => {
-    if (!confirm("Are you sure you want to delete this booking? This action cannot be undone.")) {
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/admin/bookings/${bookingId}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      const result = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        throw new Error(result?.error || `HTTP ${res.status}`);
-      }
-
-      toast.success("Booking deleted successfully");
-      fetchBookings();
-      setShowDetailModal(false);
-      setSelectedBooking(null);
-    } catch (error: any) {
-      console.error("Error deleting booking:", error);
-      toast.error(error?.message || "Failed to delete booking");
     }
   };
 
@@ -285,6 +231,10 @@ export default function BookingManagement() {
       month: "short",
       year: "numeric",
     });
+
+  // Booking QRIS manual yang bukti bayarnya menunggu diverifikasi admin.
+  const needsVerification = (b: Booking) =>
+    b.payment_status === "pending" && !!b.payment_proof_url;
 
   if (loading && bookings.length === 0) {
     return (
@@ -474,6 +424,11 @@ export default function BookingManagement() {
                         <Badge className={`${getStatusColor(booking.status)} text-[10px] mt-1`}>
                           {statusLabels[booking.status] || booking.status}
                         </Badge>
+                        {needsVerification(booking) && (
+                          <Badge className="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] mt-1 ml-1">
+                            Menunggu verifikasi
+                          </Badge>
+                        )}
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-stone-900 text-sm">{formatCurrency(booking.total_cost)}</p>
@@ -507,10 +462,7 @@ export default function BookingManagement() {
                     </div>
                     
                     <div className="flex gap-2 pt-2 border-t border-stone-100">
-                      <Button size="sm" variant="outline" className="h-8 text-xs border-stone-200 text-stone-600 rounded-lg" onClick={() => {
-                        setSelectedBooking(booking);
-                        setShowDetailModal(true);
-                      }}>
+                      <Button size="sm" variant="outline" className="h-8 text-xs border-stone-200 text-stone-600 rounded-lg" onClick={() => router.push(`/admin/bookings/${booking.id}`)}>
                         <Eye className="w-3.5 h-3.5 mr-1" />
                         Detail
                       </Button>
@@ -621,6 +573,13 @@ export default function BookingManagement() {
                       <Badge className={`${getStatusColor(booking.status)} text-[10px]`}>
                         {statusLabels[booking.status] || booking.status}
                       </Badge>
+                      {needsVerification(booking) && (
+                        <div>
+                          <Badge className="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] mt-1">
+                            Menunggu verifikasi
+                          </Badge>
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 px-4 font-medium text-sm text-stone-800">
                       {formatCurrency(booking.total_cost)}
@@ -634,7 +593,7 @@ export default function BookingManagement() {
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-1">
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-stone-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg"
-                          onClick={() => { setSelectedBooking(booking); setShowDetailModal(true); }}
+                          onClick={() => router.push(`/admin/bookings/${booking.id}`)}
                           title="Lihat detail">
                           <Eye className="w-4 h-4" />
                         </Button>
@@ -702,163 +661,116 @@ export default function BookingManagement() {
         </Card>
       </div>
 
-      {/* Detail Modal */}
-      {showDetailModal && selectedBooking && (
+      {/* Detail Modal dihapus: tombol eye langsung ke halaman detail */}
+      {/* Edit Modal */}
+      {showEditModal && selectedBooking && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border-stone-200 shadow-lg">
+          <Card className="w-full max-w-md rounded-xl border-stone-200 shadow-lg">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-stone-900" style={{ fontFamily: "'Fraunces', serif" }}>Detail Booking</h2>
-                <Button variant="ghost" size="sm" className="text-stone-400 hover:text-stone-600 rounded-lg" onClick={() => setShowDetailModal(false)}>
+                <h2 className="text-lg font-semibold text-stone-900" style={{ fontFamily: "'Fraunces', serif" }}>
+                  Edit Booking #{selectedBooking.id.slice(0, 8)}
+                </h2>
+                <Button variant="ghost" size="sm" className="text-stone-400 hover:text-stone-600 rounded-lg" onClick={() => setShowEditModal(false)}>
                   ✕
                 </Button>
               </div>
-              
-              <div className="space-y-6">
-                {/* Booking Info */}
-                <div>
-                  <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Informasi Booking</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-stone-400 text-xs">ID Booking</span>
-                      <p className="font-mono text-stone-800">#{selectedBooking.id.slice(0, 8)}</p>
-                    </div>
-                    <div>
-                      <span className="text-stone-400 text-xs">Status</span>
-                      <div className="mt-1">
-                        <Badge className={`${getStatusColor(selectedBooking.status)} text-[10px]`}>
-                          {statusLabels[selectedBooking.status] || selectedBooking.status}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-stone-400 text-xs">Pelanggan</span>
-                      <p className="text-stone-800">{selectedBooking.customer_full_name || selectedBooking.user_profile?.email || (selectedBooking.user_id ? 'Terdaftar' : 'Tamu')}</p>
-                    </div>
-                    <div>
-                      <span className="text-stone-400 text-xs">Dibuat</span>
-                      <p className="text-stone-800">{formatDate(selectedBooking.created_at)}</p>
-                    </div>
-                    {(selectedBooking.customer_id_type || selectedBooking.customer_id_number) && (
-                      <div>
-                        <span className="text-stone-400 text-xs">No. Identitas</span>
-                        <p className="text-stone-800 break-all">
-                          {selectedBooking.customer_id_number || '-'}
-                          {selectedBooking.customer_id_type && ` (${selectedBooking.customer_id_type})`}
-                        </p>
-                      </div>
-                    )}
-                    {selectedBooking.customer_phone && (
-                      <div>
-                        <span className="text-stone-400 text-xs">Telepon</span>
-                        <p className="text-stone-800 break-all">{selectedBooking.customer_phone}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Rental Period */}
-                <div>
-                  <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Periode Sewa</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-stone-400 text-xs">Tanggal Mulai</span>
-                      <p className="text-stone-800">{formatDate(selectedBooking.start_date)}</p>
-                    </div>
-                    <div>
-                      <span className="text-stone-400 text-xs">Tanggal Selesai</span>
-                      <p className="text-stone-800">{formatDate(selectedBooking.end_date)}</p>
-                    </div>
-                    <div>
-                      <span className="text-stone-400 text-xs">Durasi</span>
-                      <p className="text-stone-800">{selectedBooking.rental_days} hari</p>
-                    </div>
-                    <div>
-                      <span className="text-stone-400 text-xs">Total Biaya</span>
-                      <p className="font-semibold text-stone-900">{formatCurrency(selectedBooking.total_cost)}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Branch Info */}
-                {selectedBooking.pickup_branch_name && (
-                  <div>
-                    <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Lokasi</h3>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-stone-400 text-xs">Cabang Pengambilan</span>
-                        <p className="text-stone-800 font-medium">{selectedBooking.pickup_branch_name}</p>
-                      </div>
-                      {selectedBooking.return_branch_name && (
-                        <div>
-                          <span className="text-stone-400 text-xs">Cabang Pengembalian</span>
-                          <p className="text-stone-800 font-medium">{selectedBooking.return_branch_name}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Items */}
-                <div>
-                  <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Barang yang Disewa</h3>
-                  <div className="space-y-2">
-                    {selectedBooking.booking_items?.map((item: any) => (
-                      <div key={item.id} className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
-                        <div className="flex items-center gap-3 min-w-0">
-                          {item.equipment?.image_url ? (
-                            <img src={item.equipment.image_url} alt={item.equipment.name}
-                              className="w-9 h-9 object-cover rounded border border-stone-200 shrink-0" />
-                          ) : (
-                            <div className="w-9 h-9 bg-stone-100 rounded border border-stone-200 flex items-center justify-center shrink-0">
-                              <Package className="w-4 h-4 text-stone-400" />
-                            </div>
-                          )}
-                          <div className="min-w-0">
-                            <p className="font-medium text-sm text-stone-800 truncate max-w-40">{item.equipment?.name || 'Barang'}</p>
-                            <p className="text-xs text-stone-400">{formatCurrency(item.unit_price)} × {item.quantity}</p>
-                          </div>
-                        </div>
-                        <p className="font-semibold text-sm text-stone-900 shrink-0">{formatCurrency(item.subtotal)}</p>
-                      </div>
-                    ))}
-                    {(!selectedBooking.booking_items || selectedBooking.booking_items.length === 0) && (
-                      <p className="text-sm text-stone-400 text-center py-4">Tidak ada barang</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-3 pt-4 border-t border-stone-200">
-                  <Select onValueChange={(value) => updateBookingStatus(selectedBooking.id, value)}>
-                    <SelectTrigger className="w-48 border-stone-200 rounded-lg text-sm">
-                      <SelectValue placeholder="Ubah Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Menunggu</SelectItem>
-                      <SelectItem value="confirmed">Terkonfirmasi</SelectItem>
-                      <SelectItem value="picked_up">Dipinjam</SelectItem>
-                      <SelectItem value="returned">Selesai</SelectItem>
-                      <SelectItem value="cancelled">Dibatalkan</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  <Button 
-                    variant="destructive" 
-                    size="sm"
-                    className="rounded-lg text-xs h-9"
-                    onClick={() => deleteBooking(selectedBooking.id)}
-                    disabled={updating}
-                  >
-                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                    Hapus
-                  </Button>
-                </div>
-              </div>
+              <EditBookingForm
+                key={selectedBooking.id}
+                booking={selectedBooking}
+                onClose={() => { setShowEditModal(false); setSelectedBooking(null); }}
+                onSaved={() => { setShowEditModal(false); setSelectedBooking(null); fetchBookings(); }}
+              />
             </div>
           </Card>
         </div>
       )}
+    </div>
+  );
+}
+
+function EditBookingForm({
+  booking,
+  onClose,
+  onSaved,
+}: {
+  booking: Booking;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [status, setStatus] = useState(booking.status);
+  const [paymentStatus, setPaymentStatus] = useState(booking.payment_status || "pending");
+  const [saving, setSaving] = useState(false);
+
+  const paymentLabels: Record<string, string> = {
+    pending: "Menunggu Verifikasi",
+    paid: "Lunas",
+    failed: "Ditolak",
+    cancelled: "Dibatalkan",
+    expired: "Kedaluwarsa",
+    refunded: "Dikembalikan",
+  };
+
+  const save = async () => {
+    try {
+      setSaving(true);
+      const res = await fetch(`/api/admin/bookings/${booking.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, payment_status: paymentStatus }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok || !result.success) {
+        throw new Error(result?.error || `HTTP ${res.status}`);
+      }
+      toast.success("Booking berhasil diperbarui");
+      onSaved();
+    } catch (e: any) {
+      console.error("Error saving booking:", e);
+      toast.error(e?.message || "Gagal menyimpan perubahan");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label className="text-xs text-stone-500">Status Booking</Label>
+        <Select value={status} onValueChange={setStatus}>
+          <SelectTrigger className="mt-1 border-stone-200 rounded-lg text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="pending">Menunggu</SelectItem>
+            <SelectItem value="confirmed">Terkonfirmasi</SelectItem>
+            <SelectItem value="picked_up">Dipinjam</SelectItem>
+            <SelectItem value="returned">Selesai</SelectItem>
+            <SelectItem value="cancelled">Dibatalkan</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label className="text-xs text-stone-500">Status Pembayaran</Label>
+        <Select value={paymentStatus} onValueChange={setPaymentStatus}>
+          <SelectTrigger className="mt-1 border-stone-200 rounded-lg text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(paymentLabels).map(([v, label]) => (
+              <SelectItem key={v} value={v}>{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex gap-2 pt-2">
+        <Button variant="outline" className="flex-1 rounded-lg border-stone-200 text-stone-600" onClick={onClose} disabled={saving}>
+          Batal
+        </Button>
+        <Button className="flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white" onClick={save} disabled={saving}>
+          {saving ? "Menyimpan..." : "Simpan"}
+        </Button>
+      </div>
     </div>
   );
 }

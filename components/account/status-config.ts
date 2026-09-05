@@ -4,6 +4,7 @@ export interface DBOrder {
   total: number;
   status: string;
   payment_status: string | null;
+  payment_method?: string | null;
   pickup_date: string | null;
   created_at: string;
   start_date: string;
@@ -11,6 +12,7 @@ export interface DBOrder {
   rental_days: number;
   cancel_reason?: string | null;
   cancel_note?: string | null;
+  item_image_url?: string | null;
 }
 
 export interface DBShopOrder {

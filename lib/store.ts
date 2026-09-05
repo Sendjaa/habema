@@ -57,6 +57,7 @@ export interface TransactionData {
     bank?: string;
     accountName?: string;
     accountNumber?: string;
+    proofUrl?: string;
   };
   totalPrice: number;
   delivery?: {

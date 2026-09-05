@@ -51,10 +51,13 @@ export default function SettingsPage() {
   }
   if (!user) return null;
 
-  const fullName = user.user_metadata?.full_name || "Petualang Habema";
+  const fullName = (user as any).full_name || user.user_metadata?.full_name || "Petualang Habema";
   const email = user.email ?? "";
-  const phone = user.phone || null;
-  const joinDate = formatDate(user.created_at);
+  const phone = (user as any).phone || null;
+  const joinDate = formatDate((user as any).created_at || user.created_at);
+  const provider = (user as any).provider || user.app_metadata?.provider || "email";
+  const avatarUrl = (user as any).avatar_url || user.user_metadata?.avatar_url || null;
+  const initials = fullName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
 
   return (
     <div className="min-h-screen bg-[#F7F7F5]">

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useCartStore } from '@/lib/store'
+import { MANUAL_QRIS_METHOD } from '@/lib/manual-payment'
 import { CheckCircle, ArrowLeft, Home, Download, IdCard } from 'lucide-react'
 
 export default function OrderConfirmationPage() {
@@ -84,13 +85,19 @@ export default function OrderConfirmationPage() {
     const invoiceTotal = storedTotal > 0 ? storedTotal : subtotalTotal
     const discount = Math.max(0, subtotalTotal - invoiceTotal)
 
-    const paymentMethod = isWhatsAppBooking ? 'WhatsApp Konfirmasi' : 'Pembayaran Online'
-    const status = isWhatsAppBooking ? 'Menunggu Konfirmasi' : 'Lunas'
-    const statusColor = isWhatsAppBooking ? '#f59e0b' : '#10b981'
+    const paymentMethod = isWhatsAppBooking
+      ? 'WhatsApp Konfirmasi'
+      : isQrisManual ? 'QRIS Manual' : 'Pembayaran Online'
+    const status = isWhatsAppBooking
+      ? 'Menunggu Konfirmasi'
+      : isQrisManual ? 'Menunggu Verifikasi' : 'Lunas'
+    const statusColor = (isWhatsAppBooking || isQrisManual) ? '#f59e0b' : '#10b981'
 
     const instructionText = isWhatsAppBooking
       ? 'Pembayaran akan dilakukan secara personal melalui WhatsApp. Admin kami akan menghubungi Anda segera.'
-      : 'Pembayaran telah berhasil diproses. Terima kasih atas kepercayaan Anda.'
+      : isQrisManual
+        ? 'Bukti pembayaran telah diterima dan sedang diverifikasi admin. Pesanan diproses setelah pembayaran disetujui.'
+        : 'Pembayaran telah berhasil diproses. Terima kasih atas kepercayaan Anda.'
 
     const extendText =
       'Perpanjangan masa sewa dikenakan biaya sesuai tarif sewa harian × jumlah hari tambahan, dan wajib dikonfirmasi ke admin sebelum jatuh tempo. Keterlambatan pengembalian tanpa pemberitahuan dikenakan biaya: 1-6 jam = 10% tarif harian, 6-24 jam = 50% tarif harian, dan lebih dari 24 jam = 100% tarif harian hari berikutnya.'
@@ -263,8 +270,8 @@ export default function OrderConfirmationPage() {
       ctx.fillText('Terima kasih telah menggunakan layanan Habema Outdoor!', W / 2, canvas.height - 88)
       ctx.fillStyle = '#64748b'
       ctx.font = '12px Arial'
-      ctx.fillText('Hubungi kami: WhatsApp +6289509162484', W / 2, canvas.height - 66)
-      ctx.fillText('www.habemaoutdoor.com', W / 2, canvas.height - 46)
+      ctx.fillText('Hubungi kami: WhatsApp +6283898749357', W / 2, canvas.height - 66)
+      ctx.fillText('https.habema.biz.id', W / 2, canvas.height - 46)
       ctx.textAlign = 'left'
 
       canvas.toBlob((blob) => {
@@ -336,6 +343,10 @@ export default function OrderConfirmationPage() {
     isWhatsAppBooking = currentTransaction.payment?.method === "WhatsApp Konfirmasi";
   }
 
+  const isQrisManual =
+    !!currentTransaction &&
+    currentTransaction.payment?.method === MANUAL_QRIS_METHOD;
+
   const orderId =
     currentTransaction?.orderId
     || (currentTransaction?.payment as any)?.bookingId
@@ -387,12 +398,16 @@ export default function OrderConfirmationPage() {
                   <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-600" />
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-forest mb-2">
-                  {isWhatsAppBooking ? "Konfirmasi WhatsApp Berhasil" : "Pembayaran Berhasil"}
+                  {isWhatsAppBooking
+                    ? "Konfirmasi WhatsApp Berhasil"
+                    : isQrisManual ? "Bukti Terkirim" : "Pembayaran Berhasil"}
                 </h2>
                 <p className="text-stone-600 font-medium mb-4 sm:mb-6 text-sm sm:text-base">
                   {isWhatsAppBooking
                     ? "Pesanan Anda telah dikonfirmasi via WhatsApp. Admin kami akan segera memproses pesanan Anda. Pembayaran akan dilakukan secara personal melalui WhatsApp."
-                    : "Pesanan Anda telah dikonfirmasi dan sedang diproses. Kami akan mengirimkan detail pesanan melalui email."
+                    : isQrisManual
+                      ? "Bukti pembayaran Anda telah diterima dan sedang diverifikasi admin. Pesanan akan diproses setelah pembayaran disetujui."
+                      : "Pesanan Anda telah dikonfirmasi dan sedang diproses. Kami akan mengirimkan detail pesanan melalui email."
                   }
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -506,13 +521,17 @@ export default function OrderConfirmationPage() {
                   <div className="flex justify-between items-center text-xs sm:text-sm">
                     <span className="text-stone-600 font-medium">Metode Pembayaran</span>
                     <span className="font-bold text-forest ml-4">
-                      {transactionData?.payment?.method === "WhatsApp Konfirmasi" ? "WhatsApp Konfirmasi" : "Pembayaran Online"}
+                      {transactionData?.payment?.method === "WhatsApp Konfirmasi"
+                        ? "WhatsApp Konfirmasi"
+                        : transactionData?.payment?.method === MANUAL_QRIS_METHOD
+                          ? "QRIS Manual"
+                          : "Pembayaran Online"}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-xs sm:text-sm">
                     <span className="text-stone-600 font-medium">Status Pembayaran</span>
-                    <Badge className={`rounded-full text-xs font-medium ${isWhatsAppBooking ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                      {isWhatsAppBooking ? 'Menunggu Konfirmasi' : 'Lunas'}
+                    <Badge className={`rounded-full text-xs font-medium ${(isWhatsAppBooking || isQrisManual) ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                      {isWhatsAppBooking ? 'Menunggu Konfirmasi' : isQrisManual ? 'Menunggu Verifikasi' : 'Lunas'}
                     </Badge>
                   </div>
                   <div className="border-t border-stone-200 pt-4 mt-4">

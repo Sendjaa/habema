@@ -218,6 +218,8 @@ export type Database = {
           midtrans_order_id: string | null
           notes: string | null
           payment_method: string | null
+          payment_proof_uploaded_at: string | null
+          payment_proof_url: string | null
           payment_status: string | null
           pickup_branch_id: string | null
           pickup_branch_name: string | null
@@ -267,6 +269,8 @@ export type Database = {
           midtrans_order_id?: string | null
           notes?: string | null
           payment_method?: string | null
+          payment_proof_uploaded_at?: string | null
+          payment_proof_url?: string | null
           payment_status?: string | null
           pickup_branch_id?: string | null
           pickup_branch_name?: string | null
@@ -316,6 +320,8 @@ export type Database = {
           midtrans_order_id?: string | null
           notes?: string | null
           payment_method?: string | null
+          payment_proof_uploaded_at?: string | null
+          payment_proof_url?: string | null
           payment_status?: string | null
           pickup_branch_id?: string | null
           pickup_branch_name?: string | null

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/booking/date-range-picker";
 import { calculateDaysBetween } from "@/lib/booking-utils";
-import { CheckCircle, Loader2, MapPin, Ticket } from "lucide-react";
+import { CheckCircle, Loader2, MapPin, Ticket, Copy, Upload, QrCode, MessageCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { LoginModal } from "@/components/auth/login-modal";
 import type { Database } from "@/types/supabase";
@@ -24,6 +24,16 @@ import {
   type ClaimedDiscount,
   type TransactionData,
 } from "@/lib/store";
+import {
+  MANUAL_QRIS_METHOD,
+  MANUAL_QRIS_ONLY,
+  QRIS_IMAGE_PATH,
+  QRIS_MERCHANT_NAME,
+  QRIS_VERIFY_SLA,
+  PROOF_MAX_SIZE,
+  getActivePaymentOptions,
+  isManualQrisMethod,
+} from "@/lib/manual-payment";
 import { toast } from "sonner";
 
 // ==================== MIDTRANS SNAP ====================
@@ -93,9 +103,17 @@ function BookingContent() {
   const [idData, setIdData] = useState<any | null>(null);
   const [conditionData, setConditionData] =
     useState<ConditionChecklistData | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState("Transfer Bank");
+  const [paymentMethod, setPaymentMethod] = useState(
+    MANUAL_QRIS_ONLY ? MANUAL_QRIS_METHOD : "Transfer Bank",
+  );
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  // QRIS manual: booking yang sudah dibuat + bukti bayar yang diupload.
+  const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
+  const [qrisImageOk, setQrisImageOk] = useState(true);
 
   const [showLoginModal, setShowLoginModal] = useState(false);
   const skipAuthCheck = useRef(false);
@@ -133,6 +151,19 @@ function BookingContent() {
       setSelectedBank(null);
     }
   }, [paymentMethod]);
+
+  // Pastikan metode terpilih selalu salah satu opsi yang terlihat.
+  // (Tamu hanya melihat opsi tanpa requiresAuth; mode manual vs Midtrans
+  //  juga mengubah daftar opsi.)
+  useEffect(() => {
+    const visible = getActivePaymentOptions().filter((m) =>
+      user ? true : !m.requiresAuth,
+    );
+    if (!visible.some((m) => m.name === paymentMethod)) {
+      setPaymentMethod(visible[0]?.name || "WhatsApp Konfirmasi");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -507,6 +538,8 @@ function BookingContent() {
         customer_phone: identity?.phone || null,
         total_cost: totalPrice,
         rental_days: days,
+        payment_method: paymentMethod,
+        payment_status: "pending",
         subtotal: subtotal,
         deposit_amount: deposit,
         pickup_branch_id: pickupBranchId,
@@ -646,6 +679,19 @@ Mohon konfirmasi pesanan saya ya!`;
 
         // Halaman website tetap lanjut ke halaman konfirmasi pesanan.
         router.push("/order-confirmation");
+        return;
+      }
+
+      // ===== Alur QRIS Manual (bayar belakangan via panel QRIS) =====
+      if (isManualQrisMethod(paymentMethod)) {
+        if (createdBookingId) return; // cegah booking ganda
+        setCreatedBookingId(newBooking.id);
+        toast.success("Pesanan dibuat! Silakan scan QRIS untuk membayar.");
+        setTimeout(() => {
+          document
+            .getElementById("qris-payment-panel")
+            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 150);
         return;
       }
 
@@ -807,6 +853,81 @@ Mohon konfirmasi pesanan saya ya!`;
       setIsProcessingPayment(false);
       toast.error(error?.message || "Terjadi kesalahan saat memproses pembayaran.");
     }
+  };
+
+  // ==================== QRIS MANUAL: UPLOAD BUKTI ====================
+  const handleProofSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > PROOF_MAX_SIZE) {
+      toast.error("File terlalu besar (Maksimal 5MB)");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error("File harus berupa gambar (JPG, PNG, dll)");
+      return;
+    }
+    setProofFile(file);
+    setProofPreview(URL.createObjectURL(file));
+  };
+
+  const handleCopyNominal = async () => {
+    try {
+      await navigator.clipboard.writeText(String(Math.round(totalPrice)));
+      toast.success("Nominal berhasil disalin!");
+    } catch {
+      toast.error("Gagal menyalin nominal");
+    }
+  };
+
+  const handleUploadProof = async () => {
+    if (!proofFile) {
+      toast.error("Silakan pilih foto bukti pembayaran terlebih dahulu.");
+      return;
+    }
+    if (!createdBookingId) {
+      toast.error("ID pesanan tidak ditemukan. Silakan buat pesanan ulang.");
+      return;
+    }
+    setIsUploadingProof(true);
+    try {
+      const form = new FormData();
+      form.append("bookingId", createdBookingId);
+      form.append("proof", proofFile);
+
+      const res = await fetch("/api/bookings/upload-proof", {
+        method: "POST",
+        body: form,
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(result.error || "Gagal mengupload bukti pembayaran");
+      }
+
+      const current = useCartStore.getState().currentTransaction;
+      if (current) {
+        useCartStore.getState().setTransaction({
+          ...current,
+          payment: { ...current.payment, proofUrl: result.data?.proofUrl },
+        });
+      }
+      toast.success("Bukti pembayaran terkirim! Menunggu verifikasi admin.");
+      router.push("/order-confirmation");
+    } catch (error: any) {
+      toast.error(error?.message || "Gagal mengupload bukti pembayaran.");
+    } finally {
+      setIsUploadingProof(false);
+    }
+  };
+
+  const openAdminWaHelp = () => {
+    const waPhone =
+      formatPhoneWa(pickupBranch?.phone || "") || "6283898749357";
+    const msg =
+      `Halo Admin Habema!\nSaya butuh bantuan pembayaran QRIS.\n` +
+      `ID Booking: #${(createdBookingId || "").slice(0, 8)}\n` +
+      `Total: Rp${Number(totalPrice).toLocaleString("id-ID")}\nTerima kasih!`;
+    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
   // ==================== LOADING & ERROR STATES ====================
@@ -997,30 +1118,8 @@ Mohon konfirmasi pesanan saya ya!`;
               disabled={!startDate || !endDate}
             >
               <div className="space-y-3">
-                {[
-                  {
-                    id: "tf",
-                    name: "Transfer Bank",
-                    desc: "Verifikasi manual 10-30 menit",
-                    icon: "🏦",
-                    requiresAuth: true,
-                  },
-                  {
-                    id: "qris",
-                    name: "QRIS",
-                    desc: "Otomatis & Instan (Gopay, OVO, Dana)",
-                    icon: "📸",
-                    requiresAuth: true,
-                  },
-                  {
-                    id: "wa",
-                    name: "WhatsApp Konfirmasi",
-                    desc: "Tanya admin via WhatsApp",
-                    icon: "💬",
-                    requiresAuth: false,
-                  },
-                ]
-                  // Guest hanya bisa pakai WhatsApp
+                {getActivePaymentOptions()
+                  // Guest hanya bisa pakai opsi tanpa requiresAuth
                   .filter((m) => (user ? true : !m.requiresAuth))
                   .map((m) => (
                     <div key={m.id} className="space-y-2">
@@ -1094,7 +1193,8 @@ Mohon konfirmasi pesanan saya ya!`;
                 {!user && (
                   <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl">
                     <p className="text-[10px] text-amber-700 font-medium">
-                      Note: Karena Anda belum masuk, pembayaran via Bank/QRIS tidak
+                      Note: Karena Anda belum masuk, pembayaran via{" "}
+                      {MANUAL_QRIS_ONLY ? "QRIS Manual" : "Bank/QRIS"} tidak
                       tersedia. Silakan{" "}
                       <button
                         onClick={() => router.push("/login")}
@@ -1125,7 +1225,129 @@ Mohon konfirmasi pesanan saya ya!`;
               />
             </StepCard>
 
-            {/* Tombol utama tunggal di akhir */}
+            {/* Step 5: Bayar via QRIS (hanya setelah pesanan dibuat) */}
+            {isManualQrisMethod(paymentMethod) && createdBookingId && (
+              <div id="qris-payment-panel" className="scroll-mt-24">
+                <StepCard
+                  number={5}
+                  title="Bayar via QRIS"
+                  completed={!!proofPreview}
+                >
+                  <div className="space-y-4">
+                    {/* Nominal */}
+                    <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-700">
+                        Total yang harus dibayar
+                      </p>
+                      <p className="text-2xl font-black text-forest tracking-tight mt-1">
+                        Rp{Number(totalPrice).toLocaleString("id-ID")}
+                      </p>
+                      <p className="text-[11px] text-stone-500 font-medium mt-1">
+                        ID Pesanan: #{createdBookingId.slice(0, 8)}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyNominal}
+                        className="mt-2 rounded-lg text-xs font-bold"
+                      >
+                        <Copy className="w-3.5 h-3.5 mr-1.5" />
+                        Salin Nominal
+                      </Button>
+                    </div>
+
+                    {/* QR Code */}
+                    <div className="flex flex-col items-center gap-2">
+                      {qrisImageOk ? (
+                        <img
+                          src={QRIS_IMAGE_PATH}
+                          alt={`QRIS ${QRIS_MERCHANT_NAME}`}
+                          onError={() => setQrisImageOk(false)}
+                          className="w-56 h-56 rounded-xl object-contain ring-1 ring-stone-200 bg-white p-2"
+                        />
+                      ) : (
+                        <div className="w-56 h-56 rounded-xl border-2 border-dashed border-stone-300 bg-stone-50 flex flex-col items-center justify-center gap-2 p-4 text-center">
+                          <QrCode className="w-10 h-10 text-stone-400" />
+                          <p className="text-[11px] text-stone-500 font-medium">
+                            Gambar QRIS belum dipasang. Hubungi admin untuk
+                            melanjutkan pembayaran.
+                          </p>
+                        </div>
+                      )}
+                      <p className="text-xs font-bold text-slate-800">
+                        {QRIS_MERCHANT_NAME}
+                      </p>
+                      <p className="text-[10px] text-stone-500 font-medium text-center">
+                        Scan dengan GoPay, OVO, Dana, m-banking, atau e-wallet
+                        apa pun. Pastikan nominal sama persis.
+                      </p>
+                    </div>
+
+                    {/* Upload bukti */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-slate-800">
+                        Bukti Pembayaran{" "}
+                        <span className="text-stone-400 font-medium">*</span>
+                      </label>
+                      <label
+                        htmlFor="proof-upload"
+                        className="flex items-center justify-center gap-2 w-full p-3.5 rounded-xl border-2 border-dashed border-stone-300 bg-stone-50 hover:border-emerald-500 hover:bg-emerald-50/40 cursor-pointer transition-all text-sm font-bold text-slate-600"
+                      >
+                        <Upload className="w-4 h-4" />
+                        {proofFile ? proofFile.name : "Pilih Foto Bukti (JPG/PNG, maks 5MB)"}
+                      </label>
+                      <input
+                        id="proof-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleProofSelect}
+                      />
+                      {proofPreview && (
+                        <img
+                          src={proofPreview}
+                          alt="Pratinjau bukti pembayaran"
+                          className="w-full max-h-64 rounded-xl object-contain ring-1 ring-stone-200 bg-white"
+                        />
+                      )}
+                      <Button
+                        onClick={handleUploadProof}
+                        disabled={isUploadingProof || !proofFile}
+                        className={`w-full h-12 rounded-xl font-bold ${
+                          isUploadingProof || !proofFile
+                            ? "bg-slate-200 text-slate-400"
+                            : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                        }`}
+                      >
+                        {isUploadingProof ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Mengirim Bukti...
+                          </>
+                        ) : (
+                          "Kirim Bukti Pembayaran"
+                        )}
+                      </Button>
+                      <p className="text-[10px] text-stone-400 font-medium text-center">
+                        Bukti diverifikasi admin {QRIS_VERIFY_SLA}.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={openAdminWaHelp}
+                        className="w-full text-center text-[11px] font-bold text-emerald-700 underline underline-offset-2 py-1"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
+                        Butuh bantuan? Hubungi admin via WhatsApp
+                      </button>
+                    </div>
+                  </div>
+                </StepCard>
+              </div>
+            )}
+
+            {/* Tombol utama tunggal di akhir (disembunyikan setelah pesanan QRIS dibuat agar tidak ganda) */}
+            {!(isManualQrisMethod(paymentMethod) && createdBookingId) && (
             <div className="pt-2">
               <Button
                 onClick={handleCheckout}
@@ -1157,11 +1379,14 @@ Mohon konfirmasi pesanan saya ya!`;
                   </>
                 ) : paymentMethod === "WhatsApp Konfirmasi" ? (
                   "Pesan via WhatsApp"
+                ) : isManualQrisMethod(paymentMethod) ? (
+                  "Buat Pesanan & Tampilkan QRIS"
                 ) : (
                   "Bayar Sekarang"
                 )}
               </Button>
             </div>
+            )}
           </div>
 
           {/* Right Column: Order Summary */}

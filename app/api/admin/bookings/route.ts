@@ -21,7 +21,36 @@ export async function GET(request: NextRequest) {
     let query = supabaseAdmin.from('bookings').select('*', { count: 'exact' })
 
     if (searchTerm) {
-      query = query.or(`id.ilike.%${searchTerm}%,pickup_branch_name.ilike.%${searchTerm}%,return_branch_name.ilike.%${searchTerm}%`)
+      // Sanitasi: koma/tanda khusus merusak sintaks filter or= PostgREST.
+      const safe = searchTerm.replace(/[,()%"\\]/g, '').trim()
+      if (safe) {
+        const ors = [
+          `pickup_branch_name.ilike.%${safe}%`,
+          `return_branch_name.ilike.%${safe}%`,
+          `customer_full_name.ilike.%${safe}%`,
+          `customer_phone.ilike.%${safe}%`,
+          `customer_id_number.ilike.%${safe}%`,
+        ]
+        // UUID tidak mendukung ilike: cocokkan persis bila input UUID penuh.
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(safe)) {
+          ors.push(`id.eq.${safe}`)
+        }
+        // Email tersimpan di tabel users (bukan bookings): cari id user yang cocok.
+        try {
+          const { data: matchedUsers } = await supabaseAdmin
+            .from('users')
+            .select('id')
+            .or(`email.ilike.%${safe}%,full_name.ilike.%${safe}%`)
+            .limit(20)
+          const ids = (matchedUsers || []).map((u: any) => u.id).filter(Boolean)
+          if (ids.length > 0) {
+            ors.push(`user_id.in.(${ids.join(',')})`)
+          }
+        } catch {
+          // Abaikan; pencarian tetap jalan via kolom bookings.
+        }
+        query = query.or(ors.join(','))
+      }
     }
     if (statusFilter !== 'all') {
       query = query.eq('status', statusFilter)
