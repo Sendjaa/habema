@@ -165,9 +165,6 @@ function ProductCard({
 
           {/* Content Section */}
           <div className="flex flex-col flex-1 p-4">
-            <span className="text-xs font-light text-stone-500 tracking-wider mb-1">
-              {categoryLabel}
-            </span>
             <h5 className="font-bolder truncate text-stone-900 line-clamp-2 mb-1 group-hover:text-forest transition-colors flex-1">
               {product.name}
             </h5>
