@@ -420,20 +420,20 @@ export function Header() {
           {/* 1. Logo */}
           <Link href="/" className="flex items-center gap-3 shrink-0 group">
             <Image
-              src="/images/logo-dark.webp"
+              src="/images/habema_logo_orange.png"
               alt="Habema Logo"
               width={80}
               height={40}
               className="img-fluid block"
             />
-            <div className="flex flex-col hidden sm:flex">
+            {/* <div className="flex flex-col hidden sm:flex">
               <h1 className="text-xl font-bold text-[#1B4332] tracking-tight leading-none">
                 HABEMA
               </h1>
               <span className="text-[10px] font-semibold text-emerald-800 uppercase tracking-widest mt-0.5">
                 Outdoor Rental
               </span>
-            </div>
+            </div> */}
           </Link>
 
           {/* 2. Desktop Search - Improved */}
