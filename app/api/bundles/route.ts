@@ -42,7 +42,8 @@ export async function GET() {
           'Open Trip': { accent: '#d97706', accentLight: '#fef3c7' },
           'Camping Keluarga': { accent: '#16a34a', accentLight: '#dcfce7' },
           'Private Camp': { accent: '#0284c7', accentLight: '#e0f2fe' },
-          'Campervan': { accent: '#dc2626', accentLight: '#fee2e2' }
+          'Campervan': { accent: '#dc2626', accentLight: '#fee2e2' },
+          'Paket Rental Grup': { accent: '#0f766e', accentLight: '#ccfbf1' }
         }
         return colorMap[targetAudience as keyof typeof colorMap] || { accent: '#6b7280', accentLight: '#f3f4f6' }
       }
@@ -54,6 +55,10 @@ export async function GET() {
         if (name.includes('Camping Keluarga')) return 'Rekomendasi'
         if (name.includes('Private Camp')) return 'Komunitas / Sekolah'
         if (name.includes('Campervan Akhir Pekan')) return '10% Diskon – 5 Pertama'
+        if (name.includes('Berdua')) return 'Favorit Couple'
+        if (name.includes('Berempat')) return 'Terlaris'
+        if (name.includes('6-7')) return 'Hemat Grup'
+        if (name.includes('10 Orang')) return 'Maksimal Hemat'
         return null
       }
 
@@ -70,6 +75,7 @@ export async function GET() {
       }
 
       // Generate unit based on target audience
+      // Paket Rental Grup: harga per paket per malam (dikalikan durasi saat booking).
       const getUnit = (targetAudience: string, price: number) => {
         if (targetAudience === 'Open Trip') return '/ orang'
         if (targetAudience === 'Camping Keluarga') {
@@ -77,7 +83,19 @@ export async function GET() {
           return '/ 15 orang'
         }
         if (targetAudience === 'Campervan') return '/ paket'
+        if (targetAudience === 'Paket Rental Grup') return '/ paket/malam'
         return ''
+      }
+
+      const getPaxLabel = (bundle: any): string | null => {
+        const min = bundle.pax_min != null ? Number(bundle.pax_min) : null
+        const max = bundle.pax_max != null ? Number(bundle.pax_max) : null
+        if (min != null && max != null && Number.isFinite(min) && Number.isFinite(max)) {
+          if (min === max) return `Untuk ${min} orang`
+          return `Untuk ${min}–${max} orang`
+        }
+        if (min != null && Number.isFinite(min)) return `Untuk ${min}+ orang`
+        return null
       }
 
       const colors = getAccentColors(bundle.target_audience)
@@ -92,8 +110,13 @@ export async function GET() {
         label: bundle.name,
         badge: getBadge(bundle.name, bundle.description),
         price: formatPrice(bundle.bundle_price),
+        priceRaw: bundle.bundle_price,
         priceOld: formatOriginalPrice(bundle.original_price, bundle.bundle_price),
         unit: getUnit(bundle.target_audience, bundle.bundle_price),
+        paxMin: bundle.pax_min ?? null,
+        paxMax: bundle.pax_max ?? null,
+        paxLabel: getPaxLabel(bundle),
+        bookableOnline: true,
         desc: bundle.description,
         image: bundle.image_url || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80',
         include: toList(bundle.includes),

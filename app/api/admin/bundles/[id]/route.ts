@@ -33,7 +33,7 @@ export async function PATCH(
 
     const allowed = [
       'name', 'description', 'target_audience', 'image_url', 'is_active',
-      'includes', 'excludes', ...NUM_FIELDS,
+      'includes', 'excludes', 'pax_min', 'pax_max', ...NUM_FIELDS,
     ] as const
     const payload: any = { updated_at: new Date().toISOString() }
 
@@ -42,6 +42,16 @@ export async function PATCH(
       const v = (body as Record<string, any>)[key]
       if (key === 'includes' || key === 'excludes') {
         payload[key] = toStringArray(v) ?? []
+      } else if (key === 'pax_min' || key === 'pax_max') {
+        if (v == null || v === '') {
+          payload[key] = null
+        } else {
+          const n = Number(v)
+          if (!Number.isFinite(n) || n < 1) {
+            return NextResponse.json({ error: `Nilai ${key} tidak valid` }, { status: 400 })
+          }
+          payload[key] = Math.round(n)
+        }
       } else if ((NUM_FIELDS as readonly string[]).includes(key)) {
         if (v == null || v === '') {
           payload[key] = null
@@ -82,6 +92,9 @@ export async function PATCH(
 }
 
 // DELETE /api/admin/bundles/[id]
+// Urutan hapus: bundle_items (komposisi) → bundle_id_mapping (pemetaan id
+// lama) → bundles. booking_bundle_items sengaja TIDAK dihapus: bila paket
+// sudah pernah dibooking, hapus ditolak dengan pesan ramah (nonaktifkan saja).
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -92,13 +105,41 @@ export async function DELETE(
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
     }
+
+    // 1. Komposisi stok (tabel ini CASCADE, tapi hapus eksplisit agar jelas).
+    // Abaikan error bila tabel belum ada di environment lama.
+    try {
+      await supabaseAdmin.from('bundle_items').delete().eq('bundle_id', id)
+    } catch {}
+
+    // 2. Pemetaan id string lama → uuid. FK-nya (bundle_id_mapping_uuid_id_fkey)
+    // di beberapa database dibuat tanpa CASCADE sehingga DELETE bundles gagal
+    // dengan error 23503 bila baris mapping masih ada. Hapus dulu di sini.
+    try {
+      await supabaseAdmin.from('bundle_id_mapping').delete().eq('uuid_id', id)
+    } catch {}
+
     const { error } = await supabaseAdmin.from('bundles').delete().eq('id', id)
     if (error) {
+      // 23503 = masih ada baris anak (umumnya booking_bundle_items = paket
+      // sudah pernah dibooking). Jangan hapus paksa riwayat transaksi.
+      if ((error as any).code === '23503') {
+        return NextResponse.json(
+          { error: 'Paket sudah pernah dibooking dan tidak bisa dihapus. Nonaktifkan saja lewat tombol Aktif/Nonaktif.' },
+          { status: 409 }
+        )
+      }
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
     return NextResponse.json({ success: true })
   } catch (e: any) {
     console.error('[admin/bundles] DELETE error:', e)
+    if (e?.code === '23503') {
+      return NextResponse.json(
+        { error: 'Paket sudah pernah dibooking dan tidak bisa dihapus. Nonaktifkan saja lewat tombol Aktif/Nonaktif.' },
+        { status: 409 }
+      )
+    }
     return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 })
   }
 }

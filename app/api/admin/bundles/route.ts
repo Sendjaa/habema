@@ -64,6 +64,8 @@ export async function POST(request: NextRequest) {
       includes,
       excludes,
       is_active,
+      pax_min,
+      pax_max,
     } = body as Record<string, any>
 
     if (!name || !String(name).trim()) {
@@ -72,6 +74,13 @@ export async function POST(request: NextRequest) {
     const price = Number(bundle_price)
     if (!Number.isFinite(price) || price < 0) {
       return NextResponse.json({ error: 'Harga bundle tidak valid' }, { status: 400 })
+    }
+
+    const parsePax = (v: unknown) => {
+      if (v == null || v === '') return null
+      const n = Number(v)
+      if (!Number.isFinite(n) || n < 1) return null
+      return Math.round(n)
     }
 
     const payload: any = {
@@ -85,6 +94,8 @@ export async function POST(request: NextRequest) {
       includes: toStringArray(includes),
       excludes: toStringArray(excludes),
       is_active: is_active !== false,
+      pax_min: parsePax(pax_min),
+      pax_max: parsePax(pax_max),
       updated_at: new Date().toISOString(),
     }
 

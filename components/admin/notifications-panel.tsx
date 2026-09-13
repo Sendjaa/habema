@@ -22,6 +22,14 @@ interface Notification {
 }
 
 const POLL_MS = 30000;
+const FETCH_TIMEOUT_MS = 15000;
+// Setelah N gagal jaringan beruntun, tampilkan 1 peringatan (lalu diam sampai pulih).
+const WARN_AFTER_FAILURES = 3;
+
+const isNetworkError = (e: any) =>
+  e instanceof TypeError ||
+  e?.name === "AbortError" ||
+  /failed to fetch|networkerror|load failed|network request failed/i.test(String(e?.message || ""));
 
 export function NotificationsPanel() {
   const router = useRouter();
@@ -31,6 +39,17 @@ export function NotificationsPanel() {
   const [loading, setLoading] = useState(true);
   const knownIds = useRef<Set<string>>(new Set());
   const firstLoad = useRef(true);
+  const inFlight = useRef(false);
+  const failures = useRef(0);
+  const warned = useRef(false);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const applyPayload = useCallback((data: Notification[], unread: number) => {
     // Toast untuk notifikasi yang benar-benar baru (lewati load pertama).
@@ -47,16 +66,43 @@ export function NotificationsPanel() {
   }, []);
 
   const fetchNotifications = useCallback(async (silent = false) => {
+    // Jangan tumpuk request: polling 30 dtk + refetch realtime/focus bisa
+    // berbarengan, apalagi saat dev server (Turbopack) sedang recompile.
+    if (inFlight.current) return;
+    inFlight.current = true;
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     try {
-      if (!silent) setLoading(true);
-      const res = await fetch("/api/admin/notifications?limit=30");
+      if (!silent && mounted.current) setLoading(true);
+      const res = await fetch("/api/admin/notifications?limit=30", {
+        signal: ctrl.signal,
+        cache: "no-store",
+      });
       const result = await res.json().catch(() => ({}));
       if (!res.ok || !result.success) throw new Error(result?.error || `HTTP ${res.status}`);
-      applyPayload(result.data || [], result.unreadCount ?? 0);
-    } catch (error) {
+      failures.current = 0;
+      warned.current = false;
+      if (mounted.current) applyPayload(result.data || [], result.unreadCount ?? 0);
+    } catch (error: any) {
+      if (error?.name === "AbortError") return; // timeout / dibatalkan, abaikan
+      if (isNetworkError(error)) {
+        // Gagal jaringan sesaat (dev server restart, koneksi putus): jangan
+        // banjiri console setiap 30 detik. Peringatkan sekali saja.
+        failures.current += 1;
+        if (failures.current >= WARN_AFTER_FAILURES && !warned.current) {
+          warned.current = true;
+          console.warn(
+            `[notifications] tidak dapat menjangkau server (${failures.current}x gagal beruntun). ` +
+              "Polling tetap berjalan dan akan pulih otomatis.",
+          );
+        }
+        return;
+      }
       console.error("[notifications] fetch failed:", error);
     } finally {
-      if (!silent) setLoading(false);
+      clearTimeout(timeout);
+      inFlight.current = false;
+      if (!silent && mounted.current) setLoading(false);
     }
   }, [applyPayload]);
 
@@ -134,7 +180,7 @@ export function NotificationsPanel() {
         body: JSON.stringify({ id: notificationId }),
       });
     } catch (error) {
-      console.error("[notifications] mark read failed:", error);
+      if (!isNetworkError(error)) console.error("[notifications] mark read failed:", error);
     }
     if (bookingId) {
       setIsOpen(false);
@@ -156,7 +202,7 @@ export function NotificationsPanel() {
       });
       toast.success("Semua notifikasi ditandai sebagai dibaca");
     } catch (error) {
-      console.error("[notifications] mark all failed:", error);
+      if (!isNetworkError(error)) console.error("[notifications] mark all failed:", error);
     }
   };
 

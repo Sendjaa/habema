@@ -517,6 +517,8 @@ export type Database = {
           is_active: boolean | null
           name: string
           original_price: number | null
+          pax_max: number | null
+          pax_min: number | null
           target_audience: string | null
           updated_at: string
         }
@@ -532,6 +534,8 @@ export type Database = {
           is_active?: boolean | null
           name: string
           original_price?: number | null
+          pax_max?: number | null
+          pax_min?: number | null
           target_audience?: string | null
           updated_at?: string
         }
@@ -547,6 +551,8 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           original_price?: number | null
+          pax_max?: number | null
+          pax_min?: number | null
           target_audience?: string | null
           updated_at?: string
         }

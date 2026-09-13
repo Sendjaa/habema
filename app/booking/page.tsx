@@ -77,6 +77,11 @@ function BookingContent() {
   const router = useRouter();
   const productId = searchParams.get("id");
   const quantity = parseInt(searchParams.get("quantity") || "1");
+  // Mode paket grup: /booking?type=bundle&id=<bundle_id>&quantity=<jml_paket>.
+  // Harga paket bersifat per paket per malam (dikalikan durasi × qty paket).
+  const bookingType = searchParams.get("type");
+  const isBundleMode = bookingType === "bundle" && !!productId;
+  const bundleQty = isBundleMode ? Math.max(1, Number(quantity) || 1) : Math.max(1, Number(quantity) || 1);
 
   // Tanggal dibawa dari katalog/hero (format YYYY-MM-DD). Dipakai sebagai nilai
   // awal agar pengguna tidak perlu memilih ulang di halaman booking.
@@ -169,6 +174,34 @@ function BookingContent() {
     const fetchProduct = async () => {
       if (!productId) return;
       setLoading(true);
+      // Mode paket: ambil detail bundle lalu petakan ke bentuk product-like
+      // agar seluruh alur (harga/hari, cabang, pembayaran) bisa dipakai ulang.
+      if (isBundleMode) {
+        try {
+          const res = await fetch(`/api/bundles/${productId}`);
+          const json = await res.json().catch(() => ({}));
+          if (res.ok && json.success && json.data) {
+            const b = json.data;
+            setProduct({
+              id: b.id,
+              name: b.name,
+              price_per_night: Number(b.pricePerNight ?? b.bundle_price) || 0,
+              image_url: b.image_url,
+              description: b.description,
+              equipment_categories: { name: b.category || "Paket Rental Grup" },
+              is_bundle: true,
+              bundle_detail: b,
+            });
+          } else {
+            setProduct(null);
+          }
+        } catch {
+          setProduct(null);
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
       const { data, error } = await supabase
         .from("equipment")
         .select(`*, equipment_categories(name)`)
@@ -178,13 +211,16 @@ function BookingContent() {
       setLoading(false);
     };
     fetchProduct();
-  }, [productId]);
+  }, [productId, isBundleMode]);
 
   // Selaraskan transaksi dengan produk yang diklik dari halaman produk/katalog.
   // currentTransaction terpersistensi di localStorage, sehingga tanpa ini ringkasan
   // akan menampilkan item lama dari sesi sebelumnya (dan bisa duplikat).
+  // Mode bundle dilewati: harga dihitung langsung dari bundle (per paket/malam),
+  // bukan dari keranjang equipment, agar tidak tercampur sesi lama.
   useEffect(() => {
     if (!productId || !product || loading) return;
+    if (isBundleMode) return;
 
     const urlItem = {
       id: product.id,
@@ -235,7 +271,7 @@ function BookingContent() {
     if (!same) {
       useCartStore.getState().setTransaction(next);
     }
-  }, [product, productId, quantity, loading]);
+  }, [product, productId, quantity, loading, isBundleMode]);
 
   // Lengkapi gambar item transaksi yang tidak punya image_url (mis. transaksi
   // lama dari localStorage) dengan mengambilnya langsung dari tabel equipment.
@@ -339,14 +375,20 @@ function BookingContent() {
 
   // Muat cabang + stok untuk produk ini (Pendekatan B: katalog global,
   // cabang dipilih saat checkout; hanya cabang berstok yang ditampilkan).
+  // Mode bundle memakai ?bundleId= agar stok dihitung per paket
+  // (min across komposisi × qty paket).
   useEffect(() => {
     const fetchBranches = async () => {
       if (!product) return;
       setLoadingBranches(true);
       try {
-        const params = new URLSearchParams({
-          productId: product.id,
-        });
+        const params = new URLSearchParams();
+        if (isBundleMode) {
+          params.set('bundleId', product.id);
+          params.set('bundleQty', String(bundleQty));
+        } else {
+          params.set('productId', product.id);
+        }
         if (startDate && endDate) {
           params.set('startDate', startDate.toISOString());
           params.set('endDate', endDate.toISOString());
@@ -357,10 +399,10 @@ function BookingContent() {
         const result = await res.json();
         if (res.ok && result.success) {
           const available = (result.data || []).filter(
-            (b: any) => (b.stock || 0) > 0,
+            (b: any) => (b.packageStock ?? b.stock ?? 0) > 0 || b.hasStockLink === false,
           );
-          setBranches(available);
-          setPickupBranchId((prev) => prev || available[0]?.id || null);
+          setBranches(available.length > 0 ? available : (result.data || []));
+          setPickupBranchId((prev) => prev || available[0]?.id || (result.data || [])[0]?.id || null);
           setReturnBranchId((prev) => prev || null);
         }
       } catch {
@@ -370,16 +412,18 @@ function BookingContent() {
       }
     };
     fetchBranches();
-  }, [product, startDate, endDate]);
+  }, [product, startDate, endDate, isBundleMode, bundleQty]);
 
   // ==================== CALCULATIONS ====================
   const days =
     startDate && endDate ? Math.max(1, calculateDaysBetween(startDate, endDate)) : 0;
   const pricePerNight = product ? Number(product.price_per_night) : 0;
 
-  // Subtotal dihitung dari item keranjang, fallback ke produk tunggal dari URL
-  const subtotal =
-    transaction?.items && transaction.items.length > 0
+  // Subtotal dihitung dari item keranjang, fallback ke produk tunggal dari URL.
+  // Mode bundle: selalu bundle_price × hari × qty paket (abaikan keranjang).
+  const subtotal = isBundleMode
+    ? pricePerNight * bundleQty * days
+    : transaction?.items && transaction.items.length > 0
       ? transaction.items.reduce(
           (sum: number, item: any) => sum + item.price * item.quantity,
           0,
@@ -510,8 +554,20 @@ function BookingContent() {
 
       // Item yang akan dipesan. Prioritaskan item dari keranjang (transaction),
       // fallback ke produk tunggal dari URL bila halaman dibuka langsung dari katalog.
-      const sourceItems =
-        transaction?.items && transaction.items.length > 0
+      // Mode bundle: server yang expand bundle_items → stok, jadi kirim bundle saja.
+      const sourceItems = isBundleMode
+        ? [
+            {
+              id: product.id,
+              name: product.name,
+              price: Number(product.price_per_night),
+              quantity: Number(bundleQty),
+              category: product.equipment_categories?.name || "Paket Rental Grup",
+              image_url: product.image_url,
+              is_bundle: true,
+            },
+          ]
+        : transaction?.items && transaction.items.length > 0
           ? transaction.items
           : [
               {
@@ -552,13 +608,17 @@ function BookingContent() {
         return;
       }
 
-      // Simpan booking via server API — kirim semua item dari keranjang
-      const itemData = sourceItems.map((item: any) => ({
-        equipment_id: item.id,
-        quantity: Number(item.quantity),
-        unit_price: Number(item.price),
-        subtotal: Number(item.price) * Number(item.quantity) * Number(days),
-      }));
+      // Simpan booking via server API — kirim semua item dari keranjang.
+      // Mode bundle: itemData dikosongkan, server expand dari bundle_items
+      // (bila komposisi sudah diisi admin) + catat booking_bundle_items.
+      const itemData = isBundleMode
+        ? []
+        : sourceItems.map((item: any) => ({
+            equipment_id: item.id,
+            quantity: Number(item.quantity),
+            unit_price: Number(item.price),
+            subtotal: Number(item.price) * Number(item.quantity) * Number(days),
+          }));
 
       const res = await fetch("/api/bookings/create", {
         method: "POST",
@@ -567,6 +627,9 @@ function BookingContent() {
           orderData,
           itemData,
           userEmail: user?.email || null,
+          ...(isBundleMode
+            ? { bundle: { bundle_id: product.id, quantity: bundleQty } }
+            : {}),
         }),
       });
 
@@ -628,7 +691,7 @@ function BookingContent() {
       // ===== Alur WhatsApp =====
       if (paymentMethod === "WhatsApp Konfirmasi") {
         const waMessage = `Halo Admin Habema!
-Saya ingin menyewa: *${product.name}*
+Saya ingin menyewa: *${product.name}*${isBundleMode ? ` (${bundleQty} paket)` : ""}
 ID Booking: #${newBooking.id.slice(0, 8)}
 User: ${user ? user.email : "Guest"}
 Durasi: ${days} Hari
@@ -957,7 +1020,8 @@ Mohon konfirmasi pesanan saya ya!`;
             Checkout
           </h1>
           <p className="text-sm text-stone-500 font-medium mt-1">
-            Lengkapi detail sewa untuk melanjutkan — {product.name}.
+            Lengkapi detail sewa untuk melanjutkan — {product.name}
+            {isBundleMode ? ` (${bundleQty} paket × Rp${Number(pricePerNight).toLocaleString("id-ID")}/paket/malam)` : ""}.
           </p>
         </header>
 
@@ -1398,7 +1462,7 @@ Mohon konfirmasi pesanan saya ya!`;
                 </h3>
               </div>
               <div className="p-4 space-y-3">
-                {transaction?.items && transaction.items.length > 0 ? (
+                {!isBundleMode && transaction?.items && transaction.items.length > 0 ? (
                   <div className="space-y-2.5 max-h-40 lg:max-h-60 overflow-y-auto">
                     {transaction.items.map((item: any, index: number) => (
                       <div
@@ -1449,6 +1513,12 @@ Mohon konfirmasi pesanan saya ya!`;
                       <p className="text-[10px] text-stone-500 font-bold uppercase tracking-tight">
                         {product.equipment_categories?.name}
                       </p>
+                      {isBundleMode && (
+                        <p className="text-[11px] text-stone-500 font-semibold mt-1">
+                          {bundleQty} paket × Rp{Number(pricePerNight).toLocaleString("id-ID")}/paket/malam
+                          {product?.bundle_detail?.paxLabel ? ` · ${product.bundle_detail.paxLabel}` : ""}
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1458,7 +1528,9 @@ Mohon konfirmasi pesanan saya ya!`;
                     <>
                       <div className="flex justify-between text-xs font-medium">
                         <span className="text-stone-500">
-                          {days} hari x {transaction?.items?.length || quantity} Item
+                          {isBundleMode
+                            ? `${days} hari x ${bundleQty} paket`
+                            : `${days} hari x ${transaction?.items?.length || quantity} Item`}
                         </span>
                         <span className="text-forest font-bold">
                           Rp{subtotal.toLocaleString("id-ID")}

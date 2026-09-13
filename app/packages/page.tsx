@@ -16,6 +16,7 @@ type Package = {
   price?: string;
   priceOld?: string;
   unit?: string;
+  paxLabel?: string | null;
   desc: string;
   image: string;
   include: string[];
@@ -40,8 +41,9 @@ function useInView(threshold = 0.12) {
   return { ref, visible };
 }
 
-function PackageCard({ pkg, index }: { pkg: Package; index: number }) {
+function PackageCard({ pkg, index, branchPhone }: { pkg: Package; index: number; branchPhone: string }) {
   const { ref, visible } = useInView();
+  const isGroupPackage = pkg.category === 'Paket Rental Grup';
 
   return (
     <div
@@ -83,32 +85,42 @@ function PackageCard({ pkg, index }: { pkg: Package; index: number }) {
             </span>
           )}
 
-          <div className="absolute bottom-3 right-3 text-right">
+          <div className="absolute bottom-3 left-3 flex flex-col items-start gap-1">
             {pkg.priceOld && (
-              <p className="text-white/60 text-xs line-through leading-none">
+              <span className="text-[11px] font-semibold text-white/70 bg-black/45 backdrop-blur-sm px-2.5 py-0.5 rounded-full line-through">
                 Rp {pkg.priceOld}
-              </p>
+              </span>
             )}
             {pkg.price ? (
-              <p className="text-white font-black text-lg leading-tight drop-shadow-md">
+              <span className="text-white font-black text-base leading-tight bg-black/55 backdrop-blur-sm px-3 py-1.5 rounded-full shadow">
                 Rp {pkg.price}
                 {pkg.unit && (
-                  <span className="text-white/70 font-normal text-xs ml-1">{pkg.unit}</span>
+                  <span className="text-white/70 font-normal text-[11px] ml-1">{pkg.unit}</span>
                 )}
-              </p>
+              </span>
             ) : (
-              <p className="text-white/90 font-semibold text-sm italic drop-shadow">
+              <span className="text-white/90 font-semibold text-xs italic bg-black/45 backdrop-blur-sm px-3 py-1.5 rounded-full">
                 Harga custom
-              </p>
+              </span>
             )}
           </div>
         </div>
 
         <div className="p-5 flex flex-col flex-1 gap-3">
-          <h3 className="text-lg font-black text-stone-900 leading-snug">
-            {pkg.label}
-          </h3>
-          <p className="text-stone-500 text-sm leading-relaxed">{pkg.desc}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-lg font-black text-stone-900 leading-snug flex-1">
+              {pkg.label}
+            </h3>
+          </div>
+          {pkg.paxLabel && (
+            <span
+              className="inline-flex w-fit items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full"
+              style={{ background: pkg.accentLight, color: pkg.accent }}
+            >
+              👥 {pkg.paxLabel} · per paket/malam
+            </span>
+          )}
+          <p className="text-stone-500 text-sm leading-relaxed line-clamp-2">{pkg.desc}</p>
 
           <div className="flex-1">
             <p
@@ -118,38 +130,53 @@ function PackageCard({ pkg, index }: { pkg: Package; index: number }) {
               Include
             </p>
             <ul className="space-y-1">
-              {pkg.include?.map?.((it) => (
+              {pkg.include?.slice(0, 4).map?.((it) => (
                 <li key={it} className="flex gap-2 text-sm text-stone-600">
                   <span style={{ color: pkg.accent }} className="flex-shrink-0 mt-0.5 text-xs">✦</span>
-                  {it}
+                  <span className="line-clamp-1">{it}</span>
                 </li>
               ))}
             </ul>
-
-            {pkg.exclude && pkg.exclude.length > 0 && (
-              <div className="mt-3">
-                <p className="text-[11px] font-bold uppercase tracking-widest mb-2 text-stone-600">Exclude</p>
-                <ul className="space-y-1">
-                  {pkg.exclude?.map?.((it) => (
-                    <li key={it} className="flex gap-2 text-sm text-stone-600">
-                      <span className="flex-shrink-0 mt-0.5 text-xs">✕</span>
-                      {it}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            {(pkg.include?.length || 0) > 4 && (
+              <Link
+                href={`/packages/${pkg.id}`}
+                className="inline-block mt-1.5 text-xs font-bold hover:opacity-75"
+                style={{ color: pkg.accent }}
+              >
+                +{(pkg.include?.length || 0) - 4} lainnya — lihat detail →
+              </Link>
             )}
           </div>
 
-          <a
-            href={`https://wa.me/${branchPhone}?text=Halo%20Habema%20Outdoor%2C%20saya%20tertarik%20dengan%20${encodeURIComponent(pkg.label)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 block text-center py-3.5 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 hover:opacity-85 active:scale-[0.98] shadow-sm"
-            style={{ background: pkg.accent, color: "#fff" }}
-          >
-            Pesan via WhatsApp
-          </a>
+          {isGroupPackage ? (
+            <div className="mt-3 grid grid-cols-1 gap-2">
+              <Link
+                href={`/packages/${pkg.id}`}
+                className="block text-center py-3.5 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 hover:opacity-85 active:scale-[0.98] shadow-sm text-white"
+                style={{ background: pkg.accent }}
+              >
+                Booking Online
+              </Link>
+              <a
+                href={`https://wa.me/${branchPhone}?text=Halo%20Habema%20Outdoor%2C%20saya%20tertarik%20dengan%20${encodeURIComponent(pkg.label)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center py-3 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 hover:bg-stone-100 active:scale-[0.98] border border-stone-200 text-stone-700"
+              >
+                Tanya via WhatsApp
+              </a>
+            </div>
+          ) : (
+            <a
+              href={`https://wa.me/${branchPhone}?text=Halo%20Habema%20Outdoor%2C%20saya%20tertarik%20dengan%20${encodeURIComponent(pkg.label)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 block text-center py-3.5 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 hover:opacity-85 active:scale-[0.98] shadow-sm"
+              style={{ background: pkg.accent, color: "#fff" }}
+            >
+              Pesan via WhatsApp
+            </a>
+          )}
         </div>
       </div>
     </div>
@@ -253,7 +280,7 @@ export default function PackagesPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {packages.map((pkg, i) => (
-              <PackageCard key={pkg.id || `pkg-${i}`} pkg={pkg} index={i} />
+              <PackageCard key={pkg.id || `pkg-${i}`} pkg={pkg} index={i} branchPhone={branchPhone} />
             ))}
           </div>
         )}

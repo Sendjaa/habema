@@ -38,6 +38,7 @@ type Package = {
   price?: string;
   priceOld?: string;
   unit?: string;
+  paxLabel?: string | null;
   desc: string;
   image: string;
   include: string[];
@@ -125,6 +126,14 @@ function FeaturedBundlesCard({ pkg, index, branchPhone }: { pkg: Package; index:
           >
             {pkg.label}
           </h3>
+          {pkg.paxLabel && (
+            <span
+              className="inline-flex w-fit items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full"
+              style={{ background: pkg.accentLight, color: pkg.accent }}
+            >
+              👥 {pkg.paxLabel} · per paket/malam
+            </span>
+          )}
           <p className="text-stone-500 text-sm leading-relaxed">{pkg.desc}</p>
 
           {/* include */}
@@ -140,9 +149,9 @@ function FeaturedBundlesCard({ pkg, index, branchPhone }: { pkg: Package; index:
                 <li key={it} className="flex gap-2 text-sm text-stone-600">
                   <span
                     style={{ color: pkg.accent }}
-                    className="flex-shrink-0 mt-0.5 text-xs"
+                    className="flex-shrink-0 mt-0.5 text-xs font-bold text-green-400"
                   >
-                    ✦
+                    ✓
                   </span>
                   {it}
                 </li>
@@ -157,7 +166,7 @@ function FeaturedBundlesCard({ pkg, index, branchPhone }: { pkg: Package; index:
                 <ul className="space-y-1">
                   {pkg.exclude?.map?.((it) => (
                     <li key={it} className="flex gap-2 text-sm text-stone-600">
-                      <span className="flex-shrink-0 mt-0.5 text-xs">✕</span>
+                      <span className="flex-shrink-0 mt-0.5 text-xs text-red-500">✕</span>
                       {it}
                     </li>
                   ))}
@@ -167,17 +176,39 @@ function FeaturedBundlesCard({ pkg, index, branchPhone }: { pkg: Package; index:
           </div>
 
           {/* CTA */}
-          <a
-            href={`https://wa.me/${branchPhone}?text=Halo%20Habema%20Outdoor%2C%20saya%20tertarik%20dengan%20${encodeURIComponent(
-              pkg.label
-            )}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 block text-center py-3.5 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 hover:opacity-85 active:scale-[0.98] shadow-sm"
-            style={{ background: pkg.accent, color: "#fff" }}
-          >
-            Pesan via WhatsApp
-          </a>
+          {pkg.category === 'Paket Rental Grup' ? (
+            <div className="mt-3 grid grid-cols-1 gap-2">
+              <Link
+                href={`/packages/${pkg.id}`}
+                className="block text-center py-3.5 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 hover:opacity-85 active:scale-[0.98] shadow-sm text-white"
+                style={{ background: pkg.accent }}
+              >
+                Booking Online
+              </Link>
+              <a
+                href={`https://wa.me/${branchPhone}?text=Halo%20Habema%20Outdoor%2C%20saya%20tertarik%20dengan%20${encodeURIComponent(
+                  pkg.label
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center py-3 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 hover:bg-stone-100 active:scale-[0.98] border border-stone-200 text-stone-700"
+              >
+                Tanya via WhatsApp
+              </a>
+            </div>
+          ) : (
+            <a
+              href={`https://wa.me/${branchPhone}?text=Halo%20Habema%20Outdoor%2C%20saya%20tertarik%20dengan%20${encodeURIComponent(
+                pkg.label
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 block text-center py-3.5 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 hover:opacity-85 active:scale-[0.98] shadow-sm"
+              style={{ background: pkg.accent, color: "#fff" }}
+            >
+              Pesan via WhatsApp
+            </a>
+          )}
         </div>
       </div>
     </div>
@@ -289,9 +320,9 @@ export function FeaturedBundles() {
             style={{ fontFamily: "'Fraunces', serif" }}
           >
             Petualangan Terbaik<br />
-            <span style={{ fontStyle: "italic", color: "#5a5a5a" }}>
+            {/* <span style={{ fontStyle: "italic", color: "#5a5a5a" }}> */}
               Untuk Anda
-            </span>
+            {/* </span> */}
           </h2>
           <p className="text-stone-600 max-w-2xl mx-auto">
             Hemat hingga 25% dengan paket bundling kami yang dirancang khusus untuk setiap jenis petualangan.
@@ -319,7 +350,7 @@ export function FeaturedBundles() {
             variant="outline"
             size="lg"
             asChild
-            className="rounded-2xl border-stone-300 text-stone-700 hover:bg-stone-50 transition-all duration-300"
+            className="rounded-2xl text-stone-700 hover:bg-stone-50 transition-all duration-300"
           >
             <Link href="/packages">
               Lihat Semua Paket

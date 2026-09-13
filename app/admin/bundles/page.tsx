@@ -17,6 +17,14 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  BundleListEditor,
+  mergeBundleItemsIntoRows,
+  newBundleRow,
+  rowsFromLegacyList,
+  serializeBundleRows,
+  type BundleLineRow,
+} from "@/components/admin/bundle-list-editor";
 
 interface Bundle {
   id: string;
@@ -29,22 +37,24 @@ interface Bundle {
   image_url: string | null;
   includes: string[] | null;
   excludes: string[] | null;
+  pax_min: number | null;
+  pax_max: number | null;
   is_active: boolean | null;
   created_at: string | null;
 }
 
-const AUDIENCES = ["Open Trip", "Camping Keluarga", "Private Camp", "Campervan"];
+const AUDIENCES = ["Open Trip", "Camping Keluarga", "Private Camp", "Campervan", "Paket Rental Grup"];
 
 const emptyForm = {
   name: "",
-  target_audience: "Open Trip",
+  target_audience: "Paket Rental Grup",
   description: "",
   bundle_price: "",
   original_price: "",
   discount_percentage: "",
   image_url: "",
-  includes: "",
-  excludes: "",
+  pax_min: "",
+  pax_max: "",
   is_active: true,
 };
 
@@ -66,6 +76,12 @@ export default function BundlesManagement() {
   const [editing, setEditing] = useState<Bundle | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  // Baris Include/Exclude terstruktur (pengganti textarea).
+  const [includeRows, setIncludeRows] = useState<BundleLineRow[]>([newBundleRow({ qty: 1 })]);
+  const [excludeRows, setExcludeRows] = useState<BundleLineRow[]>([newBundleRow()]);
+  // True bila komposisi stok berhasil dimuat (edit) / tidak relevan (create).
+  // PUT items hanya dijalankan bila true agar tidak menghapus data saat gagal load.
+  const [itemsHydrated, setItemsHydrated] = useState(true);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 400);
@@ -97,28 +113,64 @@ export default function BundlesManagement() {
   const openAdd = () => {
     setEditing(null);
     setForm(emptyForm);
+    setIncludeRows([newBundleRow({ qty: 1 })]);
+    setExcludeRows([newBundleRow()]);
+    setItemsHydrated(true);
     setShowModal(true);
   };
 
-  const openEdit = (b: Bundle) => {
+  const openEdit = async (b: Bundle) => {
     setEditing(b);
     setForm({
       name: b.name || "",
-      target_audience: b.target_audience || "Open Trip",
+      target_audience: b.target_audience || "Paket Rental Grup",
       description: b.description || "",
       bundle_price: String(b.bundle_price ?? ""),
       original_price: b.original_price != null ? String(b.original_price) : "",
       discount_percentage: b.discount_percentage != null ? String(b.discount_percentage) : "",
       image_url: b.image_url || "",
-      includes: Array.isArray(b.includes) ? b.includes.join("\n") : "",
-      excludes: Array.isArray(b.excludes) ? b.excludes.join("\n") : "",
+      pax_min: b.pax_min != null ? String(b.pax_min) : "",
+      pax_max: b.pax_max != null ? String(b.pax_max) : "",
       is_active: b.is_active !== false,
     });
+    // Parse teks lama jadi baris agar langsung bisa diedit.
+    const parsedInc = rowsFromLegacyList(b.includes);
+    const parsedExc = rowsFromLegacyList(b.excludes);
+    setIncludeRows(parsedInc.length > 0 ? parsedInc : [newBundleRow({ qty: 1 })]);
+    setExcludeRows(parsedExc.length > 0 ? parsedExc : [newBundleRow()]);
+    setItemsHydrated(false);
     setShowModal(true);
+    // Gabungkan komposisi stok (ground truth) ke baris Include by nama alat.
+    try {
+      const res = await fetch(`/api/admin/bundles/${b.id}/items`);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) throw new Error(json.error || "Gagal memuat komposisi");
+      const items = (json.data || [])
+        .map((r: any) => ({
+          equipment_id: String(r.equipment?.id || ""),
+          name: String(r.equipment?.name || ""),
+          price: Number(r.equipment?.price_per_night) || 0,
+          quantity: Number(r.quantity) || 1,
+        }))
+        .filter((r: any) => r.equipment_id && r.name);
+      setIncludeRows((prev) => mergeBundleItemsIntoRows(prev, items));
+      setItemsHydrated(true);
+    } catch {
+      // Biarkan baris teks apa adanya; sync stok dilewati saat simpan.
+    }
   };
 
   const set = (k: keyof typeof emptyForm, v: string | boolean) =>
     setForm((f) => ({ ...f, [k]: v }));
+
+  const cleanRows = (rows: BundleLineRow[]) =>
+    rows
+      .map((r) => ({
+        ...r,
+        label: r.label.trim(),
+        qty: r.qty == null ? null : Math.max(1, Math.round(r.qty) || 1),
+      }))
+      .filter((r) => r.label !== "");
 
   const save = async () => {
     if (!form.name.trim()) {
@@ -130,6 +182,12 @@ export default function BundlesManagement() {
       toast.error("Harga bundle tidak valid");
       return;
     }
+    const cleanIncludes = cleanRows(includeRows);
+    if (cleanIncludes.length === 0) {
+      toast.error("Include minimal 1 baris");
+      return;
+    }
+    const cleanExcludes = cleanRows(excludeRows);
     try {
       setSaving(true);
       const payload = {
@@ -140,8 +198,10 @@ export default function BundlesManagement() {
         original_price: form.original_price === "" ? null : Number(form.original_price),
         discount_percentage: form.discount_percentage === "" ? null : Number(form.discount_percentage),
         image_url: form.image_url.trim() || null,
-        includes: form.includes,
-        excludes: form.excludes,
+        includes: serializeBundleRows(cleanIncludes),
+        excludes: serializeBundleRows(cleanExcludes),
+        pax_min: form.pax_min === "" ? null : Number(form.pax_min),
+        pax_max: form.pax_max === "" ? null : Number(form.pax_max),
         is_active: form.is_active,
       };
       const url = editing ? `/api/admin/bundles/${editing.id}` : "/api/admin/bundles";
@@ -152,6 +212,28 @@ export default function BundlesManagement() {
       });
       const result = await res.json().catch(() => ({}));
       if (!res.ok || !result.success) throw new Error(result?.error || `HTTP ${res.status}`);
+      // Sinkronkan baris ter-link katalog ke bundle_items (sumber cek stok).
+      // Dilewati bila komposisi gagal dimuat saat edit agar tidak menghapus data.
+      const savedId = editing ? editing.id : result.data?.id;
+      const linked = cleanIncludes.filter((r) => r.equipment_id);
+      if (savedId && (linked.length > 0 || (editing && itemsHydrated))) {
+        try {
+          const resItems = await fetch(`/api/admin/bundles/${savedId}/items`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              items: linked.map((r) => ({ equipment_id: r.equipment_id, quantity: r.qty ?? 1 })),
+            }),
+          });
+          const jsonItems = await resItems.json().catch(() => ({}));
+          if (!resItems.ok || !jsonItems.success) throw new Error(jsonItems.error || "Gagal menyimpan komposisi");
+        } catch (e: any) {
+          toast.warning("Paket tersimpan, tapi komposisi stok gagal disinkronkan. Buka Edit untuk mengulang.");
+          setShowModal(false);
+          fetchBundles();
+          return;
+        }
+      }
       toast.success(editing ? "Bundle diperbarui" : "Bundle ditambahkan");
       setShowModal(false);
       fetchBundles();
@@ -197,7 +279,7 @@ export default function BundlesManagement() {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-xl font-semibold text-stone-900" style={{ fontFamily: "'Fraunces', serif" }}>
-              Bundles / Open Trip
+              Bundles / Paket
             </h1>
             <p className="text-sm text-stone-500 mt-0.5">
               {bundles.length} paket · tampil di /bundles, /packages, /opentrip
@@ -418,6 +500,7 @@ export default function BundlesManagement() {
                   <div>
                     <Label className="text-xs text-stone-500">Harga (Rp) *</Label>
                     <Input value={form.bundle_price} onChange={(e) => set("bundle_price", e.target.value)} inputMode="numeric" placeholder="150000" className="mt-1 h-10 rounded-lg" />
+                    <p className="text-[11px] text-stone-400 mt-1">Untuk Paket Rental Grup = per paket per malam.</p>
                   </div>
                   <div>
                     <Label className="text-xs text-stone-500">Harga coret (Rp)</Label>
@@ -428,6 +511,16 @@ export default function BundlesManagement() {
                     <Input value={form.discount_percentage} onChange={(e) => set("discount_percentage", e.target.value)} inputMode="decimal" placeholder="Opsional" className="mt-1 h-10 rounded-lg" />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs text-stone-500">Pax min (orang)</Label>
+                    <Input value={form.pax_min} onChange={(e) => set("pax_min", e.target.value)} inputMode="numeric" placeholder="cth. 2" className="mt-1 h-10 rounded-lg" />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-stone-500">Pax max (orang)</Label>
+                    <Input value={form.pax_max} onChange={(e) => set("pax_max", e.target.value)} inputMode="numeric" placeholder="cth. 2 / 7 / 10" className="mt-1 h-10 rounded-lg" />
+                  </div>
+                </div>
                 <div>
                   <Label className="text-xs text-stone-500">URL gambar</Label>
                   <Input value={form.image_url} onChange={(e) => set("image_url", e.target.value)} placeholder="https://..." className="mt-1 h-10 rounded-lg" />
@@ -435,27 +528,23 @@ export default function BundlesManagement() {
                     <img src={form.image_url} alt="Preview" className="mt-2 w-full h-36 rounded-lg object-cover border border-stone-200" />
                   )}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-xs text-stone-500">Include (1 per baris)</Label>
-                    <textarea
-                      value={form.includes}
-                      onChange={(e) => set("includes", e.target.value)}
-                      rows={4}
-                      placeholder={"Transport\nTiket masuk\nMakan 1x"}
-                      className="mt-1 w-full p-2.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-stone-500">Exclude (1 per baris)</Label>
-                    <textarea
-                      value={form.excludes}
-                      onChange={(e) => set("excludes", e.target.value)}
-                      rows={4}
-                      placeholder={"Pengeluaran pribadi\nSewa alat"}
-                      className="mt-1 w-full p-2.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-                    />
-                  </div>
+                <div className="space-y-4">
+                  <BundleListEditor
+                    title="Include — isi paket *"
+                    hint="Cari alat katalog untuk baris ber-pcs (otomatis potong stok saat dibooking), atau tambah baris kustom untuk jasa/layanan. Kolom pcs opsional."
+                    rows={includeRows}
+                    onChange={setIncludeRows}
+                    defaultQty={1}
+                    namePlaceholder="cth. Tenda kap 4"
+                  />
+                  <BundleListEditor
+                    title="Exclude"
+                    hint="Hal yang tidak termasuk. Kolom pcs opsional, hanya untuk tampilan."
+                    rows={excludeRows}
+                    onChange={setExcludeRows}
+                    defaultQty={null}
+                    namePlaceholder="cth. Tiket masuk kawasan"
+                  />
                 </div>
                 <div className="flex gap-2 pt-2">
                   <Button variant="outline" className="flex-1 rounded-lg" onClick={() => setShowModal(false)} disabled={saving}>

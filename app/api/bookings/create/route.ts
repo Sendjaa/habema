@@ -17,19 +17,78 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { orderData, itemData, userEmail } = body
+    const { orderData, itemData, userEmail, bundle } = body as {
+      orderData: any
+      itemData?: any
+      userEmail?: string | null
+      bundle?: { bundle_id?: string; quantity?: number } | null
+    }
 
-    if (!orderData || !itemData) {
+    if (!orderData) {
       return NextResponse.json(
-        { error: 'Missing required fields: orderData, itemData' },
+        { error: 'Missing required fields: orderData' },
         { status: 400 }
       )
     }
 
-    // Normalize itemData to array (support single object or array)
-    const itemsArray = Array.isArray(itemData) ? itemData : [itemData]
+    // Normalize itemData to array (support single object or array).
+    // Boleh kosong bila booking berupa paket (bundle) yang belum punya
+    // komposisi stok — paket tetap dicatat di booking_bundle_items.
+    let itemsArray: any[] = Array.isArray(itemData) ? itemData : itemData ? [itemData] : []
 
-    if (itemsArray.length === 0) {
+    // ===== Expand paket grup (bundle) menjadi item equipment =====
+    // bundle = { bundle_id, quantity (jumlah paket) }.
+    // Bila bundle punya bundle_items, item itu yang dicek/dikurangi stoknya.
+    // Harga booking tetap memakai orderData (bundle_price × hari × qty paket).
+    let bundleRow: any = null
+    let bundleQty = 1
+    if (bundle?.bundle_id) {
+      bundleQty = Math.max(1, Math.round(Number(bundle.quantity) || 1))
+      const { data: bRow, error: bErr } = await supabaseAdmin
+        .from('bundles')
+        .select('id, name, bundle_price, is_active')
+        .eq('id', bundle.bundle_id)
+        .maybeSingle()
+      if (bErr || !bRow || bRow.is_active === false) {
+        return NextResponse.json(
+          { error: 'Paket tidak ditemukan atau tidak aktif' },
+          { status: 400 }
+        )
+      }
+      bundleRow = bRow
+
+      let composition: any[] = []
+      try {
+        const { data: comp } = await supabaseAdmin
+          .from('bundle_items')
+          .select('quantity, equipment:equipment(id, price_per_night)')
+          .eq('bundle_id', bundle.bundle_id)
+        composition = comp || []
+      } catch {
+        composition = []
+      }
+
+      if (composition.length > 0) {
+        const rentalDays = Math.max(1, Number(orderData.rental_days) || 1)
+        itemsArray = composition
+          .filter((c: any) => c.equipment?.id)
+          .map((c: any) => {
+            const perPackage = Math.max(1, Number(c.quantity) || 1)
+            const qty = perPackage * bundleQty
+            const unit = Number(c.equipment?.price_per_night) || 0
+            return {
+              equipment_id: c.equipment.id,
+              quantity: qty,
+              unit_price: unit,
+              subtotal: unit * qty * rentalDays,
+            }
+          })
+      } else {
+        itemsArray = []
+      }
+    }
+
+    if (itemsArray.length === 0 && !bundleRow) {
       return NextResponse.json(
         { error: 'itemData must contain at least one item' },
         { status: 400 }
@@ -76,35 +135,38 @@ export async function POST(request: NextRequest) {
         (b: any) => b.id === (orderData.return_branch_id || orderData.pickup_branch_id)
       )
 
-      // Validasi stok di cabang pengambilan untuk semua item
-      const equipmentIds = itemsArray.map((item: any) => item.equipment_id)
-      const { data: invRows, error: invErr } = await supabaseAdmin
-        .from('branch_inventory')
-        .select('equipment_id, quantity')
-        .eq('branch_id', orderData.pickup_branch_id)
-        .in('equipment_id', equipmentIds)
+      // Validasi stok di cabang pengambilan untuk semua item.
+      // Dilewati bila paket belum punya komposisi stok (itemsArray kosong).
+      if (itemsArray.length > 0) {
+        const equipmentIds = itemsArray.map((item: any) => item.equipment_id)
+        const { data: invRows, error: invErr } = await supabaseAdmin
+          .from('branch_inventory')
+          .select('equipment_id, quantity')
+          .eq('branch_id', orderData.pickup_branch_id)
+          .in('equipment_id', equipmentIds)
 
-      if (invErr) {
-        return NextResponse.json(
-          { error: 'Failed to check branch stock', detail: invErr.message },
-          { status: 500 }
-        )
-      }
-      const invMap = new Map(
-        (invRows || []).map((r: any) => [r.equipment_id, Number(r.quantity) || 0])
-      )
-
-      for (const item of itemsArray) {
-        const available = invMap.get(item.equipment_id) ?? 0
-        const needed = Number(item.quantity) || 0
-        if (needed > available) {
+        if (invErr) {
           return NextResponse.json(
-            {
-              error: `Stok di ${pickupBranch.name} tidak mencukupi`,
-              detail: `Butuh ${item.quantity} unit, tersedia ${available} unit`,
-            },
-            { status: 400 }
+            { error: 'Failed to check branch stock', detail: invErr.message },
+            { status: 500 }
           )
+        }
+        const invMap = new Map(
+          (invRows || []).map((r: any) => [r.equipment_id, Number(r.quantity) || 0])
+        )
+
+        for (const item of itemsArray) {
+          const available: number = Number(invMap.get(item.equipment_id) ?? 0) || 0
+          const needed: number = Number(item.quantity) || 0
+          if (needed > available) {
+            return NextResponse.json(
+              {
+                error: `Stok di ${pickupBranch.name} tidak mencukupi`,
+                detail: `Butuh ${item.quantity} unit, tersedia ${available} unit`,
+              },
+              { status: 400 }
+            )
+          }
         }
       }
 
@@ -133,37 +195,59 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Insert all booking items
-    const bookingItems = itemsArray.map((item: any) => ({
-      ...item,
-      booking_id: newBooking.id,
-    }))
+    // Insert all booking items (dilewati bila paket tanpa komposisi stok)
+    if (itemsArray.length > 0) {
+      const bookingItems = itemsArray.map((item: any) => ({
+        ...item,
+        booking_id: newBooking.id,
+      }))
 
-    const { error: itemError } = await supabaseAdmin
-      .from('booking_items')
-      .insert(bookingItems)
+      const { error: itemError } = await supabaseAdmin
+        .from('booking_items')
+        .insert(bookingItems)
 
-    if (itemError) {
-      console.error('Error creating booking items:', itemError)
-      // Rollback: hapus booking yatim agar tidak tertinggal di DB
-      await supabaseAdmin
-        .from('bookings')
-        .delete()
-        .eq('id', newBooking.id)
-        .maybeSingle()
-      return NextResponse.json(
-        {
-          error: 'Failed to create booking items',
-          detail: itemError.message,
-          code: itemError.code,
-          hint: itemError.hint ?? null,
-        },
-        { status: 500 }
-      )
+      if (itemError) {
+        console.error('Error creating booking items:', itemError)
+        // Rollback: hapus booking yatim agar tidak tertinggal di DB
+        await supabaseAdmin
+          .from('bookings')
+          .delete()
+          .eq('id', newBooking.id)
+          .maybeSingle()
+        return NextResponse.json(
+          {
+            error: 'Failed to create booking items',
+            detail: itemError.message,
+            code: itemError.code,
+            hint: itemError.hint ?? null,
+          },
+          { status: 500 }
+        )
+      }
+    }
+
+    // Catat paket grup bila ada (snapshot harga paket per malam × hari × qty).
+    if (bundleRow) {
+      try {
+        const unitBundle = Number(bundleRow.bundle_price) || Number(orderData.subtotal) || 0
+        const rentalDays = Math.max(1, Number(orderData.rental_days) || 1)
+        const bundleSubtotal = orderData.subtotal != null
+          ? Number(orderData.subtotal)
+          : unitBundle * rentalDays * bundleQty
+        await supabaseAdmin.from('booking_bundle_items').insert({
+          booking_id: newBooking.id,
+          bundle_id: bundleRow.id,
+          quantity: bundleQty,
+          bundle_price: unitBundle,
+          subtotal: bundleSubtotal,
+        })
+      } catch (bundleInsErr) {
+        console.error('Error creating booking bundle item:', bundleInsErr)
+      }
     }
 
     // ===== Decrement branch_inventory untuk cabang pengambilan =====
-    if (orderData?.pickup_branch_id) {
+    if (orderData?.pickup_branch_id && itemsArray.length > 0) {
       for (const item of itemsArray) {
         const { error: decErr } = await supabaseAdmin.rpc('decrement_branch_stock', {
           p_branch_id: orderData.pickup_branch_id,
@@ -195,13 +279,16 @@ export async function POST(request: NextRequest) {
     // Create admin notification (hanya bila ada user_id; kolom notifications.user_id NOT NULL)
     try {
       if (orderData.user_id) {
+        const label = bundleRow
+          ? `Paket ${bundleRow.name} ×${bundleQty}`
+          : `Pesanan baru (${itemsArray.length} item)`
         await supabaseAdmin
           .from('notifications')
           .insert({
             user_id: orderData.user_id,
             booking_id: newBooking.id,
             title: 'Pesanan Baru',
-            message: `Pesanan baru (${itemsArray.length} item) ${userEmail ? ` dari ${userEmail}` : ' (Guest User)'}`,
+            message: `${label} ${userEmail ? ` dari ${userEmail}` : ' (Guest User)'}`,
             notification_type: 'new_booking',
             is_read: false,
           })

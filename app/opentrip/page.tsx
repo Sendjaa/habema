@@ -12,6 +12,7 @@ type Package = {
   price?: string;
   priceOld?: string;
   unit?: string;
+  paxLabel?: string | null;
   desc: string;
   image: string;
   include: string[];
@@ -28,6 +29,7 @@ const CATEGORIES = [
   "Camping Keluarga",
   "Private Camp",
   "Campervan",
+  "Paket Rental Grup",
 ];
 
 /* ─── HOOKS ──────────────────────────────────────── */
@@ -50,8 +52,9 @@ function useInView(threshold = 0.12) {
 }
 
 /* ─── CARD ───────────────────────────────────────── */
-function Card({ pkg, index }: { pkg: Package; index: number }) {
+function Card({ pkg, index, branchPhone }: { pkg: Package; index: number; branchPhone: string }) {
   const { ref, visible } = useInView();
+  const isGroupPackage = pkg.category === 'Paket Rental Grup';
 
   return (
     <div
@@ -126,6 +129,14 @@ function Card({ pkg, index }: { pkg: Package; index: number }) {
           >
             {pkg.label}
           </h3>
+          {pkg.paxLabel && (
+            <span
+              className="inline-flex w-fit items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full"
+              style={{ background: pkg.accentLight, color: pkg.accent }}
+            >
+              👥 {pkg.paxLabel} · per paket/malam
+            </span>
+          )}
           <p className="text-stone-500 text-sm leading-relaxed">{pkg.desc}</p>
 
           {/* include */}
@@ -168,17 +179,39 @@ function Card({ pkg, index }: { pkg: Package; index: number }) {
           </div>
 
           {/* CTA */}
-          <a
-            href={`https://wa.me/${branchPhone}?text=Halo%20Habema%20Outdoor%2C%20saya%20tertarik%20dengan%20${encodeURIComponent(
-              pkg.label
-            )}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 block text-center py-3.5 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 hover:opacity-85 active:scale-[0.98] shadow-sm"
-            style={{ background: pkg.accent, color: "#fff" }}
-          >
-            Pesan via WhatsApp
-          </a>
+          {isGroupPackage ? (
+            <div className="mt-3 grid grid-cols-1 gap-2">
+              <a
+                href={`/packages/${pkg.id}`}
+                className="block text-center py-3.5 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 hover:opacity-85 active:scale-[0.98] shadow-sm text-white"
+                style={{ background: pkg.accent }}
+              >
+                Booking Online
+              </a>
+              <a
+                href={`https://wa.me/${branchPhone}?text=Halo%20Habema%20Outdoor%2C%20saya%20tertarik%20dengan%20${encodeURIComponent(
+                  pkg.label
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center py-3 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 hover:bg-stone-100 active:scale-[0.98] border border-stone-200 text-stone-700"
+              >
+                Tanya via WhatsApp
+              </a>
+            </div>
+          ) : (
+            <a
+              href={`https://wa.me/${branchPhone}?text=Halo%20Habema%20Outdoor%2C%20saya%20tertarik%20dengan%20${encodeURIComponent(
+                pkg.label
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 block text-center py-3.5 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 hover:opacity-85 active:scale-[0.98] shadow-sm"
+              style={{ background: pkg.accent, color: "#fff" }}
+            >
+              Pesan via WhatsApp
+            </a>
+          )}
         </div>
       </div>
     </div>
@@ -651,7 +684,7 @@ export default function HabemaOpenTrip() {
                   key={pkg?.id || `rec-${i}`}
                   className="min-w-[280px] max-w-[280px] snap-start"
                 >
-                  <Card pkg={pkg} index={i} />
+                  <Card pkg={pkg} index={i} branchPhone={branchPhone} />
                 </div>
               ))}
             </div>
@@ -688,7 +721,7 @@ export default function HabemaOpenTrip() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.isArray(filtered) && filtered.length > 0 ? (
             filtered.map((pkg, i) => (
-              <Card key={pkg?.id || `pkg-${i}`} pkg={pkg} index={i} />
+              <Card key={pkg?.id || `pkg-${i}`} pkg={pkg} index={i} branchPhone={branchPhone} />
             ))
           ) : (
             <div className="col-span-full text-center py-12">
