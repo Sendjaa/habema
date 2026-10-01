@@ -1,3 +1,102 @@
+// ---------------------------------------------------------------
+// PENGAMAN DATABASE — cegah `npm run dev` menulis ke production.
+//
+// Sebelum 25 Sep 2026, dev lokal memakai kredensial production: setiap
+// booking/order uji masuk ke tabel yang sama dengan data pelanggan asli.
+// Pengaman ini membuat `next dev` GAGAL saat memuat config, sehingga
+// prosesnya keluar dan tidak ada pekerjaan yang bisa dilanjutkan.
+//
+// Catatan kejujuran: Next.js mencetak banner "Ready" sebelum config
+// selesai dimuat, jadi ini bukan gerbang yang dijamin tertutup sebelum
+// ada satu request pun dilayani. Jendela praktisnya di bawah satu detik
+// dan tidak ada request yang terlayani tanpa Anda membuka halaman, tapi
+// jangan perlakukan ini sebagai jaminan mutlak — tetap pastikan
+// NEXT_PUBLIC_SUPABASE_URL benar sebelum mulai bekerja.
+//
+// Hanya aktif saat NODE_ENV=development (`npm run dev`). `npm run build`
+// dan `npm run start` tidak terpengaruh, termasuk build di Vercel.
+//
+// Kalau memang perlu dev menunjuk production (mis. menelusuri bug data
+// asli), set ALLOW_PRODUCTION_DB_IN_DEV=true. Sadari risikonya.
+// ---------------------------------------------------------------
+const PRODUCTION_PROJECT_REF = 'ypbdqkfxtmkbllhezmqz'
+
+function supabaseProjectRef(url) {
+  if (!url) return null
+  const match = /^https?:\/\/([a-z0-9-]+)\.supabase\.(?:co|in)\b/i.exec(url)
+  return match ? match[1] : null
+}
+
+function isLocalSupabase(url) {
+  return typeof url === 'string' && /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\b/.test(url)
+}
+
+// Ref Supabase asli adalah 20 karakter acak, jadi tidak akan mengandung kata
+// seperti "your". Kalau mengandung, berarti .env.local masih berisi contoh
+// dari .env.local.example dan belum diisi project sungguhan — jangan lapor
+// "aman", karena itu menyesatkan.
+function looksPlaceholder(ref) {
+  return !ref || /your|example|placeholder|xxxx|changeme/i.test(ref)
+}
+
+const activeSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const activeProjectRef = supabaseProjectRef(activeSupabaseUrl)
+
+if (process.env.NODE_ENV === 'development') {
+  const allowProduction = process.env.ALLOW_PRODUCTION_DB_IN_DEV === 'true'
+
+  if (activeProjectRef === PRODUCTION_PROJECT_REF && !allowProduction) {
+    throw new Error(
+      [
+        '',
+        '  ⛔ DEV DILARANG MENUNJUK DATABASE PRODUCTION',
+        '',
+        `  NEXT_PUBLIC_SUPABASE_URL menunjuk ke project production:`,
+        `      ${activeSupabaseUrl}`,
+        `      (ref: ${PRODUCTION_PROJECT_REF} — "habamaOutdoor")`,
+        '',
+        '  Kalau dibiarkan, booking, order, dan notifikasi uji Anda akan',
+        '  bercampur dengan data pelanggan asli.',
+        '',
+        '  Perbaiki: isi .env.local dengan kredensial project DEV.',
+        '      NEXT_PUBLIC_SUPABASE_URL',
+        '      NEXT_PUBLIC_SUPABASE_ANON_KEY',
+        '      SUPABASE_SERVICE_ROLE_KEY',
+        '  .env.local menang atas .env, jadi .env boleh tetap berisi',
+        '  kredensial production. Langkah lengkap: DATABASE_ENV_SETUP.md',
+        '',
+        '  Terpaksa harus menunjuk production? Set ALLOW_PRODUCTION_DB_IN_DEV=true.',
+        '',
+      ].join('\n')
+    )
+  }
+
+  if (!activeSupabaseUrl) {
+    console.warn(
+      '\n  ⚠️  NEXT_PUBLIC_SUPABASE_URL belum diisi — dev server akan gagal saat\n' +
+        '      komponen Supabase dimuat. Salin .env.local.example menjadi .env.local.\n'
+    )
+  } else if (isLocalSupabase(activeSupabaseUrl)) {
+    console.log(`  ✅ DB target: Supabase lokal (${activeSupabaseUrl})`)
+  } else if (activeProjectRef && activeProjectRef !== PRODUCTION_PROJECT_REF && !looksPlaceholder(activeProjectRef)) {
+    console.log(`  ✅ DB target: project dev ${activeProjectRef} (bukan production)`)
+  } else if (activeProjectRef && activeProjectRef !== PRODUCTION_PROJECT_REF) {
+    console.warn(
+      `\n  ⚠️  NEXT_PUBLIC_SUPABASE_URL masih berisi nilai contoh:\n` +
+        `      ${activeSupabaseUrl}\n` +
+        '      Ganti dengan ref project dev Anda, atau aplikasi akan gagal\n' +
+        '      terhubung ke Supabase. Lihat DATABASE_ENV_SETUP.md langkah 5.\n'
+    )
+  } else if (activeProjectRef === PRODUCTION_PROJECT_REF && allowProduction) {
+    console.warn(
+      `\n  ⚠️  DB target: PRODUCTION (${PRODUCTION_PROJECT_REF}) — diizinkan lewat\n` +
+        '      ALLOW_PRODUCTION_DB_IN_DEV=true. Data uji akan masuk ke data asli.\n'
+    )
+  } else if (activeSupabaseUrl) {
+    console.log(`  ✅ DB target: ${activeSupabaseUrl}`)
+  }
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {

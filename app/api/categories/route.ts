@@ -1,44 +1,46 @@
 import { NextResponse } from 'next/server'
+import { asc } from 'drizzle-orm'
+import { getDb } from '@/lib/db'
+import { equipmentCategories } from '@/lib/db/schema'
 
 export async function GET() {
   try {
-    // Lazy import supabase – handle missing env gracefully
-    let supabase: any
+    // Lazy init – handle missing POSTGRES_URL gracefully, sama seperti sebelumnya
+    // saat klien Supabase gagal dibuat.
+    let db: ReturnType<typeof getDb>
     try {
-      const mod = await import('@/lib/supabaseClient')
-      supabase = mod.supabase
+      db = getDb()
     } catch (e: any) {
-      console.error('Supabase client init failed:', e.message)
+      console.error('Database init failed:', e.message)
       return NextResponse.json(
-        { error: 'Database not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local' },
+        { error: 'Database not configured. Set POSTGRES_URL in .env.local' },
         { status: 503 }
       )
     }
 
-    // Fetch categories from database
-    const { data, error } = await supabase
-      .from('equipment_categories')
-      .select('*')
-      .order('display_order', { ascending: true })
+    // Nama kolom diambil satu per satu agar hasilnya tetap snake_case seperti
+    // `select('*')` PostgREST — komponen pemanggil mengharapkan bentuk itu.
+    const data = await db
+      .select({
+        id: equipmentCategories.id,
+        name: equipmentCategories.name,
+        description: equipmentCategories.description,
+        display_order: equipmentCategories.displayOrder,
+        created_at: equipmentCategories.createdAt,
+      })
+      .from(equipmentCategories)
+      .orderBy(asc(equipmentCategories.displayOrder))
 
-    if (error) {
-      console.error('Error fetching categories:', error)
-      // Return fallback categories if database fails
-      const fallbackCategories = [
-        { id: '1', name: 'Tenda', description: 'Berbagai jenis tenda untuk camping' },
-        { id: '2', name: 'Sleeping Bag', description: 'Kantong tidur yang nyaman' },
-        { id: '3', name: 'Backpack', description: 'Tas ransel untuk hiking' },
-        { id: '4', name: 'Cooking Set', description: 'Peralatan memasak outdoor' }
-      ]
-      return NextResponse.json(fallbackCategories)
-    }
-
-    return NextResponse.json(data || [])
+    return NextResponse.json(data)
   } catch (error) {
     console.error('Categories API error:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch categories' },
-      { status: 500 }
-    )
+    // Return fallback categories if database fails
+    const fallbackCategories = [
+      { id: '1', name: 'Tenda', description: 'Berbagai jenis tenda untuk camping' },
+      { id: '2', name: 'Sleeping Bag', description: 'Kantong tidur yang nyaman' },
+      { id: '3', name: 'Backpack', description: 'Tas ransel untuk hiking' },
+      { id: '4', name: 'Cooking Set', description: 'Peralatan memasak outdoor' }
+    ]
+    return NextResponse.json(fallbackCategories)
   }
 }

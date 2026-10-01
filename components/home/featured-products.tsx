@@ -3,8 +3,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight, Sparkles, Flame, Star } from 'lucide-react'
-import { supabase } from "@/lib/supabaseClient"
-import React from 'react'
 import { motion } from 'framer-motion'
 import { useOptimizedFetch } from '@/lib/optimized-fetch'
 
@@ -22,41 +20,20 @@ interface Product {
 }
 
 export function FeaturedProducts() {
-  const { data: featuredResponse, loading, error, refetch } = useOptimizedFetch<{ success: boolean; data: Product[] }>('/api/products/featured-products', {
+  const { data: featuredResponse, loading } = useOptimizedFetch<{ success: boolean; data: Product[] }>('/api/products/featured-products', {
     cacheTime: 10 * 60 * 1000, // 10 minutes cache
     retryCount: 2,
     dedupe: true
   })
 
-  // Extract actual products data from response
+  // Extract actual products data from response.
+  //
+  // Sebelumnya ada fallback yang memanggil Supabase langsung dari browser kalau
+  // API gagal. Itu dihapus saat migrasi ke PostgreSQL lokal: `pg` tidak bisa
+  // jalan di browser, jadi API route adalah satu-satunya sumber data katalog.
   const featured = featuredResponse?.success ? featuredResponse.data : null
 
-  // Fallback to Supabase if API fails
-  const fetchFromSupabase = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('equipment')
-        .select(`*, equipment_categories ( name )`)
-        .order('created_at', { ascending: false }) 
-        .limit(15)
-
-      if (error) throw error
-      return data || []
-    } catch (supabaseError) {
-      console.error('Supabase fallback failed:', supabaseError)
-      return []
-    }
-  }
-
-  const [fallbackData, setFallbackData] = React.useState<Product[]>([])
-
-  React.useEffect(() => {
-    if (error && !loading) {
-      fetchFromSupabase().then(setFallbackData)
-    }
-  }, [error, loading])
-
-  const products = (Array.isArray(featured) ? featured : []) || (error ? fallbackData : [])
+  const products = Array.isArray(featured) ? featured : []
 
   if (loading) return (
     <section className="relative py-16 md:py-24 bg-[#FDFCFB] overflow-hidden">

@@ -10,7 +10,10 @@ next.user-config.*
 # Environment variables
 .env
 .env.*
+# Hanya file template yang boleh masuk repo — jangan tambahkan pengecualian
+# untuk .env.local / .env.production (keduanya berisi kredensial asli).
 !.env.local.example
+!.env.production.example
 
 # Common ignores
 node_modules
@@ -22,3 +25,10 @@ CLAUDE.md
 # Debug artifacts (mengandung data pelanggan — jangan pernah di-commit)
 .checkout-debug.log
 *.debug.log
+
+# Hasil dump database production (mengandung data pelanggan asli)
+dumps/
+*.dump.sql
+
+# Binari pihak ketiga untuk dev lokal (PostgREST) — diunduh, bukan di-commit
+tools/

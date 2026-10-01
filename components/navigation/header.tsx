@@ -489,7 +489,7 @@ export function Header() {
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.15 }}
                     style={{ top: "100%" }}
-                    className="absolute left-0 right-0 bg-[#F2EDE4] z-50 shadow-2xl border border-gray-200 rounded-2xl overflow-hidden mt-2 max-h-[75vh] flex flex-col"
+                    className="absolute left-0 right-0 bg-[#F2EDE4] z-50 shadow-2xl rounded-2xl overflow-hidden mt-2 max-h-[75vh] flex flex-col"
                   >
                     {/* Search Input Area */}
                     <div className="bg-white border-b border-gray-100 p-4 flex items-center justify-between flex-shrink-0">
