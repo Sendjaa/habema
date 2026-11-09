@@ -1,4 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { and, asc, eq, gte, inArray, lte } from 'drizzle-orm'
+import { getDb } from '@/lib/db'
+import {
+  bookingItems,
+  bookings,
+  branchInventory,
+  branches,
+  bundleItems,
+} from '@/lib/db/schema'
 
 // =====================================================================
 // GET /api/branches/availability?productId=<equipment_id>&startDate=<ISO>&endDate=<ISO>
@@ -15,7 +24,36 @@ import { NextRequest, NextResponse } from 'next/server'
 // yang sudah terkunci oleh booking aktif (pending/confirmed/picked_up/active)
 // pada rentang tanggal tersebut di cabang bersangkutan.
 // =====================================================================
+
+// Bentuk cabang snake_case seperti embed PostgREST
+// `branch:branches(id, name, ...)` — pemanggil mengharapkan kunci ini.
+function toLegacyBranch(b: typeof branches.$inferSelect) {
+  return {
+    id: b.id,
+    name: b.name,
+    address: b.address,
+    city: b.city,
+    phone: b.phone,
+    operational_hours: b.operationalHours,
+    map_url: b.mapUrl,
+    is_active: b.isActive,
+  }
+}
+
+const ACTIVE_BOOKING_STATUS = ['pending', 'confirmed', 'picked_up', 'active']
+
 export async function GET(request: NextRequest) {
+  let db: ReturnType<typeof getDb>
+  try {
+    db = getDb()
+  } catch (e: any) {
+    console.error('Database init failed:', e.message)
+    return NextResponse.json(
+      { error: 'Database not configured. Set POSTGRES_URL in .env.local' },
+      { status: 503 }
+    )
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const productId = searchParams.get('productId')
@@ -24,27 +62,23 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
 
-    const mod = await import('@/lib/supabaseAdmin')
-    const supabaseAdmin = mod.supabaseAdmin
-
     // ===== Mode paket grup =====
     if (bundleId && !productId) {
-      const { data: composition } = await supabaseAdmin
-        .from('bundle_items')
-        .select('quantity, equipment_id')
-        .eq('bundle_id', bundleId)
+      // Dulu `bundle_items.select('quantity, equipment_id').eq('bundle_id', ...)`.
+      const composition = await db.query.bundleItems.findMany({
+        columns: { equipmentId: true, quantity: true },
+        where: eq(bundleItems.bundleId, bundleId),
+      })
 
       // Belum ada komposisi: kembalikan semua cabang aktif (tanpa batas stok rinci).
       if (!composition || composition.length === 0) {
-        const { data: branches, error: brErr } = await supabaseAdmin
-          .from('branches')
-          .select('id, name, address, city, phone, operational_hours, map_url, is_active')
-          .eq('is_active', true)
-        if (brErr) {
-          return NextResponse.json({ error: brErr.message }, { status: 500 })
-        }
-        const list = (branches || []).map((b: any) => ({
-          ...b,
+        const allBranches = await db
+          .select()
+          .from(branches)
+          .where(eq(branches.isActive, true))
+          .orderBy(asc(branches.createdAt))
+        const list = (allBranches || []).map((b) => ({
+          ...toLegacyBranch(b),
           stock: 999,
           packageStock: 999,
           hasStockLink: false,
@@ -52,46 +86,57 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: true, data: list })
       }
 
-      const equipmentIds = composition.map((c: any) => c.equipment_id)
+      const equipmentIds = composition.map((c) => String(c.equipmentId))
       const needPerPackage = new Map<string, number>(
-        composition.map((c: any) => [String(c.equipment_id), Math.max(1, Number(c.quantity) || 1)]),
+        composition.map((c) => [String(c.equipmentId), Math.max(1, Number(c.quantity) || 1)]),
       )
 
-      const { data: invRows, error: invErr } = await supabaseAdmin
-        .from('branch_inventory')
-        .select('branch_id, equipment_id, quantity, branch:branches(id, name, address, city, phone, operational_hours, map_url, is_active)')
-        .in('equipment_id', equipmentIds)
-      if (invErr) {
-        return NextResponse.json({ error: invErr.message }, { status: 500 })
-      }
+      // Dulu `branch_inventory.select('branch_id, equipment_id, quantity,
+      // branch:branches(...)').in('equipment_id', equipmentIds)`.
+      const invRows = await db.query.branchInventory.findMany({
+        with: { branch: true },
+        where: inArray(branchInventory.equipmentId, equipmentIds),
+      })
 
       // Kelompokkan stok per cabang.
-      const perBranch = new Map<string, { branch: any; stockByEq: Map<string, number> }>()
-      for (const row of (invRows || []) as any[]) {
-        if (row.branch?.is_active === false) continue
-        const bid = String(row.branch_id)
+      const perBranch = new Map<string, { branch: ReturnType<typeof toLegacyBranch>; stockByEq: Map<string, number> }>()
+      for (const row of invRows || []) {
+        if (!row.branch || row.branch.isActive === false) continue
+        const bid = String(row.branchId)
         if (!perBranch.has(bid)) {
-          perBranch.set(bid, { branch: row.branch, stockByEq: new Map() })
+          perBranch.set(bid, { branch: toLegacyBranch(row.branch), stockByEq: new Map() })
         }
-        perBranch.get(bid)!.stockByEq.set(String(row.equipment_id), Number(row.quantity) || 0)
+        perBranch.get(bid)!.stockByEq.set(String(row.equipmentId), Number(row.quantity) || 0)
       }
 
       // Kurangi yang terkunci bila tanggal diberikan.
-      let locked = new Map<string, Map<string, number>>() // branch -> eq -> qty
+      const locked = new Map<string, Map<string, number>>() // branch -> eq -> qty
       if (startDate && endDate) {
-        const { data: overlapping } = await supabaseAdmin
-          .from('booking_items')
-          .select('quantity, equipment_id, bookings!inner(id, status, pickup_branch_id, start_date, end_date)')
-          .in('equipment_id', equipmentIds)
-          .in('bookings.status', ['pending', 'confirmed', 'picked_up', 'active'])
-          .lte('bookings.start_date', endDate)
-          .gte('bookings.end_date', startDate)
-        for (const row of (overlapping || []) as any[]) {
-          const bid = String(row.bookings?.pickup_branch_id || '')
+        // Dulu `booking_items.select('quantity, equipment_id,
+        // bookings!inner(...)').in('equipment_id', ...).in('bookings.status', ...)
+        // .lte('bookings.start_date', endDate).gte('bookings.end_date', startDate)`.
+        const overlapping = await db
+          .select({
+            quantity: bookingItems.quantity,
+            equipmentId: bookingItems.equipmentId,
+            pickupBranchId: bookings.pickupBranchId,
+          })
+          .from(bookingItems)
+          .innerJoin(bookings, eq(bookingItems.bookingId, bookings.id))
+          .where(
+            and(
+              inArray(bookingItems.equipmentId, equipmentIds),
+              inArray(bookings.status, ACTIVE_BOOKING_STATUS),
+              lte(bookings.startDate, new Date(endDate)),
+              gte(bookings.endDate, new Date(startDate)),
+            ),
+          )
+        for (const row of overlapping || []) {
+          const bid = String(row.pickupBranchId || '')
           if (!bid) continue
           if (!locked.has(bid)) locked.set(bid, new Map())
           const m = locked.get(bid)!
-          m.set(String(row.equipment_id), (m.get(String(row.equipment_id)) || 0) + Number(row.quantity || 0))
+          m.set(String(row.equipmentId), (m.get(String(row.equipmentId)) || 0) + Number(row.quantity || 0))
         }
       }
 
@@ -124,46 +169,42 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: result })
     }
 
-    let query = supabaseAdmin
-      .from('branch_inventory')
-      .select(`quantity, branch:branches(id, name, address, city, phone, operational_hours, map_url, is_active)`)
+    // Dulu `branch_inventory.select('quantity, branch:branches(...)')`
+    // + opsional `.eq('equipment_id', productId)`.
+    const invRows = await db.query.branchInventory.findMany({
+      with: { branch: true },
+      where: productId ? eq(branchInventory.equipmentId, productId) : undefined,
+    })
 
-    if (productId) {
-      query = query.eq('equipment_id', productId)
-    }
-
-    const { data, error } = await query
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    const availability = (data || [])
-      .filter((row: any) => row.branch?.is_active !== false)
-      .map((row: any) => ({ ...row.branch, stock: row.quantity }))
+    const availability = (invRows || [])
+      .filter((row) => row.branch && row.branch.isActive !== false)
+      .map((row) => ({ ...toLegacyBranch(row.branch!), stock: Number(row.quantity) || 0 }))
 
     // Jika tanggal diberikan, kurangi stok dengan unit yang sudah terkunci
     if (startDate && endDate && productId) {
       // Ambil semua booking aktif yang menyewa produk ini di tiap cabang
       // pada rentang tanggal yang overlap
-      const { data: overlappingBookings } = await supabaseAdmin
-        .from('booking_items')
-        .select(`
-          quantity,
-          booking_id,
-          bookings!inner (
-            id, status, pickup_branch_id, start_date, end_date
-          )
-        `)
-        .eq('equipment_id', productId)
-        .in('bookings.status', ['pending', 'confirmed', 'picked_up', 'active'])
-        .lte('bookings.start_date', endDate)
-        .gte('bookings.end_date', startDate)
+      const overlappingBookings = await db
+        .select({
+          quantity: bookingItems.quantity,
+          pickupBranchId: bookings.pickupBranchId,
+        })
+        .from(bookingItems)
+        .innerJoin(bookings, eq(bookingItems.bookingId, bookings.id))
+        .where(
+          and(
+            eq(bookingItems.equipmentId, productId),
+            inArray(bookings.status, ACTIVE_BOOKING_STATUS),
+            lte(bookings.startDate, new Date(endDate)),
+            gte(bookings.endDate, new Date(startDate)),
+          ),
+        )
 
       // Hitung total terkunci per branch
       const lockedPerBranch = new Map<string, number>()
       if (overlappingBookings) {
-        for (const row of overlappingBookings as any[]) {
-          const branchId = row.bookings?.pickup_branch_id
+        for (const row of overlappingBookings) {
+          const branchId = row.pickupBranchId
           if (branchId) {
             lockedPerBranch.set(
               branchId,
@@ -185,6 +226,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, data: availability })
   } catch (e: any) {
     console.error('[branches/availability] GET error:', e)
-    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: e?.message || 'Internal server error' }, { status: 500 })
   }
 }

@@ -15,17 +15,27 @@ export async function GET(
   // Coba produk jual (shop_products) terlebih dahulu
   const { data: shopProduct } = await supabase
     .from('shop_products')
-    .select('*, reviews(*)')
+    .select('*')
     .eq('id', id)
     .single();
 
   if (shopProduct) {
-    // Calculate average_rating and review_count
-    const reviews: any[] = shopProduct.reviews || [];
-    const average_rating = reviews.length
-      ? reviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) / reviews.length
+    // Ulasan produk toko disimpan di tabel reviews dengan shop_product_id.
+    // Balasan (komentar berawalan "@nama:") tidak dihitung sebagai ulasan.
+    const { data: shopReviews } = await supabase
+      .from('reviews')
+      .select('*')
+      .eq('shop_product_id', id)
+      .order('created_at', { ascending: false });
+
+    const validReviews = (shopReviews || []).filter(
+      (r: any) => !(r.comment || '').startsWith('@')
+    );
+    const average_rating = validReviews.length
+      ? validReviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) /
+        validReviews.length
       : 0;
-    const review_count = reviews.length;
+    const review_count = validReviews.length;
 
     return NextResponse.json({
       ...shopProduct,

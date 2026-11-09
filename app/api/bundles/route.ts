@@ -1,55 +1,50 @@
 import { NextResponse } from 'next/server'
+import { desc, eq } from 'drizzle-orm'
+import { getDb } from '@/lib/db'
+import { bundles } from '@/lib/db/schema'
 
 export async function GET() {
+  // Lazy init – handle missing POSTGRES_URL gracefully, sama seperti sebelumnya
+  // saat klien Supabase gagal dibuat.
+  let db: ReturnType<typeof getDb>
   try {
-    // Lazy import supabase – handle missing env gracefully
-    let supabase: any
-    try {
-      const mod = await import('@/lib/supabaseClient')
-      supabase = mod.supabase
-    } catch (e: any) {
-      console.error('Supabase client init failed:', e.message)
-      return NextResponse.json(
-        { error: 'Database not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local' },
-        { status: 503 }
-      )
-    }
+    db = getDb()
+  } catch (e: any) {
+    console.error('Database init failed:', e.message)
+    return NextResponse.json(
+      { error: 'Database not configured. Set POSTGRES_URL in .env.local' },
+      { status: 503 }
+    )
+  }
 
-    // Fetch all active bundles from database
-    console.log('Fetching bundles from database...')
-    const { data: bundles, error } = await supabase
-      .from('bundles')
-      .select('*')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-    
-    console.log('Bundles query result:', { bundles, error })
-    console.log('Number of bundles found:', bundles?.length || 0)
+  try {
+    // Dulu `supabase.from('bundles').select('*').eq('is_active', true)`.
+    const rows = await db
+      .select()
+      .from(bundles)
+      .where(eq(bundles.isActive, true))
+      .orderBy(desc(bundles.createdAt))
 
-    if (error) {
-      console.error('Error fetching bundles:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch bundles' },
-        { status: 500 }
-      )
-    }
+    console.log('Number of bundles found:', rows.length)
 
     // Transform database data to match frontend Package type
-    const transformedBundles = bundles?.map((bundle: any) => {
+    const transformedBundles = rows.map((bundle) => {
       // Generate accent colors based on target_audience
-      const getAccentColors = (targetAudience: string) => {
+      const getAccentColors = (targetAudience: string | null) => {
+        // Hanya tiga keluarga warna: forest, gold, stone.
         const colorMap = {
-          'Open Trip': { accent: '#d97706', accentLight: '#fef3c7' },
-          'Camping Keluarga': { accent: '#16a34a', accentLight: '#dcfce7' },
-          'Private Camp': { accent: '#0284c7', accentLight: '#e0f2fe' },
-          'Campervan': { accent: '#dc2626', accentLight: '#fee2e2' },
-          'Paket Rental Grup': { accent: '#0f766e', accentLight: '#ccfbf1' }
+          'Open Trip': { accent: '#0f766e', accentLight: '#f0fdfa' },
+          'Camping Keluarga': { accent: '#115e59', accentLight: '#ccfbf1' },
+          'Private Camp': { accent: '#0f766e', accentLight: '#f0fdfa' },
+          'Campervan': { accent: '#f97316', accentLight: '#ffedd5' },
+          'Paket Rental Grup': { accent: '#115e59', accentLight: '#ccfbf1' }
         }
-        return colorMap[targetAudience as keyof typeof colorMap] || { accent: '#6b7280', accentLight: '#f3f4f6' }
+        return colorMap[targetAudience as keyof typeof colorMap] || { accent: '#64748b', accentLight: '#f1f5f9' }
       }
 
       // Generate badge based on name/description
-      const getBadge = (name: string, description: string) => {
+      const getBadge = (name: string | null) => {
+        if (!name) return null
         if (name.includes('Sunrise')) return 'Terlaris'
         if (name.includes('Tracking')) return 'Petualangan'
         if (name.includes('Camping Keluarga')) return 'Rekomendasi'
@@ -69,14 +64,14 @@ export async function GET() {
       }
 
       // Format original price
-      const formatOriginalPrice = (originalPrice: number | null, bundlePrice: number) => {
+      const formatOriginalPrice = (originalPrice: number | null) => {
         if (originalPrice === null || originalPrice === 0) return null
         return originalPrice.toLocaleString('id-ID')
       }
 
       // Generate unit based on target audience
       // Paket Rental Grup: harga per paket per malam (dikalikan durasi saat booking).
-      const getUnit = (targetAudience: string, price: number) => {
+      const getUnit = (targetAudience: string | null, price: number) => {
         if (targetAudience === 'Open Trip') return '/ orang'
         if (targetAudience === 'Camping Keluarga') {
           if (price === 600000) return '/ 10 orang'
@@ -87,9 +82,7 @@ export async function GET() {
         return ''
       }
 
-      const getPaxLabel = (bundle: any): string | null => {
-        const min = bundle.pax_min != null ? Number(bundle.pax_min) : null
-        const max = bundle.pax_max != null ? Number(bundle.pax_max) : null
+      const getPaxLabel = (min: number | null, max: number | null): string | null => {
         if (min != null && max != null && Number.isFinite(min) && Number.isFinite(max)) {
           if (min === max) return `Untuk ${min} orang`
           return `Untuk ${min}–${max} orang`
@@ -98,7 +91,12 @@ export async function GET() {
         return null
       }
 
-      const colors = getAccentColors(bundle.target_audience)
+      // Kolom numeric datang dari driver pg sebagai STRING (bukan number
+      // seperti dari PostgREST) — normalisasi dulu supaya perbandingan
+      // (`price === 600000`) dan toLocaleString tetap benar.
+      const bundlePrice = bundle.bundlePrice != null ? Number(bundle.bundlePrice) : 0
+      const originalPrice = bundle.originalPrice != null ? Number(bundle.originalPrice) : null
+      const colors = getAccentColors(bundle.targetAudience)
 
       // includes/excludes dikelola dari admin; normalisasi ke string[].
       const toList = (v: unknown): string[] =>
@@ -106,25 +104,25 @@ export async function GET() {
 
       return {
         id: bundle.id,
-        category: bundle.target_audience || 'General',
+        category: bundle.targetAudience || 'General',
         label: bundle.name,
-        badge: getBadge(bundle.name, bundle.description),
-        price: formatPrice(bundle.bundle_price),
-        priceRaw: bundle.bundle_price,
-        priceOld: formatOriginalPrice(bundle.original_price, bundle.bundle_price),
-        unit: getUnit(bundle.target_audience, bundle.bundle_price),
-        paxMin: bundle.pax_min ?? null,
-        paxMax: bundle.pax_max ?? null,
-        paxLabel: getPaxLabel(bundle),
+        badge: getBadge(bundle.name),
+        price: formatPrice(bundlePrice || null),
+        priceRaw: bundle.bundlePrice != null ? bundlePrice : null,
+        priceOld: formatOriginalPrice(originalPrice),
+        unit: getUnit(bundle.targetAudience, bundlePrice),
+        paxMin: bundle.paxMin ?? null,
+        paxMax: bundle.paxMax ?? null,
+        paxLabel: getPaxLabel(bundle.paxMin, bundle.paxMax),
         bookableOnline: true,
         desc: bundle.description,
-        image: bundle.image_url || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80',
+        image: bundle.imageUrl || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80',
         include: toList(bundle.includes),
         exclude: toList(bundle.excludes),
         accent: colors.accent,
         accentLight: colors.accentLight,
       }
-    }) || []
+    })
 
     return NextResponse.json({
       success: true,

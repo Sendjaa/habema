@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     //
     // '4.5' dikirim sebagai string karena kolom numeric dipetakan Drizzle ke
     // string; mengirim number akan kehilangan presisi desimal.
-    const rows = await db.query.equipment.findMany({
+    let rows = await db.query.equipment.findMany({
       columns: {
         id: true,
         name: true,
@@ -59,11 +59,29 @@ export async function GET(request: Request) {
       with: { category: { columns: { name: true } } },
       where: and(
         eq(equipment.isActive, true),
-        or(gt(equipment.rentalCount, 10), gte(equipment.averageRating, '4.5'))
+        or(gt(equipment.rentalCount, 0), gte(equipment.averageRating, '4.0'))
       ),
       orderBy: [desc(equipment.rentalCount), desc(equipment.averageRating)],
       limit,
     })
+
+    if (rows.length === 0) {
+      rows = await db.query.equipment.findMany({
+        columns: {
+          id: true,
+          name: true,
+          description: true,
+          pricePerNight: true,
+          imageUrl: true,
+          rentalCount: true,
+          averageRating: true,
+        },
+        with: { category: { columns: { name: true } } },
+        where: eq(equipment.isActive, true),
+        orderBy: [desc(equipment.rentalCount), desc(equipment.averageRating)],
+        limit,
+      })
+    }
 
     // Transform data for frontend. Konversi Number() dipertahankan apa adanya:
     // kolom numeric datang sebagai string, dan `|| 4.9` bergantung pada 0

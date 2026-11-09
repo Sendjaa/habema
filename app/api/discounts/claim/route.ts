@@ -79,6 +79,8 @@ export async function POST(request: NextRequest) {
         max_discount: discount.max_discount,
         applies_to: discount.applies_to,
         target_id: discount.target_id,
+        voucher_type: discount.voucher_type || 'all',
+        conditions: discount.conditions || {},
       },
       ...(claimId ? { claim: { id: claimId, claimed_at: claimedAt } } : {}),
     })

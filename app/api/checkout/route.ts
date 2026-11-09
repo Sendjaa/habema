@@ -181,6 +181,41 @@ export async function POST(request: NextRequest) {
           Number(discountRow.usage_count) < Number(discountRow.usage_limit);
 
         if (active && hasQuota) {
+          // Validasi voucher_type: voucher khusus rental/opentrip tidak bisa dipakai di shop
+          const voucherType = discountRow.voucher_type || 'all';
+          if (voucherType === 'rental' || voucherType === 'opentrip') {
+            debugLog("REJECTED: voucher " + discountRow.code + " adalah " + voucherType + ", tidak bisa dipakai untuk belanja");
+            return NextResponse.json(
+              { error: `Voucher ${discountRow.code} hanya berlaku untuk ${voucherType}, tidak bisa dipakai untuk belanja produk` },
+              { status: 400 }
+            );
+          }
+          // Validasi conditions: first_time_only
+          if (discountRow.conditions && discountRow.conditions.first_time_only && userId) {
+            const { data: pastOrders } = await (supabaseAdmin as any)
+              .from("shop_orders")
+              .select("id")
+              .eq("user_id", userId)
+              .limit(1);
+            if (pastOrders && pastOrders.length > 0) {
+              debugLog("REJECTED: voucher " + discountRow.code + " hanya untuk pembeli baru");
+              return NextResponse.json(
+                { error: `Voucher ${discountRow.code} hanya berlaku untuk pembeli pertama kali` },
+                { status: 400 }
+              );
+            }
+          }
+          // Validasi conditions: must_invite_friends
+          if (discountRow.conditions && discountRow.conditions.must_invite_friends) {
+            const minFriends = discountRow.conditions.min_friends || 1;
+            // TODO: Cek apakah user sudah mengundang teman yang terdaftar
+            // Untuk sementara, reject jika condition ini ada
+            debugLog("REJECTED: voucher " + discountRow.code + " memerlukan undangan teman");
+            return NextResponse.json(
+              { error: `Voucher ${discountRow.code} memerlukan undangan minimal ${minFriends} teman yang terdaftar` },
+              { status: 400 }
+            );
+          }
           const amount = computeDiscount(discountRow, subtotal, items);
           if (amount > 0) {
             discountAmount = amount;
@@ -340,12 +375,30 @@ export async function POST(request: NextRequest) {
     }
 
     // Peta metode pembayaran → channel Midtrans (Snap hanya menampilkan channel ini)
+    // Daftar lengkap channel Midtrans: https://docs.midtrans.com/reference/snap-api#enabled-payments
     const ENABLED_PAYMENTS: Record<string, string[]> = {
+      // Virtual Accounts
       bca_va: ["bca_va"],
       bni_va: ["bni_va"],
       bri_va: ["bri_va"],
       mandiri_va: ["mandiri_va"],
+      permata_va: ["permata_va"],
+      bsi_va: ["bsi_va"],
+      cimb_va: ["cimb_va"],
+      maybank_va: ["maybank_va"],
+      // E-Wallets
       gopay: ["gopay"],
+      shopeepay: ["shopeepay"],
+      dana: ["dana"],
+      ovo: ["ovo"],
+      linkaja: ["linkaja"],
+      // Credit/Debit Cards (Midtrans handles card processing)
+      credit_card: ["credit_card"],
+      // QRIS
+      qris: ["qris"],
+      // Retail/Convenience Store
+      alfamart: ["alfamart"],
+      indomaret: ["indomaret"],
     };
 
     const transactionData = {
