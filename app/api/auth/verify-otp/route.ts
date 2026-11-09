@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyOTP } from '@/lib/otp';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { issueAdminDeviceTrust } from '@/lib/admin-trust';
 
 export async function POST(req: Request) {
   try {
@@ -88,6 +89,21 @@ export async function POST(req: Request) {
       await supabaseAdmin.auth.admin.updateUserById(sessionData.user.id, {
         email_confirm: true,
       });
+    }
+
+    // OTP login berhasil → catat perangkat ini supaya beberapa hari ke depan
+    // tidak perlu kode lagi. Hanya untuk admin: login pelanggan tidak boleh
+    // meninggalkan baris di tabel kepercayaan perangkat admin.
+    if (type === 'login' && sessionData.user) {
+      const { data: profile } = await supabaseAdmin
+        .from('users')
+        .select('is_vendor')
+        .eq('id', sessionData.user.id)
+        .maybeSingle();
+
+      if (profile?.is_vendor) {
+        await issueAdminDeviceTrust(sessionData.user.id, normalizedEmail);
+      }
     }
 
     const session = sessionData?.session;

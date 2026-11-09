@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Turnstile } from '@marsidev/react-turnstile';
 import OtpVerifyStep from '@/components/auth/otp-verify-step';
+import { DEV_LOCAL_AUTH } from '@/lib/dev-local-auth';
 export const dynamic = "force-dynamic"
 
 type Mode = 'login' | 'register' | 'forgot' | 'reset'
@@ -75,6 +76,9 @@ function AuthPageContent() {
   const [otpType, setOtpType] = useState<'register' | 'login'>('login')
   const [otpError, setOtpError] = useState<string | null>(null)
   const [otpLoading, setOtpLoading] = useState(false)
+  // Hanya terisi di dev lokal: kodenya tidak dikirim ke email, dan terminal
+  // dev server belum tentu terlihat. Server yang memutuskan, bukan halaman ini.
+  const [devOtp, setDevOtp] = useState<string | null>(null)
   
   const copy = COPY[mode]
 
@@ -97,7 +101,7 @@ function AuthPageContent() {
       return
     }
 
-    if (!turnstileToken) {
+    if (!DEV_LOCAL_AUTH && !turnstileToken) {
       setMessage({ type: 'error', text: 'Harap selesaikan verifikasi keamanan (Turnstile)!' })
       return
     }
@@ -105,6 +109,45 @@ function AuthPageContent() {
     setLoading(true)
     try {
       const type = mode === 'register' ? 'register' : 'login'
+
+      // Login pelanggan: kalau Turnstile lolos dan password benar, masuk
+      // langsung tanpa OTP. Jawaban otpRequired berarti risiko dinilai tinggi
+      // (atau token mati) dan kode lewat email tetap diminta seperti dulu.
+      if (type === 'login') {
+        const gateRes = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim(), password, turnstileToken }),
+        })
+
+        const gate = await gateRes.json()
+
+        if (!gateRes.ok) {
+          throw new Error(gate.error || 'Gagal memverifikasi login')
+        }
+
+        if (gate.success) {
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password,
+          })
+          if (signInError) throw new Error(signInError.message)
+
+          router.replace(redirectTo)
+          return
+        }
+
+        // Risiko tinggi: kode OTP sudah dikirim oleh rute ini, jadi jangan
+        // panggil /api/auth/send-otp lagi — token Turnstile-nya sudah terpakai.
+        if (gate.otpRequired) {
+          setOtpType('login')
+          setOtpStep(true)
+          setOtpError(null)
+          setTurnstileToken('')
+          return
+        }
+      }
+
       const body: Record<string, string> = {
         email: email.trim(),
         password,
@@ -132,6 +175,7 @@ function AuthPageContent() {
       setOtpStep(true)
       setOtpError(null)
       setTurnstileToken('')
+      setDevOtp(typeof data.devOtp === 'string' ? data.devOtp : null)
     } catch (err: any) {
       setMessage({
         type: 'error',
@@ -195,6 +239,7 @@ function AuthPageContent() {
       if (!res.ok) {
         throw new Error(data.error || 'Gagal mengirim ulang OTP')
       }
+      setDevOtp(typeof data.devOtp === 'string' ? data.devOtp : null)
     } catch (err: any) {
       setOtpError(err.message || 'Gagal mengirim ulang')
     }
@@ -203,6 +248,7 @@ function AuthPageContent() {
   const handleOtpBack = () => {
     setOtpStep(false)
     setOtpError(null)
+    setDevOtp(null)
   }
 
   // ─────────────────────────────────────────
@@ -441,6 +487,7 @@ function AuthPageContent() {
                 onBack={handleOtpBack}
                 loading={otpLoading}
                 error={otpError}
+                devCode={devOtp}
               />
             ) : (
             <form
@@ -540,8 +587,8 @@ function AuthPageContent() {
                 </>
               )}
 
-              {/* ── TURNSTILE (login & register only) ── */}
-              {!otpStep && (mode === 'login' || mode === 'register') && (
+              {/* ── TURNSTILE (login & register; dev lokal tidak bisa menyelesaikannya) ── */}
+              {!otpStep && !DEV_LOCAL_AUTH && (mode === 'login' || mode === 'register') && (
                 <div className="flex justify-center my-3">
                   <Turnstile
                     siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''}
@@ -551,6 +598,11 @@ function AuthPageContent() {
                     onError={() => setTurnstileToken('')}
                   />
                 </div>
+              )}
+              {!otpStep && DEV_LOCAL_AUTH && (mode === 'login' || mode === 'register') && (
+                <p className="text-center text-[11px] text-amber-600 my-2">
+                  Dev lokal (shim auth): Turnstile dilewati, kode OTP ditulis ke terminal.
+                </p>
               )}
 
               {/* Submit Button */}

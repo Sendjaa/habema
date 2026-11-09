@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { verifyTurnstile } from '@/lib/turnstile';
 import { generateOTP, storeOTP, invalidatePreviousOTPs } from '@/lib/otp';
-import { getResend } from '@/lib/resend';
+import { sendOtpEmail } from '@/lib/otp-email';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { DEV_LOCAL_AUTH } from '@/lib/dev-local-auth';
 
 export async function POST(req: Request) {
   try {
@@ -19,23 +20,28 @@ export async function POST(req: Request) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    if (turnstileToken) {
-      const isValidTurnstile = await verifyTurnstile(turnstileToken);
-      if (!isValidTurnstile) {
-        return NextResponse.json({ error: 'Verifikasi Turnstile gagal. Silakan coba lagi.' }, { status: 400 });
-      }
-    } else {
-      const { data: existing } = await supabaseAdmin
-        .from('otp_codes')
-        .select('id')
-        .eq('email', normalizedEmail)
-        .eq('type', type)
-        .eq('verified', false)
-        .order('created_at', { ascending: false })
-        .limit(1);
+    // Di dev lokal tidak ada Turnstile yang bisa diselesaikan dan kode OTP
+    // hanya ditulis ke terminal (lib/otp-email.ts), jadi pagar ini tidak
+    // berlaku — sisanya tetap sama seperti production.
+    if (!DEV_LOCAL_AUTH) {
+      if (turnstileToken) {
+        const isValidTurnstile = await verifyTurnstile(turnstileToken);
+        if (!isValidTurnstile) {
+          return NextResponse.json({ error: 'Verifikasi Turnstile gagal. Silakan coba lagi.' }, { status: 400 });
+        }
+      } else {
+        const { data: existing } = await supabaseAdmin
+          .from('otp_codes')
+          .select('id')
+          .eq('email', normalizedEmail)
+          .eq('type', type)
+          .eq('verified', false)
+          .order('created_at', { ascending: false })
+          .limit(1);
 
-      if (!existing || existing.length === 0) {
-        return NextResponse.json({ error: 'Sesi OTP tidak ditemukan. Silakan mulai dari awal.' }, { status: 400 });
+        if (!existing || existing.length === 0) {
+          return NextResponse.json({ error: 'Sesi OTP tidak ditemukan. Silakan mulai dari awal.' }, { status: 400 });
+        }
       }
     }
 
@@ -103,44 +109,13 @@ export async function POST(req: Request) {
     const otp = generateOTP();
     await storeOTP(normalizedEmail, otp, type);
 
-    try {
-      const resendClient = getResend();
-      const { data: emailData, error: emailError } = await resendClient.emails.send({
-        from: process.env.OTP_EMAIL_FROM || 'Habema <noreply@habema.com>',
-        to: normalizedEmail,
-        subject: type === 'register' ? 'Kode Verifikasi Email - Habema' : 'Kode Login - Habema',
-        html: `
-          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-            <h2 style="color: #065f46;">Habema</h2>
-            <p>${type === 'register' ? 'Terima kasih sudah mendaftar!' : 'Permintaan login diterima.'}</p>
-            <p>Gunakan kode OTP berikut untuk melanjutkan:</p>
-            <div style="background: #f5f5f4; padding: 16px; border-radius: 12px; text-align: center; font-size: 32px; letter-spacing: 8px; font-weight: bold; color: #065f46; margin: 16px 0;">
-              ${otp}
-            </div>
-            <p style="color: #78716c; font-size: 14px;">Kode berlaku selama 5 menit. Jangan bagikan kode ini kepada siapa pun.</p>
-            <hr style="border: none; border-top: 1px solid #e7e5e4; margin: 24px 0;">
-            <p style="color: #a8a29e; font-size: 12px;">Jika kamu tidak meminta kode ini, abaikan email ini.</p>
-          </div>
-        `,
-      });
-
-      if (emailError) {
-        console.error('Resend send error:', emailError);
-        const message = typeof emailError === 'object' && emailError !== null
-          ? (emailError as any).message || JSON.stringify(emailError)
-          : String(emailError);
-        return NextResponse.json({
-          error: `Gagal mengirim email: ${message}. Pastikan domain sudah diverifikasi di Resend Dashboard.`,
-        }, { status: 500 });
-      }
-    } catch (emailError: any) {
-      console.error('Failed to send OTP email:', emailError);
-      const message = emailError?.message || 'Gagal mengirim email OTP';
-      return NextResponse.json({ error: message + '. Cek Resend Dashboard untuk verifikasi domain.' }, { status: 500 });
-    }
+    await sendOtpEmail(normalizedEmail, otp, type);
 
     return NextResponse.json({
       success: true,
+      // Di dev kodenya tidak lewat email, dan terminal dev server belum tentu
+      // terlihat oleh yang menguji — jadi kodenya ikut dikembalikan.
+      ...(DEV_LOCAL_AUTH ? { devOtp: otp } : {}),
       message: type === 'register'
         ? 'Kode OTP telah dikirim ke email untuk verifikasi pendaftaran.'
         : 'Kode OTP telah dikirim ke email untuk verifikasi login.',
