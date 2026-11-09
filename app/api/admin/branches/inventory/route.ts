@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/admin-auth'
 
 // =====================================================================
 // GET /api/admin/branches/inventory — daftar stok per cabang
 // Query: ?branchId=<uuid>&equipmentId=<uuid>
 // =====================================================================
 export async function GET(request: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   try {
     let supabaseAdmin: any
     try {
@@ -53,6 +57,9 @@ export async function GET(request: NextRequest) {
 // Body: { branchId, equipmentId, quantity }
 // =====================================================================
 export async function PUT(request: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   try {
     let supabaseAdmin: any
     try {

@@ -1,22 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-async function getSupabase() {
-  try {
-    const mod = await import('@/lib/supabaseAdmin')
-    return mod.supabaseAdmin
-  } catch {
-    return null
-  }
-}
+import { requireAdmin } from '@/lib/admin-auth'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 // GET /api/admin/notifications?limit=30 — notifikasi terbaru + jumlah belum dibaca.
 // Via service-role karena admin perlu melihat notifikasi semua user.
 export async function GET(request: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   try {
-    const supabaseAdmin = await getSupabase()
-    if (!supabaseAdmin) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
-    }
     const { searchParams } = new URL(request.url)
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '30')))
 
@@ -44,11 +36,10 @@ export async function GET(request: NextRequest) {
 
 // PATCH /api/admin/notifications — { id? } tandai satu dibaca; tanpa id = semua.
 export async function PATCH(request: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   try {
-    const supabaseAdmin = await getSupabase()
-    if (!supabaseAdmin) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
-    }
     const body = await request.json().catch(() => ({}))
     const { id } = body as { id?: string }
 

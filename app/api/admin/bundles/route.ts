@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/admin-auth'
 
 async function getSupabase() {
   try {
@@ -17,6 +18,9 @@ function toStringArray(v: unknown): string[] {
 
 // GET /api/admin/bundles?search= — semua bundles termasuk nonaktif.
 export async function GET(request: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   try {
     const supabaseAdmin = await getSupabase()
     if (!supabaseAdmin) {
@@ -47,6 +51,9 @@ export async function GET(request: NextRequest) {
 
 // POST /api/admin/bundles — buat bundle baru.
 export async function POST(request: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   try {
     const supabaseAdmin = await getSupabase()
     if (!supabaseAdmin) {

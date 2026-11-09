@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog'
 import Image from 'next/image'
@@ -32,6 +33,7 @@ export function LoginModal({
             src="/images/hook-registered.png"
             alt=""
             fill
+            sizes="(max-width: 640px) 92vw, 448px"
             className="object-cover"
           />
         </div>
@@ -42,15 +44,15 @@ export function LoginModal({
               onOpenChange(false)
               router.push(`/login?redirectTo=${encodeURIComponent(redirectTo)}`)
             }}
-            className="w-full h-12 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-bold transition-colors"
+            className="w-full h-12 rounded-xl bg-forest hover:bg-forest-dark text-white text-sm font-bold transition-colors"
           >
             Masuk / Daftar
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
 
-          <p className="text-xs text-stone-400 mt-3">
+          <DialogDescription className="text-xs text-stone-400 mt-3">
             Dengan mendaftar, kamu mendapatkan akses ke fitur eksklusif dan penawaran spesial.
-          </p>
+          </DialogDescription>
 
           <div className="mt-4 pt-4 border-t border-stone-100">
             <button

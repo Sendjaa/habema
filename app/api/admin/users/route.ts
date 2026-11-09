@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/admin-auth'
 
 async function getAdmin() {
   try {
@@ -10,6 +11,9 @@ async function getAdmin() {
 }
 
 export async function GET(req: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   const supabaseAdmin = await getAdmin()
   if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
 

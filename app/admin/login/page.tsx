@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { DEV_LOCAL_AUTH } from "@/lib/dev-local-auth";
 import { Turnstile } from "@marsidev/react-turnstile";
 import OtpVerifyStep from "@/components/auth/otp-verify-step";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,9 @@ export default function AdminLogin() {
   const [otpStep, setOtpStep] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
   const [otpLoading, setOtpLoading] = useState(false);
+  // Hanya terisi di dev lokal: kodenya tidak dikirim ke email, dan terminal
+  // dev server belum tentu terlihat. Server yang memutuskan, bukan halaman ini.
+  const [devOtp, setDevOtp] = useState<string | null>(null);
 
   // Check if already logged in
   useEffect(() => {
@@ -71,7 +75,9 @@ export default function AdminLogin() {
         return;
       }
 
-      if (!turnstileToken) {
+      // Widget tidak dirender di dev lokal (tidak akan pernah selesai di
+      // sana), jadi syaratnya juga tidak boleh berlaku di sana.
+      if (!DEV_LOCAL_AUTH && !turnstileToken) {
         toast.error("Harap selesaikan verifikasi keamanan (Turnstile)!");
         setIsLoading(false);
         return;
@@ -83,25 +89,42 @@ export default function AdminLogin() {
         return;
       }
 
-      // Send OTP
-      const res = await fetch("/api/auth/send-otp", {
+      // Satu permintaan memutuskan semuanya: perangkat ini sudah pernah
+      // menyelesaikan OTP, atau kode baru perlu dikirim.
+      const res = await fetch("/api/auth/admin-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password, turnstileToken, type: "login" }),
+        body: JSON.stringify({ email: email.trim(), password, turnstileToken }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Gagal mengirim kode OTP");
+        throw new Error(data.error || "Gagal memproses login");
+      }
+
+      if (data.success && data.session) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+
+        if (sessionError) {
+          throw new Error(sessionError.message);
+        }
+
+        toast.success("Login berhasil");
+        router.push("/admin");
+        return;
       }
 
       setOtpStep(true);
       setOtpError(null);
       setTurnstileToken("");
+      setDevOtp(typeof data.devOtp === 'string' ? data.devOtp : null);
       toast.success("Kode OTP telah dikirim ke email admin");
     } catch (error: any) {
-      toast.error(error.message || "Gagal mengirim OTP");
+      toast.error(error.message || "Gagal memproses login");
     } finally {
       setIsLoading(false);
     }
@@ -215,6 +238,7 @@ export default function AdminLogin() {
         throw new Error(data.error || "Gagal mengirim ulang OTP");
       }
       toast.success("Kode OTP telah dikirim ulang");
+      setDevOtp(typeof data.devOtp === 'string' ? data.devOtp : null);
     } catch (err: any) {
       setOtpError(err.message || "Gagal mengirim ulang");
     }
@@ -223,6 +247,7 @@ export default function AdminLogin() {
   const handleOtpBack = () => {
     setOtpStep(false);
     setOtpError(null);
+    setDevOtp(null);
   };
 
   const handleResetPassword = async () => {
@@ -269,6 +294,7 @@ export default function AdminLogin() {
             onBack={handleOtpBack}
             loading={otpLoading}
             error={otpError}
+            devCode={devOtp}
           />
         </Card>
       </div>
@@ -329,15 +355,21 @@ export default function AdminLogin() {
           </div>
 
           {/* Turnstile */}
-          <div className="flex justify-center">
-            <Turnstile
-              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
-              options={{ size: 'normal' }}
-              onSuccess={(token) => setTurnstileToken(token)}
-              onExpire={() => setTurnstileToken("")}
-              onError={() => setTurnstileToken("")}
-            />
-          </div>
+          {DEV_LOCAL_AUTH ? (
+            <p className="text-center text-[11px] text-amber-600">
+              Dev lokal (shim auth): Turnstile dilewati, kode OTP ditulis ke terminal.
+            </p>
+          ) : (
+            <div className="flex justify-center">
+              <Turnstile
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
+                options={{ size: 'normal' }}
+                onSuccess={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken("")}
+                onError={() => setTurnstileToken("")}
+              />
+            </div>
+          )}
 
           <div className="space-y-3">
             <Button
@@ -345,7 +377,7 @@ export default function AdminLogin() {
               disabled={isLoading}
               className="w-full bg-slate-900 hover:bg-slate-800 text-white"
             >
-              {isLoading ? "Mengirim OTP..." : "Masuk"}
+              {isLoading ? "Memproses..." : DEV_LOCAL_AUTH ? "Lanjut" : "Kirim OTP"}
             </Button>
 
             <Button

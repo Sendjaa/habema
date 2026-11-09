@@ -7,12 +7,31 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { OptimizedImage } from '@/components/optimized-image'
-import { MarkdownEditor } from '@/components/ui/markdown-editor'
+import { QuillEditor } from '@/components/ui/quill-editor'
+import { activities as activityCatalog } from '@/lib/activities'
 import {
   Package, Plus, Search, Edit, Trash2, X, ImagePlus,
   ChevronDown, ChevronLeft, ChevronRight, Link,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { invalidateFeaturedProducts } from '@/lib/featured-cache'
+
+type VariantType = 'size' | 'color' | 'other'
+
+const VARIANT_TYPE_OPTIONS: { value: VariantType; label: string }[] = [
+  { value: 'size', label: 'Ukuran' },
+  { value: 'color', label: 'Warna' },
+  { value: 'other', label: 'Lainnya' },
+]
+
+interface ProductVariant {
+  name: string
+  type: VariantType
+  price?: string | number
+  stock: number
+  sku?: string
+  image_url?: string
+}
 
 interface ShopProduct {
   id: string
@@ -22,6 +41,7 @@ interface ShopProduct {
   original_price?: number
   stock: number
   category?: string
+  activities?: string[]
   image_url?: string
   gallery_urls: string[]
   brand?: string
@@ -38,6 +58,8 @@ interface ShopProduct {
   sold_count: number
   created_at: string
   updated_at: string
+  has_variants?: boolean
+  variants?: ProductVariant[]
 }
 
 type FormData = {
@@ -47,6 +69,7 @@ type FormData = {
   original_price: string
   stock: string
   category: string
+  activities: string[]
   brand: string
   rating_label: string
   image_url: string
@@ -58,13 +81,18 @@ type FormData = {
   is_available: boolean
   is_featured: boolean
   is_new: boolean
+  has_variants: boolean
+  variants: ProductVariant[]
 }
 
 const EMPTY_FORM: FormData = {
   name: '', description: '', price: '', original_price: '', stock: '0',
   category: '', brand: '', rating_label: '', image_url: '', gallery_urls: [],
+  activities: [],
   weight_kg: '', dimensions: '', material: '', specifications: '',
   is_available: true, is_featured: false, is_new: false,
+  has_variants: false,
+  variants: [],
 }
 
 const RATING_LABELS = ['Perlu Dioptimalkan', 'Sedang', 'Bagus', 'Bagus Sekali']
@@ -76,6 +104,19 @@ const stockInfo = (qty: number) => {
   if (qty === 0) return { cls: 'bg-red-50 text-red-800 border border-red-200', label: 'Habis' }
   if (qty <= 3) return { cls: 'bg-amber-50 text-amber-800 border border-amber-200', label: `${qty} unit` }
   return { cls: 'bg-emerald-50 text-emerald-800 border border-emerald-200', label: `${qty} unit` }
+}
+
+// Deskripsi dari editor Quill berupa HTML — tampilkan sebagai teks biasa di kartu admin.
+const plainText = (html?: string | null) => {
+  if (!html) return ''
+  return html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
@@ -116,6 +157,7 @@ function ProductModal({
         original_price: editingItem.original_price?.toString() ?? '',
         stock: editingItem.stock.toString(),
         category: editingItem.category ?? '',
+        activities: editingItem.activities ?? [],
         brand: editingItem.brand ?? '',
         rating_label: editingItem.rating_label ?? '',
         image_url: editingItem.image_url ?? '',
@@ -127,6 +169,15 @@ function ProductModal({
         is_available: editingItem.is_available,
         is_featured: editingItem.is_featured,
         is_new: editingItem.is_new,
+        has_variants: editingItem.has_variants ?? false,
+        variants: (editingItem.variants ?? []).map((v) => ({
+          name: v.name ?? '',
+          type: v.type ?? 'size',
+          price: v.price != null ? String(v.price) : '',
+          stock: Number(v.stock) || 0,
+          sku: v.sku ?? '',
+          image_url: v.image_url ?? '',
+        })),
       })
     } else {
       setForm(EMPTY_FORM)
@@ -137,12 +188,35 @@ function ProductModal({
 
   if (!open) return null
 
-  const set = (key: keyof FormData, val: string | boolean | string[]) => {
+  const set = <K extends keyof FormData>(key: K, val: FormData[K]) => {
     setForm((f) => ({ ...f, [key]: val }))
     setErrors((prev) => (prev[key as string] ? { ...prev, [key as string]: '' } : prev))
   }
 
   const weightNum = parseFloat(form.weight_kg) || 0
+
+  const addVariant = () => {
+    set('variants', [
+      ...form.variants,
+      { name: '', type: 'size', price: '', stock: 0, sku: '', image_url: '' },
+    ])
+  }
+
+  const updateVariant = (idx: number, variant: ProductVariant) => {
+    set('variants', form.variants.map((v, i) => (i === idx ? variant : v)))
+  }
+
+  const removeVariant = (idx: number) => {
+    set('variants', form.variants.filter((_, i) => i !== idx))
+  }
+
+  const uploadVariantImage = async (idx: number, file: File | null) => {
+    if (!file) return
+    const url = await uploadFile(file, `variant-${Date.now()}`)
+    if (url) {
+      updateVariant(idx, { ...form.variants[idx], image_url: url })
+    }
+  }
 
   const uploadFile = async (file: File, path: string): Promise<string | null> => {
     setUploading(true)
@@ -207,11 +281,28 @@ function ProductModal({
     const errs: Record<string, string> = {}
     if (!form.name.trim()) errs.name = 'Nama produk wajib diisi'
     if (!form.price.trim() || parseFloat(form.price) <= 0) errs.price = 'Harga jual wajib diisi'
-    if (form.stock === '' || form.stock == null) errs.stock = 'Stok wajib diisi'
+    if (!form.has_variants && (form.stock === '' || form.stock == null)) errs.stock = 'Stok wajib diisi'
     if (!form.category.trim()) errs.category = 'Kategori wajib diisi'
     if (!form.brand.trim()) errs.brand = 'Brand wajib diisi'
     if (!form.rating_label.trim()) errs.rating_label = 'Penilaian wajib dipilih'
     if (mediaImages.length === 0) errs.media = 'Minimal tambahkan 1 gambar produk'
+
+    if (form.has_variants) {
+      if (form.variants.length === 0) {
+        errs.variants = 'Minimal tambahkan 1 varian'
+      } else if (form.variants.some((v) => !v.name.trim())) {
+        errs.variants = 'Nama varian wajib diisi'
+      } else if (form.variants.some((v) => v.price !== '' && v.price != null && parseFloat(String(v.price)) < 0)) {
+        errs.variants = 'Harga varian tidak boleh negatif'
+      } else if (form.variants.some((v) => v.stock < 0)) {
+        errs.variants = 'Stok varian tidak boleh negatif'
+      } else {
+        const keys = form.variants.map((v) => `${v.type}::${v.name.trim().toLowerCase()}`)
+        if (new Set(keys).size !== keys.length) {
+          errs.variants = 'Terdapat nama varian duplikat pada tipe yang sama'
+        }
+      }
+    }
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs)
@@ -226,7 +317,6 @@ function ProductModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 sm:pt-12 bg-stone-900/50 backdrop-blur-sm overflow-y-auto"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <Card className="w-full max-w-3xl bg-white rounded-2xl border border-stone-200 shadow-2xl overflow-hidden my-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
@@ -365,6 +455,48 @@ function ProductModal({
                   </label>
                 </div>
 
+                {/* Kegiatan — menentukan produk ini muncul di halaman /kegiatan/<slug> */}
+                <div>
+                  <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <span className="w-1 h-3.5 rounded-full bg-emerald-600" />
+                    Kegiatan
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {activityCatalog.map((activity) => {
+                      const checked = form.activities.includes(activity.slug)
+                      return (
+                        <label
+                          key={activity.slug}
+                          className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2.5 text-xs transition-colors ${
+                            checked
+                              ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                              : 'border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) =>
+                              set(
+                                'activities',
+                                e.target.checked
+                                  ? [...form.activities, activity.slug]
+                                  : form.activities.filter((slug) => slug !== activity.slug),
+                              )
+                            }
+                            className="mt-0.5 rounded border-stone-300 text-emerald-700 focus:ring-emerald-500"
+                          />
+                          <span className="font-medium leading-tight">{activity.label}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                  <p className="mt-2 text-[11px] text-stone-400">
+                    Pilih kegiatan yang biasa memakai produk ini. Produk tanpa pilihan
+                    tetap dijual di katalog toko, hanya tidak ikut muncul di halaman kegiatan.
+                  </p>
+                </div>
+
                 <div className="space-y-1.5">
                   <FieldLabel required>Penilaian</FieldLabel>
                   <div className="flex flex-wrap gap-2">
@@ -388,10 +520,11 @@ function ProductModal({
 
                 <div className="space-y-1.5">
                   <FieldLabel>Deskripsi</FieldLabel>
-                  <MarkdownEditor
+                  <QuillEditor
                     value={form.description}
                     onChange={(v) => set('description', v)}
-                    placeholder="Deskripsi produk... (mendukung Markdown)"
+                    placeholder="Deskripsi produk..."
+                    className="border border-stone-200 rounded-lg bg-stone-50"
                   />
                 </div>
               </div>
@@ -477,6 +610,165 @@ function ProductModal({
                   rows={3}
                   className="w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-stone-50 focus:border-emerald-500 focus:bg-white outline-none transition-colors resize-none font-mono"
                 />
+              </div>
+            </div>
+
+            {/* Varian */}
+            <div>
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span className="w-1 h-3.5 rounded-full bg-emerald-600" />
+                Varian Produk
+              </h3>
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.has_variants}
+                    onChange={(e) => set('has_variants', e.target.checked)}
+                    className="rounded border-stone-300 text-emerald-700 focus:ring-emerald-500"
+                  />
+                  Produk memiliki varian (ukuran, warna, dll. — stok &amp; gambar bisa berbeda)
+                </label>
+
+                {form.has_variants && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <FieldLabel required>Daftar Varian</FieldLabel>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addVariant}
+                        className="h-8 px-3 text-xs gap-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Tambah Varian
+                      </Button>
+                    </div>
+
+                    {form.variants.length === 0 && (
+                      <p className="text-sm text-stone-400 text-center py-4 border-2 border-dashed border-stone-200 rounded-lg">
+                        Belum ada varian. Klik &quot;Tambah Varian&quot; untuk memulai.
+                      </p>
+                    )}
+
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {form.variants.map((variant, idx) => (
+                        <div
+                          key={idx}
+                          className="flex flex-wrap items-end gap-2 p-3 border border-stone-200 rounded-lg bg-stone-50"
+                        >
+                          <div className="flex-1 min-w-28 space-y-1">
+                            <label className="text-[10px] text-stone-400 font-medium uppercase tracking-wider">Nama Varian</label>
+                            <Input
+                              value={variant.name}
+                              onChange={(e) => updateVariant(idx, { ...variant, name: e.target.value })}
+                              placeholder="cth. XL / Merah"
+                              className="h-9 text-sm rounded-lg border-stone-200 bg-white focus:border-emerald-500"
+                            />
+                          </div>
+
+                          <div className="w-28 space-y-1">
+                            <label className="text-[10px] text-stone-400 font-medium uppercase tracking-wider">Tipe</label>
+                            <select
+                              value={variant.type}
+                              onChange={(e) => updateVariant(idx, { ...variant, type: e.target.value as VariantType })}
+                              className="w-full h-9 px-2 text-sm border border-stone-200 rounded-lg bg-white focus:border-emerald-500 outline-none"
+                            >
+                              {VARIANT_TYPE_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="w-28 space-y-1">
+                            <label className="text-[10px] text-stone-400 font-medium uppercase tracking-wider">Harga</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              value={variant.price ?? ''}
+                              onChange={(e) => updateVariant(idx, { ...variant, price: e.target.value })}
+                              placeholder={form.price || '0'}
+                              className="h-9 text-sm rounded-lg border-stone-200 bg-white focus:border-emerald-500"
+                            />
+                          </div>
+
+                          <div className="w-20 space-y-1">
+                            <label className="text-[10px] text-stone-400 font-medium uppercase tracking-wider">Stok</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              value={variant.stock.toString()}
+                              onChange={(e) => updateVariant(idx, { ...variant, stock: parseInt(e.target.value) || 0 })}
+                              placeholder="0"
+                              className="h-9 text-sm rounded-lg border-stone-200 bg-white focus:border-emerald-500"
+                            />
+                          </div>
+
+                          <div className="w-28 space-y-1">
+                            <label className="text-[10px] text-stone-400 font-medium uppercase tracking-wider">SKU</label>
+                            <Input
+                              value={variant.sku ?? ''}
+                              onChange={(e) => updateVariant(idx, { ...variant, sku: e.target.value })}
+                              placeholder="Opsional"
+                              className="h-9 text-sm rounded-lg border-stone-200 bg-white focus:border-emerald-500"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] text-stone-400 font-medium uppercase tracking-wider">Gambar</label>
+                            <div className="flex items-center gap-1.5">
+                              <label className="relative w-9 h-9 rounded-lg border border-dashed border-stone-300 bg-white flex items-center justify-center cursor-pointer hover:border-emerald-400 overflow-hidden">
+                                {variant.image_url ? (
+                                  <OptimizedImage
+                                    src={variant.image_url}
+                                    alt={variant.name || `Varian ${idx + 1}`}
+                                    className="w-full h-full object-cover"
+                                    width={36}
+                                    height={36}
+                                  />
+                                ) : (
+                                  <ImagePlus className="w-3.5 h-3.5 text-stone-400" />
+                                )}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => uploadVariantImage(idx, e.target.files?.[0] ?? null)}
+                                  className="hidden"
+                                />
+                              </label>
+                              {variant.image_url && (
+                                <button
+                                  type="button"
+                                  onClick={() => updateVariant(idx, { ...variant, image_url: '' })}
+                                  className="w-6 h-6 rounded-md text-stone-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center"
+                                  title="Hapus gambar varian"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeVariant(idx)}
+                            className="h-9 w-9 p-0 text-red-500 hover:bg-red-50 rounded-lg"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <FieldError>{errors.variants}</FieldError>
+                    <p className="text-[11px] text-stone-400">
+                      Total stok semua varian: {form.variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0)} unit.
+                      Harga varian kosong = memakai harga jual produk.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -668,7 +960,7 @@ function ProductCard({
         </h3>
 
         {item.description && (
-          <p className="text-xs text-stone-400 mb-3 leading-relaxed line-clamp-2">{item.description}</p>
+          <p className="text-xs text-stone-400 mb-3 leading-relaxed line-clamp-2">{plainText(item.description)}</p>
         )}
 
         {item.rating_label && (
@@ -757,13 +1049,31 @@ export default function CatalogShopManagement() {
         }
       }
 
+      // Calculate total stock from variants if has_variants is enabled
+      const cleanedVariants = form.has_variants
+        ? form.variants.map((v) => ({
+            name: v.name.trim(),
+            type: v.type,
+            price:
+              v.price !== '' && v.price != null && !Number.isNaN(parseFloat(String(v.price)))
+                ? parseFloat(String(v.price))
+                : null,
+            stock: Math.max(0, Number(v.stock) || 0),
+            sku: v.sku?.trim() || null,
+            image_url: v.image_url || null,
+          }))
+        : []
+
+      const totalVariantStock = cleanedVariants.reduce((sum, v) => sum + v.stock, 0)
+
       const payload: Record<string, any> = {
         name: form.name.trim(),
         description: form.description.trim() || null,
         price: parseFloat(form.price) || 0,
         original_price: form.original_price ? parseFloat(form.original_price) : null,
-        stock: parseInt(form.stock) || 0,
+        stock: form.has_variants ? totalVariantStock : (parseInt(form.stock) || 0),
         category: form.category.trim() || null,
+        activities: form.activities,
         image_url: form.image_url.trim() || null,
         gallery_urls: form.gallery_urls,
         brand: form.brand.trim() || null,
@@ -775,6 +1085,8 @@ export default function CatalogShopManagement() {
         is_available: form.is_available,
         is_featured: form.is_featured,
         is_new: form.is_new,
+        has_variants: form.has_variants,
+        variants: form.has_variants ? cleanedVariants : [],
       }
 
       let res: Response
@@ -794,8 +1106,10 @@ export default function CatalogShopManagement() {
 
       const json = await res.json()
       if (!json.success) throw new Error(json.error)
+      invalidateFeaturedProducts()
 
       toast.success(editingItem ? 'Produk berhasil diperbarui!' : 'Produk berhasil ditambahkan!')
+      if (json.warning) toast.warning(json.warning)
       setShowModal(false)
       setEditingItem(null)
       fetchProducts()
@@ -817,6 +1131,7 @@ export default function CatalogShopManagement() {
       const res = await fetch(`/api/admin/catalog-shop?id=${id}`, { method: 'DELETE' })
       const json = await res.json()
       if (!json.success) throw new Error(json.error)
+      invalidateFeaturedProducts()
       toast.success('Produk berhasil dihapus!')
       fetchProducts()
     } catch (err: any) {
@@ -840,7 +1155,7 @@ export default function CatalogShopManagement() {
     const matchSearch =
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.category ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.description ?? '').toLowerCase().includes(searchTerm.toLowerCase())
+      plainText(item.description).toLowerCase().includes(searchTerm.toLowerCase())
     const matchCat = !categoryFilter || item.category === categoryFilter
     return matchSearch && matchCat
   })

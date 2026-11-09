@@ -11,6 +11,14 @@ interface OtpVerifyStepProps {
   onBack: () => void
   loading: boolean
   error?: string | null
+  /**
+   * Kode yang seharusnya di email. Diisi hanya oleh pemanggil yang berjalan
+   * dengan shim auth lokal (lihat lib/dev-local-auth.ts): kodenya dicetak ke
+   * terminal dev server, dan kalau server itu tidak terlihat di layar —
+   * misalnya dijalankan sebagai background task — pengembang tidak punya
+   * cara lain untuk mengetahuinya.
+   */
+  devCode?: string | null
 }
 
 export default function OtpVerifyStep({
@@ -21,6 +29,7 @@ export default function OtpVerifyStep({
   onBack,
   loading,
   error,
+  devCode,
 }: OtpVerifyStepProps) {
   const [otp, setOtp] = useState('')
   const [resendCooldown, setResendCooldown] = useState(0)
@@ -69,7 +78,7 @@ export default function OtpVerifyStep({
   return (
     <div>
       <div className="flex items-center gap-2 mb-7">
-        <div className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+        <div className="w-2.5 h-2.5 rounded-full bg-forest" />
         <span
           className="text-lg text-stone-900 tracking-tight"
           style={{ fontFamily: "'Fraunces', serif" }}
@@ -93,6 +102,13 @@ export default function OtpVerifyStep({
       <p className="text-sm text-stone-500 mb-4">
         Email: <span className="font-medium text-stone-700">{maskedEmail}</span>
       </p>
+
+      {devCode && (
+        <div className="mb-4 p-3 rounded-lg text-center text-sm bg-amber-50 text-amber-800 border border-amber-200">
+          Dev lokal — kode ini ada di terminal dev server, jadi ditulis di sini:
+          <span className="ml-1 font-mono font-bold tracking-[0.3em]">{devCode}</span>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 p-3 rounded-lg text-sm bg-red-50 text-red-700 border border-red-200">
@@ -119,7 +135,7 @@ export default function OtpVerifyStep({
         <button
           type="submit"
           disabled={otp.length !== 6 || loading}
-          className="w-full h-11 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white text-sm transition-colors"
+          className="w-full h-11 rounded-xl bg-forest hover:bg-forest-dark disabled:opacity-60 text-white text-sm transition-colors"
           style={{ fontFamily: "'Fraunces', serif", fontSize: '15px' }}
         >
           {loading ? 'Memverifikasi...' : 'Verifikasi'}
@@ -130,7 +146,7 @@ export default function OtpVerifyStep({
             type="button"
             onClick={handleResend}
             disabled={resendCooldown > 0 || resending}
-            className="text-sm text-emerald-700 hover:text-emerald-800 font-medium disabled:text-stone-300 disabled:cursor-not-allowed transition-colors"
+            className="text-sm text-forest hover:text-forest-dark font-medium disabled:text-stone-300 disabled:cursor-not-allowed transition-colors"
           >
             {resending
               ? 'Mengirim ulang...'

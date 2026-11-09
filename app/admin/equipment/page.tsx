@@ -12,7 +12,9 @@ import {
   ChevronDown, GripVertical, ImagePlus, Upload, Link, Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { invalidateFeaturedProducts } from '@/lib/featured-cache'
 import { OptimizedImage } from '@/components/optimized-image'
+import { activities as activityCatalog } from '@/lib/activities'
 
 interface Equipment {
   id: string
@@ -26,6 +28,7 @@ interface Equipment {
   stock_quantity: number
   is_available: boolean
   is_active?: boolean
+  activities?: string[]
   image_url?: string
   gallery_urls?: string[]
   brand?: string
@@ -61,6 +64,7 @@ type FormData = {
   stock_quantity: string
   is_available: boolean
   is_active: boolean
+  activities: string[]
   image_url: string
   gallery_urls: string[]
   capacity: string
@@ -80,6 +84,7 @@ const EMPTY_FORM: FormData = {
   name: '', category_id: '', brand: '', description: '', detailed_description: '',
   price_per_day: '', price_per_night: '', stock_quantity: '',
   is_available: true, is_active: true,
+  activities: [],
   image_url: '', gallery_urls: [],
   capacity: '', weight_kg: '', dimensions: '', material: '', weather_rating: '',
   specifications: '',
@@ -134,6 +139,7 @@ function EquipmentModal({
         stock_quantity: editingItem.stock_quantity.toString(),
         is_available: editingItem.is_available,
         is_active: editingItem.is_active ?? true,
+        activities: editingItem.activities ?? [],
         image_url: editingItem.image_url ?? '',
         gallery_urls: editingItem.gallery_urls ?? [],
         capacity: editingItem.capacity ?? '',
@@ -313,6 +319,48 @@ function EquipmentModal({
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Kegiatan — sumber tile filter homepage & katalog */}
+            <div>
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span className="w-1 h-3.5 rounded-full bg-emerald-600" />
+                Kegiatan
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {activityCatalog.map((activity) => {
+                  const checked = form.activities.includes(activity.slug)
+                  return (
+                    <label
+                      key={activity.slug}
+                      className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2.5 text-xs transition-colors ${
+                        checked
+                          ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                          : 'border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) =>
+                          set(
+                            'activities',
+                            e.target.checked
+                              ? [...form.activities, activity.slug]
+                              : form.activities.filter((slug) => slug !== activity.slug),
+                          )
+                        }
+                        className="mt-0.5 rounded border-stone-300 text-emerald-700 focus:ring-emerald-500"
+                      />
+                      <span className="font-medium leading-tight">{activity.label}</span>
+                    </label>
+                  )
+                })}
+              </div>
+              <p className="mt-2 text-[11px] text-stone-400">
+                Pilih kegiatan yang memakai alat ini. Tile kegiatan di homepage
+                hanya tampil bila ada alat yang ditandai.
+              </p>
             </div>
 
             {/* ── Harga & Stok ── */}
@@ -837,6 +885,7 @@ export default function EquipmentManagement() {
         stock_quantity: parseInt(form.stock_quantity) || 0,
         is_available: form.is_available,
         is_active: form.is_active,
+        activities: form.activities,
         image_url: form.image_url.trim() || null,
         gallery_urls: form.gallery_urls.length > 0 ? form.gallery_urls : [],
         capacity: form.capacity.trim() || null,
@@ -869,6 +918,7 @@ export default function EquipmentManagement() {
 
       const json = await res.json()
       if (!json.success) throw new Error(json.error)
+      invalidateFeaturedProducts()
       toast.success(editingItem ? 'Produk berhasil diperbarui!' : 'Produk berhasil ditambahkan!')
 
       setShowModal(false)
@@ -892,6 +942,7 @@ export default function EquipmentManagement() {
       const res = await fetch(`/api/admin/equipment?id=${id}`, { method: 'DELETE' })
       const json = await res.json()
       if (!json.success) throw new Error(json.error)
+      invalidateFeaturedProducts()
       toast.success('Produk berhasil dihapus!')
       fetchEquipment()
     } catch (err: any) {

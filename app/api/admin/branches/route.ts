@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/admin-auth'
 
 // =====================================================================
 // GET /api/admin/branches — daftar semua cabang (termasuk non-aktif)
 // =====================================================================
 export async function GET(_request: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   try {
     let supabaseAdmin: any
     try {
@@ -33,6 +37,9 @@ export async function GET(_request: NextRequest) {
 // POST /api/admin/branches — buat cabang baru
 // =====================================================================
 export async function POST(request: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   try {
     let supabaseAdmin: any
     try {

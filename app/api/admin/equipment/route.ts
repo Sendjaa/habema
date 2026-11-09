@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/admin-auth'
 
 async function getAdmin() {
   try {
@@ -10,6 +11,9 @@ async function getAdmin() {
 }
 
 export async function GET(req: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   const supabaseAdmin = await getAdmin()
   if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
 
@@ -44,6 +48,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   const supabaseAdmin = await getAdmin()
   if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
 
@@ -61,6 +68,7 @@ export async function POST(req: NextRequest) {
       stock_quantity: parseInt(body.stock_quantity) || 0,
       is_available: body.is_available ?? true,
       is_active: body.is_active ?? true,
+      activities: Array.isArray(body.activities) ? body.activities : [],
       image_url: body.image_url?.trim() || null,
       gallery_urls: Array.isArray(body.gallery_urls) ? body.gallery_urls : [],
       capacity: body.capacity?.trim() || null,
@@ -76,7 +84,14 @@ export async function POST(req: NextRequest) {
       promo_end_date: body.promo_end_date || null,
     }
 
-    const { data, error } = await supabaseAdmin.from('equipment').insert(payload as any).select().single()
+    let { data, error } = await supabaseAdmin.from('equipment').insert(payload as any).select().single()
+
+    // Environment yang belum menjalankan migrasi 20261104000000 belum punya
+    // kolom activities. Jangan gagalkan seluruh simpan produk karenanya.
+    if (error && /activities/i.test(error.message)) {
+      delete payload.activities
+      ;({ data, error } = await supabaseAdmin.from('equipment').insert(payload as any).select().single())
+    }
 
     if (error) throw error
 
@@ -88,6 +103,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   const supabaseAdmin = await getAdmin()
   if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
 
@@ -108,6 +126,7 @@ export async function PUT(req: NextRequest) {
     if (fields.stock_quantity !== undefined) payload.stock_quantity = parseInt(fields.stock_quantity) || 0
     if (fields.is_available !== undefined) payload.is_available = fields.is_available
     if (fields.is_active !== undefined) payload.is_active = fields.is_active
+    if (fields.activities !== undefined) payload.activities = Array.isArray(fields.activities) ? fields.activities : []
     if (fields.image_url !== undefined) payload.image_url = fields.image_url?.trim() || null
     if (fields.gallery_urls !== undefined) payload.gallery_urls = Array.isArray(fields.gallery_urls) ? fields.gallery_urls : []
     if (fields.capacity !== undefined) payload.capacity = fields.capacity?.trim() || null
@@ -122,7 +141,12 @@ export async function PUT(req: NextRequest) {
     if (fields.promo_start_date !== undefined) payload.promo_start_date = fields.promo_start_date || null
     if (fields.promo_end_date !== undefined) payload.promo_end_date = fields.promo_end_date || null
 
-    const { data, error } = await supabaseAdmin.from('equipment').update(payload as any).eq('id', id).select().single()
+    let { data, error } = await supabaseAdmin.from('equipment').update(payload as any).eq('id', id).select().single()
+
+    if (error && payload.activities !== undefined && /activities/i.test(error.message)) {
+      delete payload.activities
+      ;({ data, error } = await supabaseAdmin.from('equipment').update(payload as any).eq('id', id).select().single())
+    }
 
     if (error) throw error
 
@@ -134,6 +158,9 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   const supabaseAdmin = await getAdmin()
   if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
 

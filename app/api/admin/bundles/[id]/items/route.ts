@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/admin-auth'
 
 async function getSupabase() {
   try {
@@ -14,6 +15,9 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   try {
     const { id } = await params
     const supabaseAdmin = await getSupabase()
@@ -40,6 +44,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   try {
     const { id } = await params
     const supabaseAdmin = await getSupabase()

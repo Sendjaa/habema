@@ -140,6 +140,7 @@ export default function AdminDashboard() {
       } catch (apiErr: any) {
         // If the dashboard API fails due to auth, sign out
         if (apiErr?.message?.includes('permission') || apiErr?.message?.includes('denied')) {
+          await fetch("/api/auth/admin-trust", { method: "DELETE" }).catch(() => null)
           await supabase.auth.signOut()
           router.replace("/admin/login")
           return

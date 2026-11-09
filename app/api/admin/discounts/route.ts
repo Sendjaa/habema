@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/admin-auth'
 
 async function getAdmin() {
   try {
@@ -10,6 +11,9 @@ async function getAdmin() {
 }
 
 export async function GET() {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   const supabaseAdmin = await getAdmin()
   if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
 
@@ -27,6 +31,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   const supabaseAdmin = await getAdmin()
   if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
 
@@ -65,6 +72,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   const supabaseAdmin = await getAdmin()
   if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
 
@@ -105,6 +115,9 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
   const supabaseAdmin = await getAdmin()
   if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
 
