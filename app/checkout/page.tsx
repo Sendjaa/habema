@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ShoppingBag, MapPin, Tag, Loader2, Check, Truck } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ShoppingBag, MapPin, Tag, Loader2, Check, Truck, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useCartStore } from "@/lib/store";
 import { LoginModal } from "@/components/auth/login-modal";
@@ -41,7 +42,14 @@ interface FormValues {
   phone: string;
   email: string;
   address: string;
-  city: string;
+  province: string;
+  province_name: string;
+  regency: string;
+  regency_name: string;
+  district: string;
+  district_name: string;
+  village: string;
+  village_name: string;
   postal_code: string;
   note: string;
   payment_method: string;
@@ -55,12 +63,24 @@ interface ShippingData {
   destinationLabel?: string;
 }
 
+interface AddressOption {
+  code: string;
+  name: string;
+}
+
 const EMPTY_FORM: FormValues = {
   customer_name: "",
   phone: "",
   email: "",
   address: "",
-  city: "",
+  province: "",
+  province_name: "",
+  regency: "",
+  regency_name: "",
+  district: "",
+  district_name: "",
+  village: "",
+  village_name: "",
   postal_code: "",
   note: "",
   payment_method: "bca_va",
@@ -101,6 +121,16 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [shippingData, setShippingData] = useState<ShippingData | null>(null);
 
+  // Address cascading dropdown state
+  const [provinces, setProvinces] = useState<AddressOption[]>([]);
+  const [regencies, setRegencies] = useState<AddressOption[]>([]);
+  const [districts, setDistricts] = useState<AddressOption[]>([]);
+  const [villages, setVillages] = useState<AddressOption[]>([]);
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingRegencies, setLoadingRegencies] = useState(false);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+  const [loadingVillages, setLoadingVillages] = useState(false);
+
   useEffect(() => {
     try {
       window.localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(form));
@@ -120,6 +150,88 @@ export default function CheckoutPage() {
       }
     })();
   }, []);
+
+  // Load provinces on mount
+  useEffect(() => {
+    const loadProvinces = async () => {
+      setLoadingProvinces(true);
+      try {
+        const res = await fetch("/api/address?type=province");
+        const result = await res.json();
+        if (result.success) {
+          setProvinces(result.data.map((p: any) => ({ code: p.id, name: p.name })));
+        }
+      } catch {}
+      setLoadingProvinces(false);
+    };
+    loadProvinces();
+  }, []);
+
+  // Load regencies when province changes
+  useEffect(() => {
+    if (!form.province) {
+      setRegencies([]);
+      setDistricts([]);
+      setVillages([]);
+      setForm((f) => ({ ...f, regency: "", regency_name: "", district: "", district_name: "", village: "", village_name: "" }));
+      return;
+    }
+    const loadRegencies = async () => {
+      setLoadingRegencies(true);
+      try {
+        const res = await fetch(`/api/address?type=regency&parent_code=${form.province}`);
+        const result = await res.json();
+        if (result.success) {
+          setRegencies(result.data.map((r: any) => ({ code: r.id, name: r.name })));
+        }
+      } catch {}
+      setLoadingRegencies(false);
+    };
+    loadRegencies();
+  }, [form.province]);
+
+  // Load districts when regency changes
+  useEffect(() => {
+    if (!form.regency) {
+      setDistricts([]);
+      setVillages([]);
+      setForm((f) => ({ ...f, district: "", district_name: "", village: "", village_name: "" }));
+      return;
+    }
+    const loadDistricts = async () => {
+      setLoadingDistricts(true);
+      try {
+        const res = await fetch(`/api/address?type=district&parent_code=${form.regency}`);
+        const result = await res.json();
+        if (result.success) {
+          setDistricts(result.data.map((d: any) => ({ code: d.id, name: d.name })));
+        }
+      } catch {}
+      setLoadingDistricts(false);
+    };
+    loadDistricts();
+  }, [form.regency]);
+
+  // Load villages when district changes
+  useEffect(() => {
+    if (!form.district) {
+      setVillages([]);
+      setForm((f) => ({ ...f, village: "", village_name: "" }));
+      return;
+    }
+    const loadVillages = async () => {
+      setLoadingVillages(true);
+      try {
+        const res = await fetch(`/api/address?type=village&parent_code=${form.district}`);
+        const result = await res.json();
+        if (result.success) {
+          setVillages(result.data.map((v: any) => ({ code: v.id, name: v.name })));
+        }
+      } catch {}
+      setLoadingVillages(false);
+    };
+    loadVillages();
+  }, [form.district]);
 
   if (cart.length === 0) {
     return (
@@ -167,7 +279,10 @@ export default function CheckoutPage() {
       { k: "customer_name", v: form.customer_name },
       { k: "phone", v: form.phone },
       { k: "address", v: form.address },
-      { k: "city", v: form.city },
+      { k: "province", v: form.province },
+      { k: "regency", v: form.regency },
+      { k: "district", v: form.district },
+      { k: "village", v: form.village },
       { k: "postal_code", v: form.postal_code },
     ];
     const missing = required.filter((r) => !String(r.v || "").trim());
@@ -269,10 +384,104 @@ export default function CheckoutPage() {
     }
   };
 
+  // Payment method options dengan label yang lebih lengkap
+  const paymentMethods = [
+    { value: "bca_va", label: "BCA Virtual Account", desc: "Transfer via ATM/Mobile/Internet Banking BCA" },
+    { value: "bni_va", label: "BNI Virtual Account", desc: "Transfer via ATM/Mobile/Internet Banking BNI" },
+    { value: "bri_va", label: "BRI Virtual Account", desc: "Transfer via ATM/Mobile/Internet Banking BRI" },
+    { value: "mandiri_va", label: "Mandiri Virtual Account", desc: "Transfer via ATM/Mobile/Internet Banking Mandiri" },
+    { value: "permata_va", label: "Permata Virtual Account", desc: "Transfer via ATM/Mobile/Internet Banking Permata" },
+    { value: "bsi_va", label: "BSI Virtual Account", desc: "Transfer via ATM/Mobile/Internet Banking Bank Syariah Indonesia" },
+    { value: "cimb_va", label: "CIMB Virtual Account", desc: "Transfer via ATM/Mobile/Internet Banking CIMB Niaga" },
+    { value: "maybank_va", label: "Maybank Virtual Account", desc: "Transfer via ATM/Mobile/Internet Banking Maybank" },
+    { value: "gopay", label: "GoPay / E-Wallet", desc: "Bayar via aplikasi GoPay" },
+    { value: "shopeepay", label: "ShopeePay", desc: "Bayar via aplikasi ShopeePay" },
+    { value: "dana", label: "DANA", desc: "Bayar via aplikasi DANA" },
+    { value: "ovo", label: "OVO", desc: "Bayar via aplikasi OVO" },
+    { value: "linkaja", label: "LinkAja", desc: "Bayar via aplikasi LinkAja" },
+    { value: "credit_card", label: "Kartu Kredit / Debit", desc: "Visa, Mastercard, JCB" },
+    { value: "qris", label: "QRIS", desc: "Scan QR code via aplikasi e-wallet/banking" },
+    { value: "alfamart", label: "Alfamart", desc: "Bayar di kasir Alfamart (kode pembayaran)" },
+    { value: "indomaret", label: "Indomaret", desc: "Bayar di kasir Indomaret (kode pembayaran)" },
+    { value: "cod", label: "COD (Bayar di Tempat)", desc: "Bayar tunai saat barang diterima" },
+  ];
+
   return (
     <div className="min-h-screen bg-[#FDFCFB] py-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold text-stone-800 mb-8">Checkout</h1>
+        <h1 className="text-3xl font-sans font-bold text-stone-800 mb-8">Checkout</h1>
+
+        <Card className="p-6 bg-white border border-stone-200 rounded-2xl shadow-sm mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <ShoppingBag className="w-5 h-5 text-[#1B4332]" />
+            <h2 className="font-bold font-sans text-stone-800">Produk ({cart.length})</h2>
+          </div>
+          <div className="space-y-3">
+            {cart.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center gap-3"
+              >
+                <a
+                  href={`/product/${item.id}`}
+                  className="shrink-0 hover:opacity-80 transition-opacity"
+                >
+                  <div className="w-16 h-16 rounded-lg bg-stone-100 overflow-hidden border border-stone-200">
+                    {item.image_url ? (
+                      <img
+                        src={item.image_url}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-stone-400">
+                        <ShoppingBag className="w-6 h-6" />
+                      </div>
+                    )}
+                  </div>
+                </a>
+                <div className="flex-1 min-w-0">
+                  <a
+                    href={`/product/${item.id}`}
+                    className="font-medium text-stone-800 hover:text-[#1B4332] transition-colors line-clamp-1 block"
+                  >
+                    {item.name}
+                  </a>
+                  <div className="text-xs text-stone-500 mt-0.5">
+                    Rp{(Number(item.price) || 0).toLocaleString("id-ID")} x{" "}
+                    <span className="font-medium text-stone-700">{item.quantity}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => updateItemQuantity(item.id, Math.max(1, item.quantity - 1))}
+                    className="w-6 h-6 rounded bg-stone-100 text-stone-600 hover:bg-stone-200 flex items-center justify-center text-sm"
+                  >
+                    -
+                  </button>
+                  <span className="w-6 text-center text-xs font-bold">
+                    {item.quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
+                    className="w-6 h-6 rounded bg-stone-100 text-stone-600 hover:bg-stone-200 flex items-center justify-center text-sm"
+                  >
+                    +
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeFromCart(item.id)}
+                    className="ml-1 w-6 h-6 rounded bg-stone-100 text-stone-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
 
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -280,7 +489,7 @@ export default function CheckoutPage() {
               <Card className="p-6 bg-white border border-stone-200 rounded-2xl shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
                   <MapPin className="w-5 h-5 text-[#1B4332]" />
-                  <h2 className="font-bold text-stone-800">Alamat Pengiriman &amp; Kontak</h2>
+                  <h2 className="font-bold font-sans text-stone-800">Alamat Pengiriman & Kontak</h2>
                 </div>
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -291,7 +500,6 @@ export default function CheckoutPage() {
                         onChange={(e) =>
                           setForm({ ...form, customer_name: e.target.value })
                         }
-                        placeholder="cth. Budi Santoso"
                         className="h-10 border-stone-200 focus:border-[#1B4332]"
                         required
                       />
@@ -301,7 +509,6 @@ export default function CheckoutPage() {
                       <Input
                         value={form.phone}
                         onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                        placeholder="cth. 08123456789"
                         className="h-10 border-stone-200 focus:border-[#1B4332]"
                         required
                       />
@@ -313,60 +520,150 @@ export default function CheckoutPage() {
                     <Input
                       type="email"
                       value={form.email}
-                      onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      placeholder="cth. email@example.com"
-                      className="h-10 border-stone-200 focus:border-[#1B4332]"
-                    />
+onChange={(e) => setForm({ ...form, email: e.target.value })}
+                        className="h-10 border-stone-200 focus:border-[#1B4332]"
+                        required
+                      />
                   </div>
 
-                  <div className="space-y-1.5">
+                  {/* Cascading Dropdown: Provinsi, Kabupaten/Kota, Kecamatan, Kelurahan/Desa */}
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-stone-500">Provinsi *</Label>
+                      <Select
+                        value={form.province}
+                        onValueChange={(value) => {
+                          setForm((f) => ({
+                            ...f,
+                            province: value,
+                            province_name: provinces.find((p) => p.code === value)?.name || "",
+                            regency: "",
+                            regency_name: "",
+                            district: "",
+                            district_name: "",
+                            village: "",
+                            village_name: "",
+                          }));
+                        }}
+                      >
+                        <SelectTrigger className="w-full h-10 border-stone-200 focus:border-[#1B4332]" disabled={loadingProvinces}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {provinces.map((p) => (
+                            <SelectItem key={p.code} value={p.code}>
+                              {p.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-stone-500">Kabupaten / Kota *</Label>
+                      <Select
+                        value={form.regency}
+                        onValueChange={(value) => {
+                          setForm((f) => ({
+                            ...f,
+                            regency: value,
+                            regency_name: regencies.find((r) => r.code === value)?.name || "",
+                            district: "",
+                            district_name: "",
+                            village: "",
+                            village_name: "",
+                          }));
+                        }}
+                        disabled={!form.province || loadingRegencies}
+                      >
+                        <SelectTrigger className="w-full h-10 border-stone-200 focus:border-[#1B4332]" disabled={!form.province || loadingRegencies}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {regencies.map((r) => (
+                            <SelectItem key={r.code} value={r.code}>
+                              {r.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-stone-500">Kecamatan *</Label>
+                      <Select
+                        value={form.district}
+                        onValueChange={(value) => {
+                          setForm((f) => ({
+                            ...f,
+                            district: value,
+                            district_name: districts.find((d) => d.code === value)?.name || "",
+                            village: "",
+                            village_name: "",
+                          }));
+                        }}
+                        disabled={!form.regency || loadingDistricts}
+                      >
+                        <SelectTrigger className="w-full h-10 border-stone-200 focus:border-[#1B4332]" disabled={!form.regency || loadingDistricts}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {districts.map((d) => (
+                            <SelectItem key={d.code} value={d.code}>
+                              {d.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Desa / Kelurahan */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-stone-500">Desa / Kelurahan *</Label>
+                      <Select
+                        value={form.village}
+                        onValueChange={(value) => {
+                          setForm((f) => ({
+                            ...f,
+                            village: value,
+                            village_name: villages.find((v) => v.code === value)?.name || "",
+                          }));
+                        }}
+                        disabled={!form.district || loadingVillages}
+                      >
+                        <SelectTrigger className="w-full h-10 border-stone-200 focus:border-[#1B4332]" disabled={!form.district || loadingVillages}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {villages.map((v) => (
+                            <SelectItem key={v.code} value={v.code}>
+                              {v.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 sm:col-span-2">
                     <Label className="text-xs text-stone-500">Alamat Lengkap *</Label>
                     <Textarea
                       value={form.address}
                       onChange={(e) => setForm({ ...form, address: e.target.value })}
-                      placeholder="Jl. Kebon Jeruk No. 123, Jakarta..."
                       className="border-stone-200 focus:border-[#1B4332] min-h-[80px] resize-none"
                       required
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-stone-500">Kota *</Label>
-                      <Input
-                        value={form.city}
-                        onChange={(e) => setForm({ ...form, city: e.target.value })}
-                        placeholder="Jakarta"
-                        className="h-10 border-stone-200 focus:border-[#1B4332]"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5 sm:col-span-2">
                       <Label className="text-xs text-stone-500">Kode Pos *</Label>
                       <Input
                         value={form.postal_code}
                         onChange={(e) => setForm({ ...form, postal_code: e.target.value })}
-                        placeholder="11530"
-                        className="h-10 border-stone-200 focus:border-[#1B4332]"
+                        className="h-10 border-stone-200 focus-border-[#1B4332]"
                         required
                       />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-stone-500">Metode</Label>
-                      <select
-                        value={form.payment_method}
-                        onChange={(e) =>
-                          setForm({ ...form, payment_method: e.target.value })
-                        }
-                        className="w-full h-10 px-3 text-sm border border-stone-200 rounded-lg bg-stone-50 focus:border-[#1B4332] outline-none"
-                      >
-                        <option value="bca_va">BCA Virtual Account</option>
-                        <option value="bni_va">BNI Virtual Account</option>
-                        <option value="bri_va">BRI Virtual Account</option>
-                        <option value="mandiri_va">Mandiri Virtual Account</option>
-                        <option value="gopay">GoPay / E-Wallet</option>
-                        <option value="cod">COD</option>
-                      </select>
                     </div>
                   </div>
 
@@ -375,8 +672,7 @@ export default function CheckoutPage() {
                     <Textarea
                       value={form.note}
                       onChange={(e) => setForm({ ...form, note: e.target.value })}
-                      placeholder="Mis. serahkan di depan gerbang..."
-                      className="border-stone-200 focus:border-[#1B4332] min-h-60px resize-none"
+                      className="border-stone-200 focus:border-[#1B4332] min-h-[60px] resize-none"
                     />
                   </div>
                 </div>
@@ -385,7 +681,7 @@ export default function CheckoutPage() {
               <Card className="p-6 bg-white border border-stone-200 rounded-2xl shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
                   <Truck className="w-5 h-5 text-[#1B4332]" />
-                  <h2 className="font-bold text-stone-800">Metode Pengiriman</h2>
+                  <h2 className="font-bold font-sans text-stone-800">Metode Pengiriman & Pembayaran</h2>
                 </div>
                 <ShippingSelector
                   originId={31555}
@@ -394,66 +690,37 @@ export default function CheckoutPage() {
                     setShippingData(data);
                   }}
                 />
-              </Card>
-
-              <Card className="p-6 bg-white border border-stone-200 rounded-2xl shadow-sm">
-                <div className="flex items-center gap-2 mb-4">
-                  <ShoppingBag className="w-5 h-5 text-[#1B4332]" />
-                  <h2 className="font-bold text-stone-800">Produk ({cart.length})</h2>
-                </div>
-                <div className="space-y-3">
-                  {cart.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-3 text-sm"
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium text-stone-800 line-clamp-1">
-                          {item.name}
-                        </div>
-                        <div className="text-xs text-stone-400">
-                          Rp{(Number(item.price) || 0).toLocaleString("id-ID")} x{" "}
-                          {item.quantity}
-
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => updateItemQuantity(item.id, Math.max(1, item.quantity - 1))}
-                          className="w-6 h-6 rounded bg-stone-100 text-stone-600 hover:bg-stone-200"
-                        >
-                          -
-                        </button>
-                        <span className="w-5 text-center text-xs font-bold">
-                          {item.quantity}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
-                          className="w-6 h-6 rounded bg-stone-100 text-stone-600 hover:bg-stone-200"
-                        >
-                          +
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeFromCart(item.id)}
-                          className="ml-2 text-stone-300 hover:text-red-500"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                <div className="mt-6 space-y-1.5">
+                  <Label className="text-xs text-stone-500">Metode Pembayaran *</Label>
+                  <Select
+                    value={form.payment_method}
+                    onValueChange={(value) => setForm({ ...form, payment_method: value })}
+                  >
+                    <SelectTrigger className="w-full h-10 border-stone-200 focus:border-[#1B4332]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {paymentMethods.map((pm) => (
+                        <SelectItem key={pm.value} value={pm.value}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{pm.label}</span>
+                            <span className="text-[10px] text-stone-500">{pm.desc}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </Card>
+
+              
             </div>
 
             <div className="lg:col-span-1">
-              <Card className="p-6 bg-white border-2 border-gold rounded-2xl shadow-xl sticky top-8">
+              <Card className="p-6 bg-white border-2 border-gold rounded-2xl shadow-xl sticky top-8 lg:top-24">
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b border-stone-100">
                   <Tag className="w-5 h-5 text-[#1B4332]" />
-                  <h3 className="font-bold text-stone-800">Ringkasan Pesanan</h3>
+                  <h3 className="font-bold  font-sans text-stone-800">Ringkasan Pesanan</h3>
                 </div>
 
                 <div className="space-y-3 text-sm">
@@ -515,8 +782,7 @@ export default function CheckoutPage() {
                 <div className="mt-4 pt-3 border-t border-stone-100 flex items-start gap-2">
                   <Check className="w-4 h-4 text-emerald-600 shrink-0" />
                   <p className="text-[11px] text-stone-500 leading-relaxed">
-                    Anda akan diarahkan ke halaman pembayaran aman Midtrans untuk
-                    menyelesaikan transaksi.
+                    Anda akan diarahkan ke halaman pembayaran yang aman untuk menyelesaikan transaksi.
                   </p>
                 </div>
               </Card>
