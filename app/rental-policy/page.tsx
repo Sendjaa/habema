@@ -32,14 +32,14 @@ export default function RentalPolicyPage() {
             
             {/* Eligibility */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <Users className="w-6 h-6 text-emerald-600" />
                 Kelayakan Penyewa
               </h2>
               
               <div className="space-y-4 text-gray-700">
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Persyaratan Umum</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Persyaratan Umum</h3>
                   <ul className="list-disc list-inside space-y-2">
                     <li>Minimal usia 17 tahun (dengan persetujuan orang tua untuk 17-18 tahun)</li>
                     <li>Memiliki identitas yang valid (KTP/SIM/Paspor)</li>
@@ -49,7 +49,7 @@ export default function RentalPolicyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Dokumen yang Diperlukan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Dokumen yang Diperlukan</h3>
                   <ul className="list-disc list-inside space-y-2">
                     <li>Fotokopi identitas (KTP/SIM/Paspor)</li>
                     <li>Kartu keluarga (untuk penyewa di bawah 20 tahun)</li>
@@ -62,14 +62,14 @@ export default function RentalPolicyPage() {
 
             {/* Rental Process */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <Clock className="w-6 h-6 text-emerald-600" />
                 Proses Penyewaan
               </h2>
               
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Langkah 1: Reservasi</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Langkah 1: Reservasi</h3>
                   <ul className="list-disc list-inside space-y-2 text-gray-700">
                     <li>Pilih peralatan yang diinginkan melalui website atau langsung di basecamp</li>
                     <li>Tentukan tanggal dan durasi penyewaan</li>
@@ -79,7 +79,7 @@ export default function RentalPolicyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Langkah 2: Persiapan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Langkah 2: Persiapan</h3>
                   <ul className="list-disc list-inside space-y-2 text-gray-700">
                     <li>Lunasi pembayaran sisa sebelum pengambilan</li>
                     <li>Siapkan dokumen identitas asli</li>
@@ -89,7 +89,7 @@ export default function RentalPolicyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Langkah 3: Pengambilan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Langkah 3: Pengambilan</h3>
                   <ul className="list-disc list-inside space-y-2 text-gray-700">
                     <li>Tiba di basecamp sesuai jadwal</li>
                     <li>Periksa kondisi peralatan bersama tim kami</li>
@@ -99,7 +99,7 @@ export default function RentalPolicyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Langkah 4: Pengembalian</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Langkah 4: Pengembalian</h3>
                   <ul className="list-disc list-inside space-y-2 text-gray-700">
                     <li>Kembalikan peralatan sesuai jadwal</li>
                     <li>Periksa kondisi peralatan bersama</li>
@@ -112,14 +112,14 @@ export default function RentalPolicyPage() {
 
             {/* Equipment Care */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <ShieldCheck className="w-6 h-6 text-emerald-600" />
                 Perawatan Peralatan
               </h2>
               
               <div className="space-y-4 text-gray-700">
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Selama Penyewaan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Selama Penyewaan</h3>
                   <ul className="list-disc list-inside space-y-2">
                     <li>Gunakan peralatan sesuai fungsi dan petunjuk</li>
                     <li>Jaga kebersihan dan keringkan setelah penggunaan</li>
@@ -130,7 +130,7 @@ export default function RentalPolicyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Yang Tidak Diperbolehkan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Yang Tidak Diperbolehkan</h3>
                   <ul className="list-disc list-inside space-y-2">
                     <li>Menyewakan kembali peralatan kepada pihak lain</li>
                     <li>Menggunakan untuk kegiatan ilegal atau berbahaya</li>
@@ -144,14 +144,14 @@ export default function RentalPolicyPage() {
 
             {/* Damage Policy */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <AlertTriangle className="w-6 h-6 text-emerald-600" />
                 Kebijakan Kerusakan dan Kehilangan
               </h2>
               
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Kerusakan Ringan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Kerusakan Ringan</h3>
                   <p className="text-gray-700 mb-3">
                     Kerusakan yang dapat diperbaiki dan tidak mengganggu fungsi utama:
                   </p>
@@ -163,7 +163,7 @@ export default function RentalPolicyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Kerusakan Berat</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Kerusakan Berat</h3>
                   <p className="text-gray-700 mb-3">
                     Kerusakan yang membuat peralatan tidak dapat digunakan:
                   </p>
@@ -175,7 +175,7 @@ export default function RentalPolicyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Kehilangan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Kehilangan</h3>
                   <p className="text-gray-700 mb-3">
                     Jika peralatan hilang:
                   </p>
@@ -187,7 +187,7 @@ export default function RentalPolicyPage() {
                 </div>
 
                 <div className="bg-emerald-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-emerald-800 mb-2">Depresiasi Peralatan</h4>
+                  <h4 className="font-semibold text-stone-900 mb-2">Depresiasi Peralatan</h4>
                   <p className="text-emerald-700 text-sm">
                     Tahun 1: 80% | Tahun 2: 60% | Tahun 3: 40% | Tahun 4: 20% | Tahun 5+: 10%
                   </p>
@@ -197,7 +197,7 @@ export default function RentalPolicyPage() {
 
             {/* Insurance */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <CheckCircle className="w-6 h-6 text-emerald-600" />
                 Asuransi Opsional
               </h2>
@@ -226,11 +226,11 @@ export default function RentalPolicyPage() {
 
             {/* Late Return */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4">Kebijakan Keterlambatan</h2>
+              <h2 className="text-2xl font-bold text-stone-900 mb-4">Kebijakan Keterlambatan</h2>
               
               <div className="space-y-4 text-gray-700">
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Biaya Keterlambatan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Biaya Keterlambatan</h3>
                   <ul className="list-disc list-inside space-y-2">
                     <li><strong>1-6 jam:</strong> 10% dari harga sewa per hari</li>
                     <li><strong>6-24 jam:</strong> 50% dari harga sewa per hari</li>
@@ -239,7 +239,7 @@ export default function RentalPolicyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Force Majeure</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Force Majeure</h3>
                   <p className="text-gray-700">
                     Keterlambatan karena force majeure (bencana alam, cuaca ekstrem, keadaan darurat) 
                     dapat dipertimbangkan untuk keringanan biaya dengan melampirkan bukti yang valid.
@@ -250,7 +250,7 @@ export default function RentalPolicyPage() {
 
             {/* Contact */}
             <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-xl p-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4">Butuh Bantuan?</h2>
+              <h2 className="text-2xl font-bold text-stone-900 mb-4">Butuh Bantuan?</h2>
               <p className="text-gray-700 mb-6">
                 Tim kami siap membantu Anda dengan pertanyaan tentang kebijakan sewa:
               </p>

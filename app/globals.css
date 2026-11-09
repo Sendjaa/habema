@@ -1,84 +1,117 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import 'quill/dist/quill.snow.css';
 
 @custom-variant dark (&:is(.dark *));
 
+/* ── WanderMap design system ────────────────────────────────────────
+   Aturan UI: hanya tiga keluarga warna —
+   forest (primary), gold (aksen/CTA), dan stone (netral).
+   Putih/cream adalah surface, bukan warna merek. Warna semantic
+   (success/warning/error) hanya untuk status, bukan dekorasi.
+   Token lama earth/info dialiaskan ke forest agar tidak menambah hue. */
+@theme {
+  --color-forest: #0f766e;
+  --color-forest-light: #14b8a6;
+  --color-forest-dark: #115e59;
+  --color-forest-soft: #f0fdfa;
+  --color-forest-tint: #ccfbf1;
+
+  --color-gold: #f97316;
+  --color-gold-light: #fb923c;
+
+  --color-cream: #ffffff;
+  --color-cream-dark: #f1f5f9;
+
+  --color-earth: #0f766e;
+  --color-stone: #64748b;
+
+  --color-success: #059669;
+  --color-warning: #d97706;
+  --color-error: #ef4444;
+  --color-info: #0f766e;
+}
+
 :root {
-  --background: #F5EFE7;
-  --foreground: #2D5016;
-  --card: #FFFFFF;
-  --card-foreground: #2D5016;
-  --popover: #FFFFFF;
-  --popover-foreground: #2D5016;
-  --primary: #2D5016;
-  --primary-foreground: #F5EFE7;
-  --secondary: #E8A76B;
-  --secondary-foreground: #FFFFFF;
-  --muted: #E8DFCF;
-  --muted-foreground: #6B5B47;
-  --accent: #E8A76B;
-  --accent-foreground: #FFFFFF;
-  --destructive: #DC2626;
-  --destructive-foreground: #FFFFFF;
-  --border: #E8DFCF;
-  --input: #FFFFFF;
-  --input-border: #D1C9BE;
-  --ring: #2D5016;
-  --chart-1: #2D5016;
-  --chart-2: #E8A76B;
-  --chart-3: #3E6B1F;
-  --chart-4: #8B7355;
-  --chart-5: #A9A49E;
-  --radius: 0.5rem;
-  --sidebar: #F5EFE7;
-  --sidebar-foreground: #2D5016;
-  --sidebar-primary: #2D5016;
-  --sidebar-primary-foreground: #F5EFE7;
-  --sidebar-accent: #E8A76B;
-  --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #E8DFCF;
-  --sidebar-ring: #2D5016;
+  --background: #ffffff;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #0f766e;
+  --primary-foreground: #ffffff;
+  --secondary: #f97316;
+  --secondary-foreground: #ffffff;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #ffedd5;
+  --accent-foreground: #9a3412;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e2e8f0;
+  --input: #cbd5e1;
+  --input-border: #cbd5e1;
+  --ring: #0f766e;
+  --chart-1: #0f766e;
+  --chart-2: #f97316;
+  --chart-3: #0ea5e9;
+  --chart-4: #059669;
+  --chart-5: #64748b;
+  --radius: 0.75rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f172a;
+  --sidebar-primary: #0f766e;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ffedd5;
+  --sidebar-accent-foreground: #9a3412;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #0f766e;
+
+  /* Di-set ulang oleh next/font di <html>; ini fallback bila font gagal dimuat. */
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
 }
 
 .dark {
-  --background: #1A3009;
-  --foreground: #F5EFE7;
-  --card: #2D5016;
-  --card-foreground: #F5EFE7;
-  --popover: #2D5016;
-  --popover-foreground: #F5EFE7;
-  --primary: #3E6B1F;
-  --primary-foreground: #F5EFE7;
-  --secondary: #E8A76B;
-  --secondary-foreground: #1A3009;
-  --muted: #3E6B1F;
-  --muted-foreground: #A9A49E;
-  --accent: #E8A76B;
-  --accent-foreground: #1A3009;
-  --destructive: #EF4444;
-  --destructive-foreground: #1A3009;
-  --border: #3E6B1F;
-  --input: #2D5016;
-  --input-border: #3E6B1F;
-  --ring: #E8A76B;
-  --chart-1: #E8A76B;
-  --chart-2: #3E6B1F;
-  --chart-3: #F0BF85;
-  --chart-4: #A9A49E;
-  --chart-5: #8B7355;
-  --sidebar: #1A3009;
-  --sidebar-foreground: #F5EFE7;
-  --sidebar-primary: #3E6B1F;
-  --sidebar-primary-foreground: #F5EFE7;
-  --sidebar-accent: #E8A76B;
-  --sidebar-accent-foreground: #1A3009;
-  --sidebar-border: #3E6B1F;
-  --sidebar-ring: #E8A76B;
+  --background: #0b1f1d;
+  --foreground: #f1f5f9;
+  --card: #115e59;
+  --card-foreground: #f1f5f9;
+  --popover: #115e59;
+  --popover-foreground: #f1f5f9;
+  --primary: #14b8a6;
+  --primary-foreground: #0b1f1d;
+  --secondary: #f97316;
+  --secondary-foreground: #0b1f1d;
+  --muted: #115e59;
+  --muted-foreground: #94a3b8;
+  --accent: #134e4a;
+  --accent-foreground: #f1f5f9;
+  --destructive: #ef4444;
+  --destructive-foreground: #0b1f1d;
+  --border: #14b8a6;
+  --input: #115e59;
+  --input-border: #14b8a6;
+  --ring: #f97316;
+  --chart-1: #f97316;
+  --chart-2: #14b8a6;
+  --chart-3: #fb923c;
+  --chart-4: #94a3b8;
+  --chart-5: #0ea5e9;
+  --sidebar: #0b1f1d;
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-primary: #14b8a6;
+  --sidebar-primary-foreground: #0b1f1d;
+  --sidebar-accent: #134e4a;
+  --sidebar-accent-foreground: #f1f5f9;
+  --sidebar-border: #14b8a6;
+  --sidebar-ring: #f97316;
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --font-sans: var(--font-body);
+  --font-mono: ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -134,32 +167,6 @@
 
 /* app/globals.css */
 @layer base {
-  :root {
-    /* ── Font variables ── */
-    --font-display: 'Fraunces', serif;
-    --font-body: 'DM Sans', sans-serif;
-
-    /* ── Color tokens (light mode) ── */
-    --background: 250 249 247;        /* #FAFAF7 warm off-white */
-    --foreground: 28 25 23;           /* stone-900 */
-    --muted: 231 229 228;             /* stone-200 */
-    --muted-foreground: 120 113 108;  /* stone-500 */
-    --border: 214 211 209;            /* stone-300 */
-    --ring: 22 163 74;                /* emerald-600 */
-    --primary: 21 128 61;             /* emerald-700 */
-    --primary-foreground: 255 255 255;
-  }
-
-  .dark {
-    --background: 12 10 9;
-    --foreground: 250 250 249;
-    --muted: 41 37 36;
-    --muted-foreground: 168 162 158;
-    --border: 41 37 36;
-    --primary: 74 222 128;
-    --primary-foreground: 12 10 9;
-  }
-
   * {
     @apply border-border;
     box-sizing: border-box;
@@ -186,19 +193,169 @@
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
-    background: rgb(var(--muted));
+    background: var(--muted);
     border-radius: 100px;
   }
-  ::-webkit-scrollbar-thumb:hover { background: rgb(var(--muted-foreground)); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
 
   /* Selection color */
   ::selection {
-    background: rgb(22 163 74 / 0.15);
-    color: rgb(var(--foreground));
+    background: rgb(15 118 110 / 0.15);
+    color: var(--foreground);
   }
 }
 
 @layer utilities {
   .font-display { font-family: var(--font-display); }
   .font-body    { font-family: var(--font-body); }
+}
+
+/* Quill Editor Styles */
+.ql-container {
+  font-family: var(--font-body) !important;
+  font-size: 14px !important;
+}
+
+.rte-editor .ql-editor {
+  min-height: 140px !important;
+  max-height: 420px !important;
+  padding: 12px !important;
+}
+
+.ql-toolbar {
+  border-top-left-radius: 8px !important;
+  border-top-right-radius: 8px !important;
+  border-color: #e2e8f0 !important;
+  background: #f8fafc !important;
+}
+
+.ql-container {
+  border-bottom-left-radius: 8px !important;
+  border-bottom-right-radius: 8px !important;
+  border-color: #e2e8f0 !important;
+}
+
+.rte-editor .ql-editor.ql-blank::before {
+  color: #94a3b8 !important;
+  font-style: normal !important;
+  font-family: var(--font-body) !important;
+  font-size: 14px !important;
+}
+
+.ql-stroke {
+  stroke: #64748b !important;
+}
+
+.ql-fill {
+  fill: #64748b !important;
+}
+
+.ql-picker {
+  color: #0f172a !important;
+}
+
+.ql-picker-label {
+  border-color: #e2e8f0 !important;
+}
+
+.ql-picker-options {
+  border-color: #e2e8f0 !important;
+}
+
+.ql-picker-item {
+  color: #0f172a !important;
+}
+
+.ql-picker-item:hover {
+  background: #f1f5f9 !important;
+}
+
+.ql-picker-item.ql-selected {
+  background: #ccfbf1 !important;
+  color: #0f766e !important;
+}
+
+/* ── Render HTML dari Quill (deskripsi produk) ─────────────────────
+   Quill 2 menyimpan konten dengan kelas .ql-* dan list <ol><li data-list>.
+   Kelas .ql-editor dipakai ulang agar aturan konten dari quill.snow.css
+   (bullet, penomoran, alignment, indent, warna) ikut berlaku, lalu
+   dinetralkan dari gaya "kotak editor". */
+.rte-content.ql-editor {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.65;
+  color: inherit;
+}
+
+.rte-content.ql-editor > :last-child {
+  margin-bottom: 0;
+}
+
+.rte-content.ql-editor p,
+.rte-content.ql-editor ol,
+.rte-content.ql-editor ul,
+.rte-content.ql-editor pre,
+.rte-content.ql-editor blockquote {
+  margin: 0 0 0.75em;
+}
+
+.rte-content.ql-editor h1,
+.rte-content.ql-editor h2,
+.rte-content.ql-editor h3,
+.rte-content.ql-editor h4,
+.rte-content.ql-editor h5,
+.rte-content.ql-editor h6 {
+  margin: 1.25em 0 0.5em;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--color-foreground, #0f172a);
+}
+
+.rte-content.ql-editor h1:first-child,
+.rte-content.ql-editor h2:first-child,
+.rte-content.ql-editor h3:first-child,
+.rte-content.ql-editor h4:first-child,
+.rte-content.ql-editor h5:first-child,
+.rte-content.ql-editor h6:first-child {
+  margin-top: 0;
+}
+
+.rte-content.ql-editor h1 { font-size: 1.5em; }
+.rte-content.ql-editor h2 { font-size: 1.25em; }
+.rte-content.ql-editor h3 { font-size: 1.1em; }
+.rte-content.ql-editor h4,
+.rte-content.ql-editor h5,
+.rte-content.ql-editor h6 { font-size: 1em; }
+
+.rte-content.ql-editor a {
+  color: var(--color-info, #0f766e);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.rte-content.ql-editor img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+.rte-content.ql-editor blockquote {
+  border-left: 4px solid var(--color-forest, #0f766e);
+  padding-left: 0.75em;
+  color: var(--color-muted-foreground, #64748b);
+  font-style: italic;
+}
+
+.rte-content.ql-editor strong {
+  font-weight: 700;
+  color: var(--color-foreground, #0f172a);
+}
+
+.rte-content.ql-editor li + li {
+  margin-top: 0.25em;
 }

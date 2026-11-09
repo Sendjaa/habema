@@ -32,7 +32,7 @@ export default function TermsPage() {
             
             {/* Introduction */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <FileText className="w-6 h-6 text-emerald-600" />
                 Pendahuluan
               </h2>
@@ -47,7 +47,7 @@ export default function TermsPage() {
 
             {/* Definitions */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4">Definisi</h2>
+              <h2 className="text-2xl font-bold text-stone-900 mb-4">Definisi</h2>
               <div className="space-y-4 text-gray-700">
                 <div>
                   <strong>"HABEMA"</strong> merujuk pada Habema Outdoor Adventure, penyedia layanan penyewaan peralatan.
@@ -66,14 +66,14 @@ export default function TermsPage() {
 
             {/* User Responsibilities */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <Shield className="w-6 h-6 text-emerald-600" />
                 Kewajiban Pengguna
               </h2>
               
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Informasi Akurat</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Informasi Akurat</h3>
                   <p className="text-gray-700">
                     Anda wajib memberikan informasi yang akurat, lengkap, dan terkini saat registrasi dan penyewaan. 
                     Informasi palsu dapat menyebabkan pembatalan layanan.
@@ -81,7 +81,7 @@ export default function TermsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Penggunaan Peralatan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Penggunaan Peralatan</h3>
                   <p className="text-gray-700 mb-3">
                     Anda setuju untuk:
                   </p>
@@ -95,7 +95,7 @@ export default function TermsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Keamanan dan Keselamatan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Keamanan dan Keselamatan</h3>
                   <p className="text-gray-700">
                     Anda bertanggung jawab atas keselamatan diri sendiri dan orang lain saat menggunakan peralatan. 
                     Kami menyarankan untuk memiliki asuransi pribadi dan mengikuti prosedur keselamatan yang berlaku.
@@ -106,11 +106,11 @@ export default function TermsPage() {
 
             {/* Rental Terms */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4">Ketentuan Penyewaan</h2>
+              <h2 className="text-2xl font-bold text-stone-900 mb-4">Ketentuan Penyewaan</h2>
               
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Durasi dan Jadwal</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Durasi dan Jadwal</h3>
                   <ul className="list-disc list-inside space-y-2 text-gray-700">
                     <li>Minimal sewa: 1 hari (24 jam)</li>
                     <li>Maksimal sewa: 30 hari</li>
@@ -120,7 +120,7 @@ export default function TermsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Pembayaran dan Deposit</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Pembayaran dan Deposit</h3>
                   <ul className="list-disc list-inside space-y-2 text-gray-700">
                     <li>Pembayaran penuh dilakukan sebelum pengambilan peralatan</li>
                     <li>Deposit wajib dibayarkan dan akan dikembalikan setelah pengembalian</li>
@@ -130,7 +130,7 @@ export default function TermsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Pembatalan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Pembatalan</h3>
                   <ul className="list-disc list-inside space-y-2 text-gray-700">
                     <li>&gt;7 hari sebelum: Full refund</li>
                     <li>3-6 hari sebelum: 50% refund</li>
@@ -143,14 +143,14 @@ export default function TermsPage() {
 
             {/* Liability */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <AlertCircle className="w-6 h-6 text-emerald-600" />
                 Tanggung Jawab dan Kewajiban
               </h2>
               
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Tanggung Jawab HABEMA</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Tanggung Jawab HABEMA</h3>
                   <p className="text-gray-700 mb-3">
                     Kami bertanggung jawab untuk:
                   </p>
@@ -163,7 +163,7 @@ export default function TermsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Batasan Tanggung Jawab</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Batasan Tanggung Jawab</h3>
                   <p className="text-gray-700 mb-3">
                     HABEMA tidak bertanggung jawab untuk:
                   </p>
@@ -179,7 +179,7 @@ export default function TermsPage() {
 
             {/* Intellectual Property */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4">Hak Kekayaan Intelektual</h2>
+              <h2 className="text-2xl font-bold text-stone-900 mb-4">Hak Kekayaan Intelektual</h2>
               <p className="text-gray-700 leading-relaxed">
                 Semua konten di platform HABEMA termasuk namun tidak terbatas pada logo, desain, teks, gambar, dan software 
                 dilindungi oleh hak kekayaan intelektual. Anda tidak diperbolehkan menggunakan, menyalin, atau mendistribusikan 
@@ -189,7 +189,7 @@ export default function TermsPage() {
 
             {/* Privacy */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4">Privasi</h2>
+              <h2 className="text-2xl font-bold text-stone-900 mb-4">Privasi</h2>
               <p className="text-gray-700 leading-relaxed mb-4">
                 Kami menghormati privasi Anda dan berkomitmen untuk melindungi data pribadi sesuai dengan Kebijakan Privasi kami. 
                 Dengan menggunakan layanan kami, Anda setuju dengan pengumpulan dan penggunaan data sesuai kebijakan tersebut.
@@ -201,7 +201,7 @@ export default function TermsPage() {
 
             {/* Dispute Resolution */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4">Penyelesaian Sengketa</h2>
+              <h2 className="text-2xl font-bold text-stone-900 mb-4">Penyelesaian Sengketa</h2>
               <div className="space-y-4 text-gray-700">
                 <p>
                   Jika terjadi sengketa, kami akan berusaha menyelesaikannya melalui:
@@ -219,7 +219,7 @@ export default function TermsPage() {
 
             {/* Changes */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <CheckCircle className="w-6 h-6 text-emerald-600" />
                 Perubahan Ketentuan
               </h2>
@@ -231,7 +231,7 @@ export default function TermsPage() {
 
             {/* Contact */}
             <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-xl p-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4">Hubungi Kami</h2>
+              <h2 className="text-2xl font-bold text-stone-900 mb-4">Hubungi Kami</h2>
               <p className="text-gray-700 mb-6">
                 Jika Anda memiliki pertanyaan tentang Syarat dan Ketentuan ini, silakan hubungi:
               </p>

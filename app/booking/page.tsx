@@ -1016,7 +1016,7 @@ Mohon konfirmasi pesanan saya ya!`;
           <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-1">
             Habema Rental
           </p>
-          <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-forest">
+          <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-stone-900">
             Checkout
           </h1>
           <p className="text-sm text-stone-500 font-medium mt-1">
@@ -1457,7 +1457,7 @@ Mohon konfirmasi pesanan saya ya!`;
           <aside className="lg:col-span-1 lg:sticky lg:top-24">
             <Card className="rounded-xl border border-stone-200 bg-white shadow-sm">
               <div className="p-4 border-b border-stone-200">
-                <h3 className="font-black uppercase tracking-tight text-forest text-sm">
+                <h3 className="font-black uppercase tracking-tight text-stone-900 text-sm">
                   Ringkasan Sewa
                 </h3>
               </div>
@@ -1483,7 +1483,7 @@ Mohon konfirmasi pesanan saya ya!`;
                           height={48}
                         />
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-xs font-bold text-forest line-clamp-1">
+                          <h4 className="text-xs font-bold text-stone-900 line-clamp-1">
                             {item.name}
                           </h4>
                           <p className="text-[10px] text-stone-500 font-medium">
@@ -1507,7 +1507,7 @@ Mohon konfirmasi pesanan saya ya!`;
                       height={56}
                     />
                     <div>
-                      <h4 className="text-sm font-bold text-forest line-clamp-1">
+                      <h4 className="text-sm font-bold text-stone-900 line-clamp-1">
                         {product.name}
                       </h4>
                       <p className="text-[10px] text-stone-500 font-bold uppercase tracking-tight">
@@ -1567,7 +1567,7 @@ Mohon konfirmasi pesanan saya ya!`;
             {/* Kupon Saya */}
             <Card className="mt-4 rounded-xl border border-stone-200 bg-white shadow-sm">
               <div className="p-4 border-b border-stone-200">
-                <h3 className="font-black uppercase tracking-tight text-forest text-sm flex items-center gap-2">
+                <h3 className="font-black uppercase tracking-tight text-stone-900 text-sm flex items-center gap-2">
                   <Ticket className="w-4 h-4 text-forest" />
                   Kupon Saya
                 </h3>
@@ -1688,7 +1688,7 @@ function StepCard({
           >
             {completed ? <CheckCircle className="w-4 h-4" /> : number}
           </div>
-          <h3 className="font-bold text-forest text-sm">{title}</h3>
+          <h3 className="font-bold text-stone-900 text-sm">{title}</h3>
         </div>
         {disabled ? (
           <div className="pl-0 sm:pl-10 text-xs text-stone-400 font-medium italic">

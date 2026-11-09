@@ -15,7 +15,7 @@ export default function KatalogDigitalPage() {
         <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-1">
           Habema Outdoor
         </p>
-        <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-forest">
+        <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-stone-900">
           Katalog Digital
         </h1>
         <p className="text-sm text-stone-500 font-medium mt-2 max-w-2xl">

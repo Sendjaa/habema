@@ -27,6 +27,8 @@ type DiscountRow = {
   usage_limit: number | null
   usage_count: number
   created_at: string
+  voucher_type: string
+  conditions: any
 }
 
 type Promo = {
@@ -43,6 +45,8 @@ type Promo = {
   discount_value: number;
   min_purchase: number | null;
   max_discount: number | null;
+  voucher_type: string;
+  conditions: any;
 }
 
 type PromoProduct = {
@@ -237,6 +241,8 @@ function PromoCard({ promo, index }: { promo: Promo; index: number }) {
         max_discount: d.max_discount ? Number(d.max_discount) : null,
         applies_to: d.applies_to as 'all' | 'category' | 'equipment',
         target_id: d.target_id,
+        voucher_type: d.voucher_type as 'all' | 'rental' | 'shop' | 'opentrip',
+        conditions: d.conditions || {},
         claimed_at: result.claim?.claimed_at || new Date().toISOString(),
       };
       setClaimedDiscount(claimed);
@@ -353,6 +359,136 @@ function PromoCard({ promo, index }: { promo: Promo; index: number }) {
   );
 }
 
+/* ─── KUPON CARD (COMPACT) ──────────────────────── */
+function CompactPromoCard({ promo, index }: { promo: Promo; index: number }) {
+  const [showLogin, setShowLogin] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+  const claimedDiscount = useCartStore((s) => s.claimedDiscount);
+  const setClaimedDiscount = useCartStore((s) => s.setClaimedDiscount);
+  const isClaimed = claimedDiscount?.code === promo.code;
+
+  const handleClaim = async () => {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) {
+      setShowLogin(true);
+      return;
+    }
+    setClaiming(true);
+    try {
+      const res = await fetch('/api/discounts/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: promo.code, userId: currentUser.id }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        toast.error(result.error || 'Gagal mengklaim diskon');
+        return;
+      }
+      const d = result.discount;
+      const claimed: ClaimedDiscount = {
+        id: d.id,
+        code: d.code,
+        description: d.description,
+        discount_type: d.discount_type as 'percentage' | 'fixed',
+        discount_value: Number(d.discount_value),
+        min_purchase: d.min_purchase ? Number(d.min_purchase) : null,
+        max_discount: d.max_discount ? Number(d.max_discount) : null,
+        applies_to: d.applies_to as 'all' | 'category' | 'equipment',
+        target_id: d.target_id,
+        voucher_type: d.voucher_type as 'all' | 'rental' | 'shop' | 'opentrip',
+        conditions: d.conditions || {},
+        claimed_at: result.claim?.claimed_at || new Date().toISOString(),
+      };
+      setClaimedDiscount(claimed);
+      toast.success(`${promo.discount} berhasil diklaim!`);
+    } catch {
+      toast.error('Gagal mengklaim diskon. Silakan coba lagi.');
+    } finally {
+      setClaiming(false);
+    }
+  };
+
+  return (
+    <>
+      <div
+        className={`relative overflow-hidden rounded-xl border-2 transition-all ${
+          isClaimed
+            ? 'border-emerald-300 bg-emerald-50'
+            : 'border-dashed border-emerald-400 bg-white hover:border-emerald-500'
+        }`}
+      >
+        <div className="p-4 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold uppercase tracking-wide" style={{ color: promo.accent }}>
+                {promo.code}
+              </p>
+              <p className="text-xs font-semibold text-slate-700 mt-1 line-clamp-2">
+                {promo.title}
+              </p>
+            </div>
+            {isClaimed ? (
+              <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full" style={{ background: promo.accent }}>
+                <Check className="w-4 h-4 text-white" />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleClaim}
+                disabled={claiming}
+                className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full transition-colors disabled:opacity-60"
+                style={{ background: promo.accent }}
+              >
+                {claiming ? (
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Gift className="w-4 h-4 text-white" />
+                )}
+              </button>
+            )}
+          </div>
+
+          <div className="pt-2 border-t border-dashed" style={{ borderColor: promo.accent + '40' }}>
+            <p className="text-xs font-bold" style={{ color: promo.accent }}>
+              {promo.discount}
+            </p>
+            {promo.min_purchase && promo.min_purchase > 0 && (
+              <p className="text-[10px] text-slate-500 mt-1">
+                Min. belanja Rp{Number(promo.min_purchase).toLocaleString('id-ID')}
+              </p>
+            )}
+            {promo.max_discount && promo.max_discount > 0 && (
+              <p className="text-[10px] text-slate-500 mt-0.5">
+                Max. potongan Rp{Number(promo.max_discount).toLocaleString('id-ID')}
+              </p>
+            )}
+          </div>
+
+          {isClaimed && (
+            <div className="pt-2 flex items-center justify-between">
+              <p className="text-[10px] text-emerald-700 font-medium">
+                Sudah diklaim
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setClaimedDiscount(null);
+                  toast.info('Diskon dibatalkan');
+                }}
+                className="text-[10px] text-red-600 hover:text-red-700 font-medium underline"
+              >
+                Batal
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+      <LoginModal open={showLogin} onOpenChange={setShowLogin} />
+    </>
+  );
+}
+
 /* ─── HELPERS ────────────────────────────────────── */
 const palette = [
   { accent: '#16a34a', accentLight: '#dcfce7' },
@@ -384,6 +520,27 @@ function buildTerms(row: DiscountRow): string[] {
   }
   if (row.applies_to !== 'all') {
     terms.push('Berlaku untuk produk spesifik')
+  }
+  // Tampilkan voucher_type jika bukan 'all'
+  if (row.voucher_type && row.voucher_type !== 'all') {
+    const typeLabels: Record<string, string> = {
+      rental: 'Khusus rental alat',
+      shop: 'Khusus belanja produk',
+      opentrip: 'Khusus open trip',
+    }
+    terms.push(typeLabels[row.voucher_type] || `Khusus ${row.voucher_type}`)
+  }
+  // Tampilkan conditions khusus
+  if (row.conditions) {
+    if (row.conditions.first_time_only) {
+      terms.push('Khusus pembeli pertama kali')
+    }
+    if (row.conditions.must_invite_friends && row.conditions.min_friends) {
+      terms.push(`Wajib undang ${row.conditions.min_friends} teman`)
+    }
+    if (row.conditions.requires_identity_verified) {
+      terms.push('Wajib verifikasi identitas (KTP)')
+    }
   }
   if (terms.length === 0) {
     terms.push('Berlaku untuk semua produk')
@@ -424,6 +581,8 @@ function rowToPromo(row: DiscountRow, index: number): Promo {
     discount_value: row.discount_value,
     min_purchase: row.min_purchase,
     max_discount: row.max_discount,
+    voucher_type: row.voucher_type || 'all',
+    conditions: row.conditions || {},
   }
 }
 

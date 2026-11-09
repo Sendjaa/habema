@@ -101,7 +101,7 @@ export function ShopContent() {
   return (
     <>
       {/* STICKY BREADCRUMB BAR (desktop) — modern dengan transparansi */}
-      <div className="hidden mx-auto md:flex bg-white/80 backdrop-blur-lg items-center p-2 ps-36 sticky top-0 z-30 shadow-sm border-b border-stone-200/50">
+      <div className="hidden mx-auto md:flex bg-white/80 backdrop-blur-lg items-center p-2 ps-36 sticky top-16 md:top-20 z-30 shadow-sm border-b border-stone-200/50">
         <button
           onClick={() => router.back()}
           className="group flex items-center justify-center w-10 h-5"

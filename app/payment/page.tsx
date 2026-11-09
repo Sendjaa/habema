@@ -240,7 +240,7 @@ export default function PaymentPage() {
         <div className="max-w-4xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-emerald-900">Pembayaran Aman</h1>
+              <h1 className="text-2xl font-bold text-stone-900">Pembayaran Aman</h1>
               <p className="text-emerald-600 mt-1">Lengkapi pembayaran Anda dengan amat dan nyaman</p>
             </div>
             <div className="text-right">
@@ -275,7 +275,7 @@ export default function PaymentPage() {
                     )}
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-emerald-900">{productToRent.name}</h3>
+                    <h3 className="text-lg font-semibold text-stone-900">{productToRent.name}</h3>
                     <p className="text-emerald-600">Durasi: {duration} hari sewa</p>
                     <div className="flex items-center gap-2 mt-2">
                       <Badge className="bg-emerald-100 text-emerald-700">Tersedia</Badge>
@@ -289,7 +289,7 @@ export default function PaymentPage() {
             {/* Payment Methods */}
             <Card className="border-0 shadow-lg bg-white/80 backdrop-blur">
               <div className="p-6">
-                <h2 className="text-xl font-semibold text-emerald-900 mb-6">Pilih Metode Pembayaran</h2>
+                <h2 className="text-xl font-semibold text-stone-900 mb-6">Pilih Metode Pembayaran</h2>
                 
                 <div className="space-y-4">
                   {/* Midtrans Option */}
@@ -307,7 +307,7 @@ export default function PaymentPage() {
                           <CreditCard className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                          <h4 className="font-semibold text-emerald-900">Pembayaran Digital</h4>
+                          <h4 className="font-semibold text-stone-900">Pembayaran Digital</h4>
                           <p className="text-emerald-600">Kartu Kredit, GoPay, ShopeePay, Virtual Account</p>
                         </div>
                       </div>
@@ -346,7 +346,7 @@ export default function PaymentPage() {
                           <Building className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                          <h4 className="font-semibold text-emerald-900">Transfer Bank</h4>
+                          <h4 className="font-semibold text-stone-900">Transfer Bank</h4>
                           <p className="text-emerald-600">BCA, Mandiri, BNI, BRI</p>
                         </div>
                       </div>
@@ -395,7 +395,7 @@ export default function PaymentPage() {
               {/* Order Summary */}
               <Card className="border-0 shadow-lg bg-white/80 backdrop-blur">
                 <div className="p-6">
-                  <h3 className="font-semibold text-emerald-900 mb-4">Detail Pesanan</h3>
+                  <h3 className="font-semibold text-stone-900 mb-4">Detail Pesanan</h3>
                   
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
@@ -430,7 +430,7 @@ export default function PaymentPage() {
               {(transaction?.pickupBranch || transaction?.returnBranch) && (
                 <Card className="border-0 shadow-lg bg-white/80 backdrop-blur">
                   <div className="p-6">
-                    <h3 className="font-semibold text-emerald-900 mb-4 flex items-center gap-2">
+                    <h3 className="font-semibold text-stone-900 mb-4 flex items-center gap-2">
                       <MapPin className="w-4 h-4" />
                       Lokasi Pengambilan & Pengembalian
                     </h3>
@@ -472,7 +472,7 @@ export default function PaymentPage() {
                     <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-emerald-100 flex items-center justify-center">
                       <CreditCard className="w-8 h-8 text-emerald-600" />
                     </div>
-                    <h4 className="font-semibold text-emerald-900 mb-2">Pembayaran Aman</h4>
+                    <h4 className="font-semibold text-stone-900 mb-2">Pembayaran Aman</h4>
                     <p className="text-sm text-emerald-600">
                       Transaksi Anda dilindungi dengan enkripsi SSL 256-bit
                     </p>

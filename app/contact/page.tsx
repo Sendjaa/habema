@@ -33,7 +33,7 @@ export default function ContactPage() {
               <div className="bg-emerald-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-emerald-200 transition-colors">
                 <MapPin className="w-8 h-8 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-bold text-[#1B4332] mb-3">Alamat</h3>
+              <h3 className="text-xl font-bold text-stone-900 mb-3">Alamat</h3>
               <p className="text-gray-600">
                 <a href="https://maps.app.goo.gl/" target="_blank" rel="noopener noreferrer">
                   Jl. Cihanjuang No.71, Cihanjuang Rahayu, Kec. Parongpong, Kab. Bandung Barat, Jawa Barat 40559
@@ -45,7 +45,7 @@ export default function ContactPage() {
               <div className="bg-emerald-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-emerald-200 transition-colors">
                 <Phone className="w-8 h-8 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-bold text-[#1B4332] mb-3">Telepon</h3>
+              <h3 className="text-xl font-bold text-stone-900 mb-3">Telepon</h3>
               <p className="text-gray-600">
                 +62 812 3456 7890<br />
                 +62 22 1234 5678
@@ -56,7 +56,7 @@ export default function ContactPage() {
               <div className="bg-emerald-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-emerald-200 transition-colors">
                 <Mail className="w-8 h-8 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-bold text-[#1B4332] mb-3">Email</h3>
+              <h3 className="text-xl font-bold text-stone-900 mb-3">Email</h3>
               <p className="text-gray-600">
                 info@habema-outdoor.com<br />
                 support@habema-outdoor.com
@@ -67,7 +67,7 @@ export default function ContactPage() {
           <div className="grid md:grid-cols-2 gap-12">
             {/* Contact Form */}
             <div>
-              <h2 className="text-3xl font-bold text-[#1B4332] mb-8">
+              <h2 className="text-3xl font-bold text-stone-900 mb-8">
                 Kirim Pesan
               </h2>
               <ContactForm />
@@ -75,7 +75,7 @@ export default function ContactPage() {
 
             {/* Operating Hours & Info */}
             <div>
-              <h2 className="text-3xl font-bold text-[#1B4332] mb-8">
+              <h2 className="text-3xl font-bold text-stone-900 mb-8">
                 Jam Operasional
               </h2>
               
@@ -97,7 +97,7 @@ export default function ContactPage() {
               </div>
 
               <div className="bg-emerald-50 rounded-xl p-8">
-                <h3 className="text-xl font-bold text-[#1B4332] mb-4 flex items-center gap-2">
+                <h3 className="text-xl font-bold text-stone-900 mb-4 flex items-center gap-2">
                   <MessageSquare className="w-6 h-6" />
                   Quick Response
                 </h3>
@@ -123,7 +123,7 @@ export default function ContactPage() {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-[#1B4332] mb-4">
+            <h2 className="text-3xl font-bold text-stone-900 mb-4">
               Lokasi Kami
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
@@ -134,7 +134,7 @@ export default function ContactPage() {
           <div className="bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-2xl p-8 aspect-video flex items-center justify-center">
             <div className="text-center">
               <MapPin className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-[#1B4332] mb-2">Basecamp Habema</h3>
+              <h3 className="text-xl font-bold text-stone-900 mb-2">Basecamp Habema</h3>
               <p className="text-gray-700 mb-4">
                 Jl. Outdoor Adventure No. 123, Bandung
               </p>
@@ -156,7 +156,7 @@ export default function ContactPage() {
       <section className="py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-[#1B4332] mb-4">
+            <h2 className="text-3xl font-bold text-stone-900 mb-4">
               Pertanyaan yang Sering Diajukan
             </h2>
             <p className="text-xl text-gray-600">
@@ -166,7 +166,7 @@ export default function ContactPage() {
 
           <div className="space-y-6">
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-bold text-[#1B4332] mb-3">
+              <h3 className="text-lg font-bold text-stone-900 mb-3">
                 Bagaimana cara menyewa peralatan?
               </h3>
               <p className="text-gray-600">
@@ -177,7 +177,7 @@ export default function ContactPage() {
             </div>
 
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-bold text-[#1B4332] mb-3">
+              <h3 className="text-lg font-bold text-stone-900 mb-3">
                 Apakah peralatan sudah termasuk asuransi?
               </h3>
               <p className="text-gray-600">
@@ -187,7 +187,7 @@ export default function ContactPage() {
             </div>
 
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-bold text-[#1B4332] mb-3">
+              <h3 className="text-lg font-bold text-stone-900 mb-3">
                 Berapa lama proses peminjaman?
               </h3>
               <p className="text-gray-600">

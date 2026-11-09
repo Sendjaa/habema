@@ -1,4 +1,14 @@
 import { MetadataRoute } from 'next'
+import { activities } from '@/lib/activities'
+
+// Halaman kegiatan: satu slug per entri di lib/activities.ts, jadi daftar ini
+// ikut saat kegiatannya berubah tanpa perlu query database.
+const activityPages: MetadataRoute.Sitemap = activities.map((a) => ({
+  url: `https://habema.biz.id/kegiatan/${a.slug}`,
+  lastModified: new Date(),
+  changeFrequency: 'weekly',
+  priority: 0.8,
+}))
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
@@ -8,6 +18,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'daily',
       priority: 1.0,
     },
+    ...activityPages,
     {
       url: 'https://habema.biz.id/catalog',
       lastModified: new Date(),

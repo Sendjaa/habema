@@ -146,28 +146,28 @@ export default function FAQPage() {
               <div className="bg-emerald-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Package className="w-6 h-6 text-emerald-600" />
               </div>
-              <h3 className="font-bold text-[#1B4332] mb-2">100+ Items</h3>
+              <h3 className="font-bold text-stone-900 mb-2">100+ Items</h3>
               <p className="text-gray-600 text-sm">Peralatan outdoor tersedia</p>
             </div>
             <div className="p-6">
               <div className="bg-emerald-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="w-6 h-6 text-emerald-600" />
               </div>
-              <h3 className="font-bold text-[#1B4332] mb-2">1000+ Customers</h3>
+              <h3 className="font-bold text-stone-900 mb-2">1000+ Customers</h3>
               <p className="text-gray-600 text-sm">Puas dengan layanan kami</p>
             </div>
             <div className="p-6">
               <div className="bg-emerald-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Clock className="w-6 h-6 text-emerald-600" />
               </div>
-              <h3 className="font-bold text-[#1B4332] mb-2">24/7 Support</h3>
+              <h3 className="font-bold text-stone-900 mb-2">24/7 Support</h3>
               <p className="text-gray-600 text-sm">Bantuan saat petualangan</p>
             </div>
             <div className="p-6">
               <div className="bg-emerald-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
                 <ShieldCheck className="w-6 h-6 text-emerald-600" />
               </div>
-              <h3 className="font-bold text-[#1B4332] mb-2">Quality Guaranteed</h3>
+              <h3 className="font-bold text-stone-900 mb-2">Quality Guaranteed</h3>
               <p className="text-gray-600 text-sm">Peralatan terjamin kualitasnya</p>
             </div>
           </div>
@@ -183,7 +183,7 @@ export default function FAQPage() {
                 <div className="bg-emerald-100 w-12 h-12 rounded-full flex items-center justify-center text-emerald-600">
                   {category.icon}
                 </div>
-                <h2 className="text-2xl md:text-3xl font-bold text-[#1B4332]">
+                <h2 className="text-2xl md:text-3xl font-bold text-stone-900">
                   {category.category}
                 </h2>
               </div>
@@ -192,7 +192,7 @@ export default function FAQPage() {
                 {category.questions.map((faq, faqIndex) => (
                   <details key={faqIndex} className="group bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     <summary className="cursor-pointer p-6 hover:bg-emerald-50 transition-colors flex justify-between items-center">
-                      <h3 className="text-lg font-semibold text-[#1B4332] pr-4">
+                      <h3 className="text-lg font-semibold text-stone-900 pr-4">
                         {faq.q}
                       </h3>
                       <div className="w-6 h-6 rounded-full border-2 border-emerald-600 flex items-center justify-center group-open:rotate-180 transition-transform">
@@ -215,7 +215,7 @@ export default function FAQPage() {
       {/* Still Need Help */}
       <section className="py-20 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-[#1B4332] mb-6">
+          <h2 className="text-3xl font-bold text-stone-900 mb-6">
             Masih Butuh Bantuan?
           </h2>
           <p className="text-xl text-gray-600 mb-8">
@@ -227,7 +227,7 @@ export default function FAQPage() {
               <div className="bg-emerald-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
                 <HelpCircle className="w-6 h-6 text-emerald-600" />
               </div>
-              <h3 className="font-bold text-[#1B4332] mb-2">Live Chat</h3>
+              <h3 className="font-bold text-stone-900 mb-2">Live Chat</h3>
               <p className="text-gray-600 text-sm mb-4">
                 Chat langsung dengan tim support kami
               </p>
@@ -240,7 +240,7 @@ export default function FAQPage() {
               <div className="bg-emerald-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="w-6 h-6 text-emerald-600" />
               </div>
-              <h3 className="font-bold text-[#1B4332] mb-2">Telepon</h3>
+              <h3 className="font-bold text-stone-900 mb-2">Telepon</h3>
               <p className="text-gray-600 text-sm mb-4">
                 Hubungi +62 812 3456 7890
               </p>
@@ -253,7 +253,7 @@ export default function FAQPage() {
               <div className="bg-emerald-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Package className="w-6 h-6 text-emerald-600" />
               </div>
-              <h3 className="font-bold text-[#1B4332] mb-2">Kunjungi Basecamp</h3>
+              <h3 className="font-bold text-stone-900 mb-2">Kunjungi Basecamp</h3>
               <p className="text-gray-600 text-sm mb-4">
                 Konsultasi langsung di lokasi
               </p>

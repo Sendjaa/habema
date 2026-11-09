@@ -32,14 +32,14 @@ export default function ReturnPolicyPage() {
             
             {/* Return Schedule */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <Clock className="w-6 h-6 text-emerald-600" />
                 Jadwal Pengembalian
               </h2>
               
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Jam Operasional</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Jam Operasional</h3>
                   <div className="bg-emerald-50 rounded-lg p-4 mb-4">
                     <div className="grid md:grid-cols-2 gap-4 text-sm">
                       <div>
@@ -66,7 +66,7 @@ export default function ReturnPolicyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Toleransi Keterlambatan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Toleransi Keterlambatan</h3>
                   <ul className="list-disc list-inside space-y-2 text-gray-700">
                     <li><strong>Grace Period:</strong> 30 menit tanpa biaya tambahan</li>
                     <li><strong>30 menit - 2 jam:</strong> 10% biaya sewa harian</li>
@@ -80,14 +80,14 @@ export default function ReturnPolicyPage() {
 
             {/* Return Process */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <Package className="w-6 h-6 text-emerald-600" />
                 Proses Pengembalian
               </h2>
               
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Langkah 1: Persiapan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Langkah 1: Persiapan</h3>
                   <ul className="list-disc list-inside space-y-2 text-gray-700">
                     <li>Bersihkan dan keringkan semua peralatan</li>
                     <li>Kumpulkan semua aksesoris dan komponen</li>
@@ -97,7 +97,7 @@ export default function ReturnPolicyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Langkah 2: Inspeksi Bersama</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Langkah 2: Inspeksi Bersama</h3>
                   <ul className="list-disc list-inside space-y-2 text-gray-700">
                     <li>Datang ke basecamp sesuai jadwal</li>
                     <li>Inspeksi kondisi peralatan dengan tim kami</li>
@@ -107,7 +107,7 @@ export default function ReturnPolicyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Langkah 3: Penyelesaian</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Langkah 3: Penyelesaian</h3>
                   <ul className="list-disc list-inside space-y-2 text-gray-700">
                     <li>Proses biaya tambahan (jika ada)</li>
                     <li>Hitung pengembalian deposit</li>
@@ -120,14 +120,14 @@ export default function ReturnPolicyPage() {
 
             {/* Equipment Requirements */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <CheckCircle className="w-6 h-6 text-emerald-600" />
                 Persyaratan Pengembalian
               </h2>
               
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Kondisi Peralatan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Kondisi Peralatan</h3>
                   <ul className="list-disc list-inside space-y-2 text-gray-700">
                     <li><strong>Bersih:</strong> Bebas dari kotoran, lumpur, dan sisa makanan</li>
                     <li><strong>Kering:</strong> Tidak ada kelembaban yang dapat menyebabkan jamur</li>
@@ -137,9 +137,9 @@ export default function ReturnPolicyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Standar Kebersihan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Standar Kebersihan</h3>
                   <div className="bg-emerald-50 rounded-lg p-4">
-                    <h4 className="font-semibold text-emerald-800 mb-2">Contoh Standar:</h4>
+                    <h4 className="font-semibold text-stone-900 mb-2">Contoh Standar:</h4>
                     <ul className="list-disc list-inside space-y-1 text-emerald-700 text-sm">
                       <li>Tenda: dilipat rapi, tidak ada noda atau bau</li>
                       <li>Sleeping bag: dicuci/dry clean, tidak ada noda</li>
@@ -154,14 +154,14 @@ export default function ReturnPolicyPage() {
 
             {/* Damage Assessment */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <AlertCircle className="w-6 h-6 text-emerald-600" />
                 Penilaian Kerusakan
               </h2>
               
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Kategori Kerusakan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Kategori Kerusakan</h3>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="bg-yellow-50 rounded-lg p-4">
                       <h4 className="font-semibold text-yellow-800 mb-2">Ringan</h4>
@@ -183,7 +183,7 @@ export default function ReturnPolicyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Proses Klaim</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Proses Klaim</h3>
                   <ol className="list-decimal list-inside space-y-2 text-gray-700">
                     <li>Inspeksi bersama saat pengembalian</li>
                     <li>Dokumentasi foto/video kerusakan</li>
@@ -197,11 +197,11 @@ export default function ReturnPolicyPage() {
 
             {/* Deposit Return */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4">Pengembalian Deposit</h2>
+              <h2 className="text-2xl font-bold text-stone-900 mb-4">Pengembalian Deposit</h2>
               
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Waktu Proses</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Waktu Proses</h3>
                   <ul className="list-disc list-inside space-y-2 text-gray-700">
                     <li><strong>Transfer Bank:</strong> 1-2 hari kerja</li>
                     <li><strong>E-wallet:</strong> 1 hari kerja</li>
@@ -210,7 +210,7 @@ export default function ReturnPolicyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Potensi Potongan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Potensi Potongan</h3>
                   <ul className="list-disc list-inside space-y-2 text-gray-700">
                     <li>Biaya kebersihan (jika peralatan tidak bersih)</li>
                     <li>Biaya perbaikan kerusakan</li>
@@ -235,11 +235,11 @@ export default function ReturnPolicyPage() {
 
             {/* Special Cases */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4">Kasus Khusus</h2>
+              <h2 className="text-2xl font-bold text-stone-900 mb-4">Kasus Khusus</h2>
               
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Pengembalian Dini</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Pengembalian Dini</h3>
                   <p className="text-gray-700 mb-3">
                     Jika Anda mengembalikan peralatan lebih awal dari jadwal:
                   </p>
@@ -251,7 +251,7 @@ export default function ReturnPolicyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Force Majeure</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Force Majeure</h3>
                   <p className="text-gray-700 mb-3">
                     Keterlambatan atau masalah karena force majeure:
                   </p>
@@ -264,7 +264,7 @@ export default function ReturnPolicyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Pengembalian via Kurir</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Pengembalian via Kurir</h3>
                   <p className="text-gray-700 mb-3">
                     Untuk pengembalian jarak jauh:
                   </p>
@@ -280,7 +280,7 @@ export default function ReturnPolicyPage() {
 
             {/* Contact */}
             <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-xl p-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4">Butuh Bantuan?</h2>
+              <h2 className="text-2xl font-bold text-stone-900 mb-4">Butuh Bantuan?</h2>
               <p className="text-gray-700 mb-6">
                 Jika Anda memiliki pertanyaan tentang pengembalian peralatan:
               </p>

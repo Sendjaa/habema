@@ -67,7 +67,7 @@ export default function CartPage() {
       <div className="min-h-screen bg-[#FDFCFB] flex items-center justify-center p-4">
         <Card className="p-12 bg-white border border-forest/10 max-w-md text-center rounded-2xl shadow-sm">
           <div className="mb-6"><ShoppingCart className="w-16 h-16 mx-auto text-forest/20" /></div>
-          <h1 className="text-2xl font-bold text-forest mb-2">Keranjang Kosong</h1>
+          <h1 className="text-2xl font-bold text-stone-900 mb-2">Keranjang Kosong</h1>
           <p className="text-muted-foreground mb-6">Belum ada item di keranjang Anda.</p>
           <Button className="w-full bg-[#1B4332] text-white font-bold py-6 rounded-xl" asChild>
             <Link href="/catalog_rental"><ArrowLeft className="w-4 h-4 mr-2" /> Kembali ke Katalog</Link>
@@ -81,7 +81,7 @@ export default function CartPage() {
     <div className="min-h-screen bg-[#FDFCFB] py-12">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-forest">Keranjang Belanja</h1>
+          <h1 className="text-4xl lg:text-4xl font-bold font-sans text-stone-900">Keranjang Belanja</h1>
           <Button variant="ghost" onClick={clearCart} className="text-red-500 font-bold text-xs">KOSONGKAN</Button>
         </div>
 
@@ -103,7 +103,7 @@ export default function CartPage() {
                   </div>
                   <div className="flex-1 text-center sm:text-left">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-bold text-forest text-lg">{item.name}</h3>
+                      <h3 className="font-bold text-stone-900 text-lg">{item.name}</h3>
                       {item.category && (
                         <span className="text-xs bg-forest/10 text-forest px-2 py-1 rounded-full">
                           {item.category}
@@ -166,7 +166,7 @@ export default function CartPage() {
 
           <div className="lg:col-span-1">
             <Card className="p-6 bg-white border-2 border-gold sticky top-24 space-y-6 rounded-2xl shadow-xl">
-              <h3 className="font-bold text-xl text-forest">Ringkasan Sewa</h3>
+              <h3 className="font-bold text-xl text-stone-900">Ringkasan Sewa</h3>
                
               <div className="bg-forest/5 p-4 rounded-xl space-y-3">
                 <label className="text-sm font-bold text-forest flex items-center gap-2">

@@ -8,10 +8,11 @@ import { Equipment } from "@/lib/types";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CalendarDays, CalendarCheck, Pencil } from "lucide-react";
+import { CalendarDays, CalendarCheck, Pencil, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParallax } from "@/hooks/use-parallax";
+import { activityLabel, parseActivityParam } from "@/lib/activities";
 
 function CatalogContent() {
   interface EquipmentCategory {
@@ -36,6 +37,19 @@ function CatalogContent() {
   // mengambil tanggal mulai dan selesai sewa dari query params
   const urlStartDate = useSearchParamsHook.get("startDate") || "";
   const urlEndDate = useSearchParamsHook.get("endDate") || "";
+
+  // Kegiatan dari tile homepage (/catalog_rental?kegiatan=<slug>). Slug yang
+  // tidak dikenal dibuang, jadi param asal-asalan menampilkan katalog penuh
+  // alih-alih hasil kosong.
+  const urlActivity =
+    parseActivityParam(useSearchParamsHook.get("kegiatan") || undefined)[0] ?? "";
+
+  // Hapus kegiatan tanpa membuang tanggal yang sudah dipilih di hero.
+  const clearActivity = () => {
+    const params = new URLSearchParams(useSearchParamsHook.toString());
+    params.delete("kegiatan");
+    router.push(params.size ? `${pathname}?${params}` : pathname);
+  };
   
   // jadikan state jika ingin menampilkan tanggal di filter
   const [startDate, setStartDate] = useState(urlStartDate);
@@ -79,10 +93,14 @@ function CatalogContent() {
           );
         }
   
-        // 2. Fetch Equipment
-        const { data: eqData, error: eqError } = await supabase
-          .from("equipment")
-          .select("*");
+        // 2. Fetch Equipment. Kegiatan disaring di DB lewat index GIN pada
+        //    equipment.activities, bukan disaring ulang di browser, supaya
+        //    jumlah hasil dan filter lain tetap konsisten.
+        let equipmentQuery = supabase.from("equipment").select("*");
+        if (urlActivity) {
+          equipmentQuery = equipmentQuery.contains("activities", [urlActivity]);
+        }
+        const { data: eqData, error: eqError } = await equipmentQuery;
   
         if (eqError) {
           console.error("Gagal ambil produk:", eqError.message);
@@ -114,7 +132,7 @@ function CatalogContent() {
     };
   
     fetchData();
-  }, [urlStartDate, urlEndDate]);
+  }, [urlStartDate, urlEndDate, urlActivity]);
   
   // Fetch branch stock when a branch is selected
   useEffect(() => {
@@ -374,7 +392,7 @@ function CatalogContent() {
                     type="submit"
                     className="flex-1 bg-emerald-800 hover:bg-emerald-900 text-white font-semibold md:text-sm text-xs py-3 px-6 rounded-xl shadow-md shadow-emerald-800/10 hover:shadow-emerald-900/20 active:scale-[0.98] transition-all duration-200"
                   >
-                    Update Ketersediaan Gear
+                    Update
                   </button>
                   {urlStartDate && urlEndDate && (
                     <button
@@ -491,7 +509,7 @@ function CatalogContent() {
                               )}
                             </div>
                             <div className="p-3">
-                              <h3 className="text-sm font-semibold text-stone-800 line-clamp-2 mb-1 group-hover:text-forest transition-colors">
+                              <h3 className="text-sm font-semibold font-sans text-stone-800 line-clamp-2 mb-1 group-hover:text-stone-900 transition-colors truncate">
                                 {product.name}
                               </h3>
                               <div className="flex items-center justify-between">
@@ -513,11 +531,31 @@ function CatalogContent() {
                 )}
 
 
+                {/* Kegiatan aktif — datang dari tile homepage */}
+                {urlActivity && (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-forest px-4 py-4 text-sm font-bold text-white">
+                      {activityLabel(urlActivity)}
+                      <button
+                        type="button"
+                        onClick={clearActivity}
+                        aria-label="Hapus filter kegiatan"
+                        className="rounded-full p-0.5 hover:bg-white/20 transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </span>
+                    <span className="text-xs font-medium text-stone-500">
+                      {filteredEquipment.length} alat untuk kegiatan ini
+                    </span>
+                  </div>
+                )}
+
                 {/* Main Catalog Grid */}
                 {filteredEquipment.length > 0 ? (
                   <CatalogGrid equipment={filteredEquipment} dateQuery={dateQuery} />
                 ) : (
-                  <div className="bg-white rounded-3xl p-20 text-center border-2 border-dashed border-slate-200">
+                  <div className="bg-white rounded-3xl p-20 text-center">
                     <div className="text-4xl mb-4">⛺</div>
                     <h3 className="font-bold text-slate-800 text-lg">
                       Produk Tidak Ditemukan

@@ -32,7 +32,7 @@ export default function PrivacyPage() {
             
             {/* Introduction */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <Eye className="w-6 h-6 text-emerald-600" />
                 Pendahuluan
               </h2>
@@ -47,14 +47,14 @@ export default function PrivacyPage() {
 
             {/* Data Collection */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <Database className="w-6 h-6 text-emerald-600" />
                 Data yang Kami Kumpulkan
               </h2>
               
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Informasi Pribadi</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Informasi Pribadi</h3>
                   <ul className="list-disc list-inside text-gray-700 space-y-2">
                     <li>Nama lengkap dan alamat email</li>
                     <li>Nomor telepon dan alamat lengkap</li>
@@ -65,7 +65,7 @@ export default function PrivacyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Data Penggunaan Layanan</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Data Penggunaan Layanan</h3>
                   <ul className="list-disc list-inside text-gray-700 space-y-2">
                     <li>Riwayat penyewaan dan preferensi</li>
                     <li>Feedback dan rating layanan</li>
@@ -76,7 +76,7 @@ export default function PrivacyPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1B4332] mb-3">Data Teknis</h3>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-3">Data Teknis</h3>
                   <ul className="list-disc list-inside text-gray-700 space-y-2">
                     <li>IP address dan cookies</li>
                     <li>Data analytics dan penggunaan website</li>
@@ -89,7 +89,7 @@ export default function PrivacyPage() {
 
             {/* Data Usage */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <FileText className="w-6 h-6 text-emerald-600" />
                 Penggunaan Data
               </h2>
@@ -110,7 +110,7 @@ export default function PrivacyPage() {
 
             {/* Data Protection */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <Lock className="w-6 h-6 text-emerald-600" />
                 Perlindungan Data
               </h2>
@@ -131,7 +131,7 @@ export default function PrivacyPage() {
 
             {/* Data Sharing */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-stone-900 mb-4 flex items-center gap-3">
                 <UserCheck className="w-6 h-6 text-emerald-600" />
                 Pembagian Data
               </h2>
@@ -154,7 +154,7 @@ export default function PrivacyPage() {
 
             {/* User Rights */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4">Hak Anda sebagai Pengguna</h2>
+              <h2 className="text-2xl font-bold text-stone-900 mb-4">Hak Anda sebagai Pengguna</h2>
               
               <div className="space-y-4 text-gray-700">
                 <p>Anda memiliki hak untuk:</p>
@@ -171,7 +171,7 @@ export default function PrivacyPage() {
 
             {/* Contact */}
             <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-xl p-8">
-              <h2 className="text-2xl font-bold text-[#1B4332] mb-4">Hubungi Kami</h2>
+              <h2 className="text-2xl font-bold text-stone-900 mb-4">Hubungi Kami</h2>
               <p className="text-gray-700 mb-6">
                 Jika Anda memiliki pertanyaan tentang kebijakan privasi atau ingin menggunakan hak Anda, silakan hubungi:
               </p>

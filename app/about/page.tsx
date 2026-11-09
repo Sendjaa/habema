@@ -30,7 +30,7 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-[#1B4332] mb-6">
+              <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mb-6">
                 Cerita Kami
               </h2>
               <div className="space-y-4 text-gray-700">
@@ -63,7 +63,7 @@ export default function AboutPage() {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-[#1B4332] mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mb-4">
               Nilai-Nilai Kami
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
@@ -76,7 +76,7 @@ export default function AboutPage() {
               <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-emerald-200 transition-colors">
                 <ShieldCheck className="w-10 h-10 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-bold text-[#1B4332] mb-3">Keamanan Utama</h3>
+              <h3 className="text-xl font-bold text-stone-900 mb-3">Keamanan Utama</h3>
               <p className="text-gray-600">
                 Semua peralatan kami melalui inspeksi ketat dan maintenance berkala untuk menjamin keamanan Anda.
               </p>
@@ -86,7 +86,7 @@ export default function AboutPage() {
               <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-emerald-200 transition-colors">
                 <Users className="w-10 h-10 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-bold text-[#1B4332] mb-3">Pelayanan Terbaik</h3>
+              <h3 className="text-xl font-bold text-stone-900 mb-3">Pelayanan Terbaik</h3>
               <p className="text-gray-600">
                 Tim kami siap membantu Anda dengan pengalaman dan pengetahuan tentang peralatan outdoor.
               </p>
@@ -96,7 +96,7 @@ export default function AboutPage() {
               <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-emerald-200 transition-colors">
                 <Leaf className="w-10 h-10 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-bold text-[#1B4332] mb-3">Peduli Lingkungan</h3>
+              <h3 className="text-xl font-bold text-stone-900 mb-3">Peduli Lingkungan</h3>
               <p className="text-gray-600">
                 Kami mendukung pariwisata berkelanjutan dan edukasi tentang pelestarian alam.
               </p>
@@ -133,7 +133,7 @@ export default function AboutPage() {
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-[#1B4332] mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mb-4">
               Tim HABEMA
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
@@ -146,7 +146,7 @@ export default function AboutPage() {
               <div className="w-32 h-32 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full mx-auto mb-6 flex items-center justify-center">
                 <Users className="w-16 h-16 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-[#1B4332] mb-2">Tim Expert</h3>
+              <h3 className="text-xl font-bold text-stone-900 mb-2">Tim Expert</h3>
               <p className="text-gray-600">
                 Berpengalaman dalam outdoor activities dan equipment handling
               </p>
@@ -156,7 +156,7 @@ export default function AboutPage() {
               <div className="w-32 h-32 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full mx-auto mb-6 flex items-center justify-center">
                 <Clock className="w-16 h-16 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-[#1B4332] mb-2">Support 24/7</h3>
+              <h3 className="text-xl font-bold text-stone-900 mb-2">Support 24/7</h3>
               <p className="text-gray-600">
                 Siap membantu Anda kapan saja selama petualangan berlangsung
               </p>
@@ -166,7 +166,7 @@ export default function AboutPage() {
               <div className="w-32 h-32 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full mx-auto mb-6 flex items-center justify-center">
                 <Star className="w-16 h-16 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-[#1B4332] mb-2">Quality Control</h3>
+              <h3 className="text-xl font-bold text-stone-900 mb-2">Quality Control</h3>
               <p className="text-gray-600">
                 Memastikan semua peralatan dalam kondisi prima dan siap pakai
               </p>

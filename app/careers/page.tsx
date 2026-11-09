@@ -28,7 +28,7 @@ export default function CareersPage() {
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-[#1B4332] mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mb-4">
               Mengapa Bergabung dengan HABEMA?
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
@@ -41,7 +41,7 @@ export default function CareersPage() {
               <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Target className="w-10 h-10 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-bold text-[#1B4332] mb-3">Misi Berarti</h3>
+              <h3 className="text-xl font-bold text-stone-900 mb-3">Misi Berarti</h3>
               <p className="text-gray-600">
                 Dukung ribuan petualang untuk menjelajahi alam dengan aman dan nyaman
               </p>
@@ -51,7 +51,7 @@ export default function CareersPage() {
               <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Users className="w-10 h-10 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-bold text-[#1B4332] mb-3">Tim Hebat</h3>
+              <h3 className="text-xl font-bold text-stone-900 mb-3">Tim Hebat</h3>
               <p className="text-gray-600">
                 Bergabung dengan profesional yang bersemangat dan berpengalaman di industri outdoor
               </p>
@@ -61,7 +61,7 @@ export default function CareersPage() {
               <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Award className="w-10 h-10 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-bold text-[#1B4332] mb-3">Berkembang Bersama</h3>
+              <h3 className="text-xl font-bold text-stone-900 mb-3">Berkembang Bersama</h3>
               <p className="text-gray-600">
                 Peluang pengembangan karir dan training dalam industri outdoor adventure
               </p>
@@ -74,7 +74,7 @@ export default function CareersPage() {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-[#1B4332] mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mb-4">
               Posisi Tersedia
             </h2>
             <p className="text-xl text-gray-600">
@@ -86,7 +86,7 @@ export default function CareersPage() {
             <div className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
                 <div>
-                  <h3 className="text-xl font-bold text-[#1B4332] mb-2">Outdoor Equipment Specialist</h3>
+                  <h3 className="text-xl font-bold text-stone-900 mb-2">Outdoor Equipment Specialist</h3>
                   <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                     <span className="flex items-center gap-1">
                       <MapPin className="w-4 h-4" />
@@ -121,7 +121,7 @@ export default function CareersPage() {
             <div className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
                 <div>
-                  <h3 className="text-xl font-bold text-[#1B4332] mb-2">Digital Marketing Specialist</h3>
+                  <h3 className="text-xl font-bold text-stone-900 mb-2">Digital Marketing Specialist</h3>
                   <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                     <span className="flex items-center gap-1">
                       <MapPin className="w-4 h-4" />
@@ -156,7 +156,7 @@ export default function CareersPage() {
             <div className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
                 <div>
-                  <h3 className="text-xl font-bold text-[#1B4332] mb-2">Adventure Guide (Part-time)</h3>
+                  <h3 className="text-xl font-bold text-stone-900 mb-2">Adventure Guide (Part-time)</h3>
                   <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                     <span className="flex items-center gap-1">
                       <MapPin className="w-4 h-4" />
@@ -204,7 +204,7 @@ export default function CareersPage() {
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-[#1B4332] mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mb-4">
               Budaya Kerja Kami
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
@@ -215,7 +215,7 @@ export default function CareersPage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="text-center">
               <div className="text-4xl mb-4">🏔️</div>
-              <h3 className="text-lg font-bold text-[#1B4332] mb-2">Adventure First</h3>
+              <h3 className="text-lg font-bold text-stone-900 mb-2">Adventure First</h3>
               <p className="text-gray-600 text-sm">
                 Kami percaya pengalaman langsung di alam membuat kami lebih baik dalam melayani customer
               </p>
@@ -223,7 +223,7 @@ export default function CareersPage() {
 
             <div className="text-center">
               <div className="text-4xl mb-4">🤝</div>
-              <h3 className="text-lg font-bold text-[#1B4332] mb-2">Team Collaboration</h3>
+              <h3 className="text-lg font-bold text-stone-900 mb-2">Team Collaboration</h3>
               <p className="text-gray-600 text-sm">
                 Sukses kita diraih bersama dengan saling mendukung dan berbagi pengetahuan
               </p>
@@ -231,7 +231,7 @@ export default function CareersPage() {
 
             <div className="text-center">
               <div className="text-4xl mb-4">🌱</div>
-              <h3 className="text-lg font-bold text-[#1B4332] mb-2">Sustainability</h3>
+              <h3 className="text-lg font-bold text-stone-900 mb-2">Sustainability</h3>
               <p className="text-gray-600 text-sm">
                 Berkomitmen pada pelestarian alam dan pariwisata yang bertanggung jawab
               </p>
@@ -239,7 +239,7 @@ export default function CareersPage() {
 
             <div className="text-center">
               <div className="text-4xl mb-4">📈</div>
-              <h3 className="text-lg font-bold text-[#1B4332] mb-2">Continuous Growth</h3>
+              <h3 className="text-lg font-bold text-stone-900 mb-2">Continuous Growth</h3>
               <p className="text-gray-600 text-sm">
                 Selalu belajar dan mengembangkan diri untuk memberikan layanan terbaik
               </p>

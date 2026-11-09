@@ -371,7 +371,7 @@ export default function OrderConfirmationPage() {
                 </Link>
               </Button>
               <div>
-                <h1 className="text-base sm:text-lg font-black uppercase tracking-tight text-forest leading-tight">
+                <h1 className="text-base sm:text-lg font-black uppercase tracking-tight text-stone-900 leading-tight">
                   {isWhatsAppBooking ? "Konfirmasi Berhasil" : "Pesanan Berhasil"}
                 </h1>
                 <p className="text-stone-600 font-medium text-xs sm:text-sm leading-tight">
@@ -397,7 +397,7 @@ export default function OrderConfirmationPage() {
                 <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 rounded-full bg-emerald-100 flex items-center justify-center">
                   <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-600" />
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-forest mb-2">
+                <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-stone-900 mb-2">
                   {isWhatsAppBooking
                     ? "Konfirmasi WhatsApp Berhasil"
                     : isQrisManual ? "Bukti Terkirim" : "Pembayaran Berhasil"}
@@ -427,7 +427,7 @@ export default function OrderConfirmationPage() {
 
             <Card className="rounded-xl border border-stone-200 bg-white shadow-sm">
               <div className="p-4 sm:p-6">
-                <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight text-forest mb-4 sm:mb-6">Detail Pesanan</h3>
+                <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight text-stone-900 mb-4 sm:mb-6">Detail Pesanan</h3>
                 <div className="space-y-3">
                   {itemsArray?.map((item: any, idx: number) => (
                     <div key={idx} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-cream rounded-xl">
@@ -443,7 +443,7 @@ export default function OrderConfirmationPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-forest text-sm sm:text-base truncate">{item.name || 'Produk Sewa'}</h4>
+                        <h4 className="font-bold text-stone-900 text-sm sm:text-base truncate">{item.name || 'Produk Sewa'}</h4>
                         <p className="text-stone-600 font-medium text-xs sm:text-sm">Durasi: {totalDays} hari</p>
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2">
                           <Badge className="bg-emerald-100 text-emerald-700 rounded-full text-xs w-fit font-medium">Dikonfirmasi</Badge>
@@ -464,7 +464,7 @@ export default function OrderConfirmationPage() {
             {transactionData?.identity && (transactionData.identity.fullName || transactionData.identity.idNumber) && (
               <Card className="rounded-xl border border-stone-200 bg-white shadow-sm">
                 <div className="p-4 sm:p-6">
-                  <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight text-forest mb-4 sm:mb-6">Data Pemesan</h3>
+                  <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight text-stone-900 mb-4 sm:mb-6">Data Pemesan</h3>
                   <div className="bg-cream rounded-xl p-4 sm:p-5">
                     <div className="flex items-center gap-3 sm:gap-4 pb-3">
                       <div className="w-11 h-11 rounded-full bg-forest/10 flex items-center justify-center shrink-0">
@@ -504,7 +504,7 @@ export default function OrderConfirmationPage() {
 
             <Card className="rounded-xl border border-stone-200 bg-white shadow-sm">
               <div className="p-4 sm:p-6">
-                <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight text-forest mb-4 sm:mb-6">Ringkasan Pesanan</h3>
+                <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight text-stone-900 mb-4 sm:mb-6">Ringkasan Pesanan</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center text-xs sm:text-sm">
                     <span className="text-stone-600 font-medium">Order ID</span>
@@ -548,14 +548,14 @@ export default function OrderConfirmationPage() {
 
             <Card className="rounded-xl border border-stone-200 bg-white shadow-sm">
               <div className="p-4 sm:p-6">
-                <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight text-forest mb-3 sm:mb-4">Langkah Selanjutnya</h3>
+                <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight text-stone-900 mb-3 sm:mb-4">Langkah Selanjutnya</h3>
                 <div className="space-y-3 sm:space-y-4">
                   <div className="flex items-start gap-3">
                     <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-forest/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <span className="text-forest text-xs font-bold">1</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-forest text-sm sm:text-base">Konfirmasi Email</h4>
+                      <h4 className="font-bold text-stone-900 text-sm sm:text-base">Konfirmasi Email</h4>
                       <p className="text-xs sm:text-sm text-stone-600 font-medium">Cek email Anda untuk detail pesanan lengkap</p>
                     </div>
                   </div>
@@ -564,7 +564,7 @@ export default function OrderConfirmationPage() {
                       <span className="text-forest text-xs font-bold">2</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-forest text-sm sm:text-base">Persiapan Produk</h4>
+                      <h4 className="font-bold text-stone-900 text-sm sm:text-base">Persiapan Produk</h4>
                       <p className="text-xs sm:text-sm text-stone-600 font-medium">Kami akan mempersiapkan produk sewa Anda</p>
                     </div>
                   </div>
@@ -573,7 +573,7 @@ export default function OrderConfirmationPage() {
                       <span className="text-forest text-xs font-bold">3</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-forest text-sm sm:text-base">Pengambilan</h4>
+                      <h4 className="font-bold text-stone-900 text-sm sm:text-base">Pengambilan</h4>
                       {transactionData?.pickupBranch ? (
                         <div className="text-xs sm:text-sm text-stone-600 font-medium mt-1 space-y-0.5">
                           <p>
@@ -615,7 +615,7 @@ export default function OrderConfirmationPage() {
             <div className="sticky top-4 sm:top-6 space-y-3 sm:space-y-4">
               <Card className="rounded-xl border border-stone-200 bg-white shadow-sm">
                 <div className="p-4 sm:p-6">
-                  <h4 className="font-black uppercase tracking-tight text-forest mb-3 text-sm sm:text-base">Aksi Cepat</h4>
+                  <h4 className="font-black uppercase tracking-tight text-stone-900 mb-3 text-sm sm:text-base">Aksi Cepat</h4>
                   <div className="space-y-2">
                     <Button variant="outline" className="w-full border-forest text-forest hover:bg-forest hover:text-white rounded-xl font-bold justify-start text-xs sm:text-sm" onClick={handleDownloadInvoice}>
                       <Download className="w-4 h-4 mr-2" />
@@ -633,7 +633,7 @@ export default function OrderConfirmationPage() {
 
               <Card className="rounded-xl border border-stone-200 bg-white shadow-sm">
                 <div className="p-4 sm:p-6">
-                  <h4 className="font-black uppercase tracking-tight text-forest mb-2 text-sm sm:text-base">Butuh Bantuan?</h4>
+                  <h4 className="font-black uppercase tracking-tight text-stone-900 mb-2 text-sm sm:text-base">Butuh Bantuan?</h4>
                   <p className="text-xs sm:text-sm text-stone-600 font-medium mb-3">
                     Hubungi tim support kami melalui WhatsApp
                   </p>
