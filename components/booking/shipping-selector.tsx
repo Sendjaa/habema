@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Loader2, Truck, Store, Package, Search } from 'lucide-react'
 import { COURIER_OPTIONS, searchDestination, type ShippingOption, type RajaOngkirDestination } from '@/lib/rajaongkir'
 
@@ -29,6 +29,8 @@ export function ShippingSelector({
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([])
   const [selectedShipping, setSelectedShipping] = useState<ShippingOption | null>(null)
   const [isCalculating, setIsCalculating] = useState(false)
+  const onShippingSelectRef = useRef(onShippingSelect)
+  onShippingSelectRef.current = onShippingSelect
 
   // Destination search (Raja Ongkir)
   const [destinationQuery, setDestinationQuery] = useState('')
@@ -104,9 +106,9 @@ export function ShippingSelector({
   // Notify parent on selection change
   useEffect(() => {
     if (method === 'pickup') {
-      onShippingSelect({ method: 'pickup' })
+      onShippingSelectRef.current({ method: 'pickup' })
     } else if (selectedShipping && selectedDestination) {
-      onShippingSelect({
+      onShippingSelectRef.current({
         method: 'shipping',
         courierCode: selectedShipping.courierCode,
         courierService: selectedShipping.service,
