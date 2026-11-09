@@ -1,6 +1,11 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+// Deskripsi produk dari editor Quill tersimpan sebagai HTML, sedangkan konten
+// lama tersimpan sebagai Markdown. Deteksi sederhana: konten yang diawali tag
+// HTML dirender sebagai HTML; sisanya lewat ReactMarkdown.
+const HTML_PATTERN = /^\s*(<([a-z][\w-]*)\b[^>]*>|<!--)/i;
+
 export function Markdown({
   children,
   className,
@@ -10,35 +15,44 @@ export function Markdown({
 }) {
   if (!children) return null;
 
+  if (HTML_PATTERN.test(children)) {
+    return (
+      <div
+        className={`rte-content ql-editor text-sm leading-relaxed text-muted-foreground ${className ?? ""}`}
+        dangerouslySetInnerHTML={{ __html: children }}
+      />
+    );
+  }
+
   return (
     <div className={`space-y-3 ${className ?? ""}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
           p: ({ children: c }) => (
-            <p className="text-sm leading-relaxed text-slate-600">{c}</p>
+            <p className="text-sm leading-relaxed text-muted-foreground">{c}</p>
           ),
           h1: ({ children: c }) => (
-            <h1 className="text-xl font-bold text-slate-900">{c}</h1>
+            <h1 className="text-xl font-bold text-foreground">{c}</h1>
           ),
           h2: ({ children: c }) => (
-            <h2 className="text-lg font-bold text-slate-900">{c}</h2>
+            <h2 className="text-lg font-bold text-foreground">{c}</h2>
           ),
           h3: ({ children: c }) => (
-            <h3 className="text-base font-bold text-slate-900">{c}</h3>
+            <h3 className="text-base font-bold text-foreground">{c}</h3>
           ),
           h4: ({ children: c }) => (
-            <h4 className="text-sm font-bold text-slate-900">{c}</h4>
+            <h4 className="text-sm font-bold text-foreground">{c}</h4>
           ),
           ul: ({ children: c }) => (
-            <ul className="list-disc pl-5 space-y-1 text-sm text-slate-600">{c}</ul>
+            <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">{c}</ul>
           ),
           ol: ({ children: c }) => (
-            <ol className="list-decimal pl-5 space-y-1 text-sm text-slate-600">{c}</ol>
+            <ol className="list-decimal pl-5 space-y-1 text-sm text-muted-foreground">{c}</ol>
           ),
           li: ({ children: c }) => <li className="leading-relaxed">{c}</li>,
           strong: ({ children: c }) => (
-            <strong className="font-bold text-slate-900">{c}</strong>
+            <strong className="font-bold text-foreground">{c}</strong>
           ),
           em: ({ children: c }) => <em className="italic">{c}</em>,
           a: ({ href, children: c }) => (
@@ -46,23 +60,23 @@ export function Markdown({
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-emerald-700 underline underline-offset-2 hover:text-emerald-800"
+              className="text-info underline underline-offset-2 hover:text-info/80"
             >
               {c}
             </a>
           ),
           code: ({ children: c }) => (
-            <code className="px-1.5 py-0.5 rounded bg-stone-100 text-[12px] text-rose-600 font-mono">
+            <code className="px-1.5 py-0.5 rounded-full bg-muted text-[12px] text-secondary font-mono">
               {c}
             </code>
           ),
           pre: ({ children: c }) => (
-            <pre className="p-3 rounded-lg bg-stone-900 text-stone-100 text-[12px] overflow-x-auto font-mono">
+            <pre className="p-3 rounded-lg bg-foreground text-background text-[12px] overflow-x-auto font-mono">
               {c}
             </pre>
           ),
           blockquote: ({ children: c }) => (
-            <blockquote className="border-l-4 border-emerald-600/40 pl-4 text-slate-500 italic">
+            <blockquote className="border-l-4 border-primary/40 pl-4 text-muted-foreground italic">
               {c}
             </blockquote>
           ),
@@ -72,14 +86,14 @@ export function Markdown({
             </div>
           ),
           th: ({ children: c }) => (
-            <th className="border border-stone-200 px-3 py-2 text-left font-bold text-slate-900 bg-stone-50">
+            <th className="border border-border px-3 py-2 text-left font-bold text-foreground bg-muted">
               {c}
             </th>
           ),
           td: ({ children: c }) => (
-            <td className="border border-stone-200 px-3 py-2 text-slate-600">{c}</td>
+            <td className="border border-border px-3 py-2 text-muted-foreground">{c}</td>
           ),
-          hr: () => <hr className="border-stone-200" />,
+          hr: () => <hr className="border-border" />,
         }}
       >
         {children}

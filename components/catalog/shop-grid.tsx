@@ -26,7 +26,7 @@ function ShopCard({ product, index }: { product: any; index: number }) {
       className="h-full"
     >
       <Link href={`/product/${product.id}`} className="group block h-full">
-        <div className="flex flex-col h-full overflow-hidden rounded-xl bg-white   transition-all duration-300 lg:w-60">
+        <div className="flex flex-col h-full overflow-hidden bg-white   transition-all duration-300 lg:w-60">
           {/* Image */}
           <div className="relative aspect-square bg-stone-100 overflow-hidden">
             {image ? (
@@ -49,7 +49,7 @@ function ShopCard({ product, index }: { product: any; index: number }) {
             )}
 
             {discount > 0 && (
-              <span className="absolute top-2.5 left-2.5 text-[11px] font-bold text-white bg-[#FF6B35] px-2 py-0.5 rounded-md">
+              <span className="absolute top-2.5 left-2.5 text-[11px] font-bold text-white bg-gold px-2 py-0.5 rounded-md">
                 -{discount}%
               </span>
             )}
@@ -62,14 +62,14 @@ function ShopCard({ product, index }: { product: any; index: number }) {
           </div>
 
           {/* Content */}
-          <div className="flex flex-col flex-1 p-3.5 bg-[#F5EFE7] gap-1">
+          <div className="flex flex-col flex-1 p-3.5 md:p-0 md:pt-1 lg:p-0 lg:pt-2 gap-1">
 
-            <h5 className="font-medium text-sm text-stone-900 leading-tight line-clamp-2" title={product.name}>
+            <h5 className="font-medium text-sm font-sans text-stone-900 leading-tight line-clamp-2" title={product.name}>
               {product.name}
             </h5>
 
             <div className="mt-1">
-              <span className="text-base text-amber-500 font-bold">
+              <span className="text-base text-[#FF6B35] font-bold">
                 Rp{price.toLocaleString("id-ID")}
               </span>
               {originalPrice > price && (

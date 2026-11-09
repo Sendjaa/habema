@@ -41,7 +41,7 @@ export function Footer() {
           {/* Brand Section */}
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <Image src="/images/habema_logo_orange.png" alt="Habema Logo" width={80} height={40} />
+              <Image src="/images/habema_logo_orange.png" alt="Habema Logo" width={348} height={136} className="h-9 w-auto" />
             </div>
             <p className="text-cream/80 text-xs leading-relaxed">
               Platform penyewaan peralatan outdoor terpercaya untuk petualangan Anda.

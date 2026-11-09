@@ -52,7 +52,7 @@ function NavbarUserControlInner() {
     return (
       <Button 
         variant="outline" 
-        className="hidden sm:flex ms-3 border-emerald-600 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-600 rounded-xl font-bold opacity-90" 
+        className="hidden sm:flex ms-3 border-forest text-forest hover:bg-forest-soft hover:text-forest rounded-xl font-bold opacity-90" 
         disabled
       >
         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -67,7 +67,7 @@ function NavbarUserControlInner() {
       <Button
         variant="ghost"
         size="icon"
-        className="hidden sm:flex text-emerald-900/70"
+        className="hidden sm:flex text-forest/70"
         asChild
       >
         <Link href="/account">
@@ -81,7 +81,7 @@ function NavbarUserControlInner() {
   return (
     <Button 
       variant="outline" 
-      className="hidden sm:flex ms-3 border-emerald-600 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-600 rounded-xl font-bold" 
+      className="hidden sm:flex ms-3 border-forest text-forest hover:bg-forest-soft hover:text-forest rounded-xl font-bold" 
       asChild
     >
       <Link href="/login">Masuk</Link>
@@ -95,7 +95,7 @@ export function NavbarUserControl() {
       fallback={
         <Button 
           variant="outline" 
-          className="hidden sm:flex ms-3 border-emerald-600 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-600 rounded-xl font-bold opacity-90" 
+          className="hidden sm:flex ms-3 border-forest text-forest hover:bg-forest-soft hover:text-forest rounded-xl font-bold opacity-90" 
           disabled
         >
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />

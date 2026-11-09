@@ -5,15 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabaseClient";
 import { LoginModal } from "@/components/auth/login-modal";
 
 interface ReviewFormProps {
-  equipmentId: string;
+  equipmentId?: string;
+  shopProductId?: string;
   onReviewSubmitted: () => void;
 }
 
-export function ReviewForm({ equipmentId, onReviewSubmitted }: ReviewFormProps) {
+export function ReviewForm({
+  equipmentId,
+  shopProductId,
+  onReviewSubmitted,
+}: ReviewFormProps) {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
@@ -33,63 +37,33 @@ export function ReviewForm({ equipmentId, onReviewSubmitted }: ReviewFormProps) 
       return;
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      setShowLoginModal(true);
-      return;
-    }
-
     setSubmitting(true);
 
     try {
+      const body: Record<string, any> = { rating, comment: comment.trim() };
+      if (equipmentId) body.equipmentId = equipmentId;
+      if (shopProductId) body.shopProductId = shopProductId;
 
-      // Check if user exists in users table
-      const { data: userRecord, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', user.id)
-        .single();
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
 
-      if (userError || !userRecord) {
-        // Create user record if it doesn't exist
-        const { error: insertError } = await supabase
-          .from('users' as any)
-          .insert({
-            id: user.id,
-            email: user.email || '',
-            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-          });
+      const data = await res.json().catch(() => ({}));
 
-        if (insertError) {
-          console.error('Error creating user record:', insertError);
-          toast.error('Gagal membuat user record. Silakan coba lagi.');
-          return;
-        }
+      if (!res.ok) {
+        throw new Error(data.error || "Gagal mengirim ulasan");
       }
 
-      // Now insert the review
-      const { error } = await supabase
-        .from("reviews" as any)
-        .insert({
-          equipment_id: equipmentId,
-          user_id: user.id,
-          rating,
-          comment: comment.trim(),
-        });
-
-      if (error) {
-        console.error('Review insertion error:', error);
-        throw error;
-      }
-
-      toast.success("Review berhasil dikirim!");
+      toast.success("Ulasan berhasil dikirim!");
       setRating(0);
       setComment("");
       onReviewSubmitted();
     } catch (error: any) {
       console.error("Error submitting review:", error);
-      toast.error(error.message || "Gagal mengirim review");
+      toast.error(error.message || "Gagal mengirim ulasan");
     } finally {
       setSubmitting(false);
     }
@@ -144,7 +118,7 @@ export function ReviewForm({ equipmentId, onReviewSubmitted }: ReviewFormProps) 
         disabled={submitting || rating === 0 || comment.length < 10}
         className="w-full"
       >
-        {submitting ? "Mengirim..." : "Kirim Review"}
+        {submitting ? "Mengirim..." : "Kirim Ulasan"}
       </Button>
       <LoginModal
         open={showLoginModal}

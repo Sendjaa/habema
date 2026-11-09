@@ -1,4 +1,4 @@
-"use client";
+ "use client";
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -63,7 +63,7 @@ export function HeroSection() {
 
             {/* Deskripsi */}
             <motion.p
-              className="mt-4 text-emerald-900/70 text-xs md:text-base lg:text-lg leading-relaxed max-w-lg mx-auto lg:mx-0"
+              className="mt-4 text-emerald-900/70 text-xs md:text-md lg:text-lg leading-relaxed max-w-lg mx-auto lg:mx-0"
               variants={textVariants}
               transition={{ delay: 0.1 }}
             >

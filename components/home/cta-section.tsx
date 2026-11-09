@@ -56,17 +56,13 @@ export function CTA() {
 
   return (
     <section className="py-16 md:py-24 bg-stone-50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 lg:gap-12 items-center">
 
           {/* Left — Teks + CTA */}
           <div className="lg:col-span-3 space-y-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">
-              Mulai Petualangan
-            </p>
-            <h2 className="text-3xl md:text-5xl font-black text-stone-900 leading-tight">
-              Siap untuk<br />
-              <span className="italic text-emerald-700">Petualangan Berikutnya?</span>
+            <h2 className="text-3xl md:text-4xl lg:text-6xl font-sans font-bold text-stone-900 leading-tight">
+              Siap untuk<br />Petualangan Berikutnya?
             </h2>
             <p className="text-sm md:text-base text-stone-500 leading-relaxed max-w-md">
               Sewa perlengkapan outdoor lengkap dengan harga terbaik. Cepat, mudah, dan terpercaya.
@@ -74,7 +70,7 @@ export function CTA() {
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <Button
                 size="lg"
-                className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl"
+                className="bg-forest hover:bg-forest-dark text-white font-bold rounded-xl"
                 asChild
               >
                 <Link href="/catalog_rental">
@@ -108,10 +104,10 @@ export function CTA() {
                   href={`https://wa.me/${formatPhoneWa(branch?.phone || '0838-9874-9357')}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-4 bg-white rounded-xl border border-stone-200 p-4 hover:border-emerald-300 hover:shadow-sm transition-all group"
+                  className="flex items-center gap-4 bg-white rounded-xl border border-stone-200 p-4 hover:border-forest/30 hover:shadow-sm transition-all group"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition-colors">
-                    <MessageCircle className="w-5 h-5 text-emerald-600" />
+                  <div className="w-10 h-10 rounded-lg bg-forest-soft flex items-center justify-center shrink-0 group-hover:bg-forest-tint transition-colors">
+                    <MessageCircle className="w-5 h-5 text-forest" />
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-stone-900">Chat WhatsApp</p>
@@ -121,10 +117,10 @@ export function CTA() {
 
                 <a
                   href={`tel:${formatPhoneWa(branch?.phone || '0838-9874-9357')}`}
-                  className="flex items-center gap-4 bg-white rounded-xl border border-stone-200 p-4 hover:border-emerald-300 hover:shadow-sm transition-all group"
+                  className="flex items-center gap-4 bg-white rounded-xl border border-stone-200 p-4 hover:border-forest/30 hover:shadow-sm transition-all group"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition-colors">
-                    <Phone className="w-5 h-5 text-emerald-600" />
+                  <div className="w-10 h-10 rounded-lg bg-forest-soft flex items-center justify-center shrink-0 group-hover:bg-forest-tint transition-colors">
+                    <Phone className="w-5 h-5 text-forest" />
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-stone-900">Telepon</p>

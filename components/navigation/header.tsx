@@ -404,8 +404,8 @@ export function Header() {
     <header
       className={`sticky top-0 z-50 transition-all duration-500 ${
         isScrolled
-          ? "bg-[#F2EDE4]/95 backdrop-blur-md border-b border-emerald-900/10 shadow-sm"
-          : "bg-[#F2EDE4] border-b border-transparent"
+          ? "bg-background/95 backdrop-blur-md border-b border-border shadow-sm"
+          : "bg-cream border-b border-transparent"
       }`}
     >
       <div
@@ -422,37 +422,37 @@ export function Header() {
             <Image
               src="/images/habema_logo_orange.png"
               alt="Habema Logo"
-              width={80}
-              height={40}
-              className="img-fluid block"
+              width={348}
+              height={136}
+              className="block h-9 w-auto md:h-11"
             />
             {/* <div className="flex flex-col hidden sm:flex">
-              <h1 className="text-xl font-bold text-[#1B4332] tracking-tight leading-none">
+              <h1 className="text-xl font-bold text-stone-900 tracking-tight leading-none">
                 HABEMA
               </h1>
-              <span className="text-[10px] font-semibold text-emerald-800 uppercase tracking-widest mt-0.5">
+              <span className="text-[10px] font-semibold text-forest-dark uppercase tracking-widest mt-0.5">
                 Outdoor Rental
               </span>
             </div> */}
           </Link>
 
           {/* 2. Desktop Search - Improved */}
-          <div className="hidden md:flex flex-1 max-w-xl relative group px-4 z-60">
+          <div className="hidden md:flex flex-1 min-w-0 max-w-xl relative group px-4 z-60">
             <div
               className={`w-full h-11 flex items-center px-4 rounded-lg border cursor-text transition-all ${
                 isOpen
-                  ? "bg-white border-emerald-600 shadow-lg"
-                  : "bg-gray-100 border-transparent hover:bg-gray-200/70"
+                  ? "bg-white border-forest shadow-lg"
+                  : "bg-muted border-transparent hover:bg-muted/70"
               }`}
               onClick={() => setIsOpen(true)}
             >
               <Search
-                className={`w-5 h-5 mr-3 transition-colors flex-shrink-0 ${isOpen ? "text-emerald-600" : "text-gray-500"}`}
+                className={`w-5 h-5 mr-3 transition-colors flex-shrink-0 ${isOpen ? "text-forest" : "text-muted-foreground"}`}
               />
               <input
                 type="text"
                 placeholder="Cari perlengkapan, kategori..."
-                className="bg-transparent border-none outline-none text-sm flex-1 text-gray-800 placeholder-gray-500"
+                className="bg-transparent border-none outline-none text-sm flex-1 text-foreground/90 placeholder-gray-500"
                 value={searchValue}
                 onFocus={() => setIsOpen(true)}
                 onChange={(e) => setSearchValue(e.target.value)}
@@ -469,12 +469,12 @@ export function Header() {
                     setSearchValue("");
                     setSearchError(null);
                   }}
-                  className="mr-2 p-1 hover:bg-gray-200 rounded transition-colors"
+                  className="mr-2 p-1 hover:bg-muted rounded transition-colors"
                 >
-                  <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                  <X className="w-4 h-4 text-muted-foreground/80 hover:text-muted-foreground" />
                 </button>
               )}
-              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-200 rounded text-[10px] font-bold text-gray-500">
+              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-muted rounded text-[10px] font-bold text-muted-foreground">
                 /
               </div>
             </div>
@@ -489,20 +489,20 @@ export function Header() {
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.15 }}
                     style={{ top: "100%" }}
-                    className="absolute left-0 right-0 bg-[#F2EDE4] z-50 shadow-2xl rounded-2xl overflow-hidden mt-2 max-h-[75vh] flex flex-col"
+                    className="absolute left-0 right-0 bg-cream z-50 shadow-2xl rounded-2xl overflow-hidden mt-2 max-h-[75vh] flex flex-col"
                   >
                     {/* Search Input Area */}
-                    <div className="bg-white border-b border-gray-100 p-4 flex items-center justify-between flex-shrink-0">
-                      <h3 className="text-sm font-bold text-gray-900">
+                    <div className="bg-white border-b border-border p-4 flex items-center justify-between flex-shrink-0">
+                      <h3 className="text-sm font-bold text-foreground">
                         {searchValue
                           ? `Hasil untuk "${searchValue}"`
                           : "Saran Pencarian"}
                       </h3>
                       <button
                         onClick={() => setIsOpen(false)}
-                        className="p-1 rounded-md hover:bg-gray-100 transition-colors"
+                        className="p-1 rounded-md hover:bg-muted transition-colors"
                       >
-                        <X className="w-4 h-4 text-gray-500" />
+                        <X className="w-4 h-4 text-muted-foreground" />
                       </button>
                     </div>
 
@@ -510,8 +510,8 @@ export function Header() {
                     <div className="overflow-y-auto flex-1">
                       {/* Error State */}
                       {searchError && searchValue.length >= 2 && (
-                        <div className="p-4 bg-red-50 border-b border-red-100">
-                          <div className="flex items-center gap-3 text-red-700">
+                        <div className="p-4 bg-error/10 border-b border-error/20">
+                          <div className="flex items-center gap-3 text-error">
                             <AlertCircle className="w-5 h-5 flex-shrink-0" />
                             <p className="text-sm font-medium">{searchError}</p>
                           </div>
@@ -522,9 +522,9 @@ export function Header() {
                       {isLoading && searchValue.length >= 2 && (
                         <div className="p-8 text-center">
                           <div className="inline-block">
-                            <div className="w-8 h-8 border-3 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+                            <div className="w-8 h-8 border-3 border-forest-tint border-t-forest rounded-full animate-spin"></div>
                           </div>
-                          <p className="text-sm text-gray-500 mt-3">
+                          <p className="text-sm text-muted-foreground mt-3">
                             Mencari produk...
                           </p>
                         </div>
@@ -534,10 +534,10 @@ export function Header() {
                       {!isLoading &&
                         searchValue.length >= 2 &&
                         keywordSuggestions.length > 0 && (
-                          <div className="p-4 border-b border-gray-100">
+                          <div className="p-4 border-b border-border">
                             <div className="flex items-center gap-2 mb-2.5">
-                              <Search className="w-3.5 h-3.5 text-gray-400" />
-                              <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                              <Search className="w-3.5 h-3.5 text-muted-foreground/80" />
+                              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                                 Kata Kunci
                               </span>
                             </div>
@@ -546,7 +546,7 @@ export function Header() {
                                 <button
                                   key={idx}
                                   onClick={() => setSearchValue(kw)}
-                                  className="px-3 py-1.5 bg-white text-gray-700 text-xs font-medium rounded-full border border-gray-200 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                                  className="px-3 py-1.5 bg-white text-foreground/80 text-xs font-medium rounded-full border border-border hover:border-forest-light hover:bg-forest-soft hover:text-forest transition-colors"
                                 >
                                   {kw}
                                 </button>
@@ -574,9 +574,9 @@ export function Header() {
                                   setSearchValue("");
                                 }}
                               >
-                                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-all">
+                                <div className="bg-white rounded-xl border border-border overflow-hidden hover:shadow-md transition-all">
                                   {/* Image */}
-                                  <div className="aspect-square bg-gray-100 overflow-hidden">
+                                  <div className="aspect-square bg-muted overflow-hidden">
                                     {product.image_url ? (
                                       <img
                                         src={product.image_url}
@@ -584,23 +584,23 @@ export function Header() {
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                                       />
                                     ) : (
-                                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-100 to-emerald-200">
-                                        <Mountain className="w-8 h-8 text-emerald-600" />
+                                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-forest-tint to-forest-tint">
+                                        <Mountain className="w-8 h-8 text-forest" />
                                       </div>
                                     )}
                                   </div>
 
                                   {/* Info */}
                                   <div className="p-3">
-                                    <h4 className="text-xs font-bold text-gray-900 truncate mb-1">
+                                    <h4 className="text-xs font-bold text-foreground truncate mb-1">
                                       {product.name}
                                     </h4>
-                                    <p className="text-xs text-gray-500 truncate mb-2">
+                                    <p className="text-xs text-muted-foreground truncate mb-2">
                                       {product.equipment_categories?.name ||
                                         "Gear"}
                                     </p>
                                     <div className="flex items-center justify-between">
-                                      <span className="text-sm font-bold text-emerald-600">
+                                      <span className="text-sm font-bold text-forest">
                                         Rp
                                         {Number(
                                           product.price_per_night ||
@@ -609,7 +609,7 @@ export function Header() {
                                         ).toLocaleString("id-ID")}
                                       </span>
                                       {product.rating && (
-                                        <div className="flex items-center text-xs text-amber-500">
+                                        <div className="flex items-center text-xs text-gold">
                                           <Star className="w-3 h-3 fill-current" />
                                           {product.rating.toFixed(1)}
                                         </div>
@@ -629,13 +629,13 @@ export function Header() {
                           {recentSearches.length > 0 && (
                             <div className="mb-6">
                               <div className="flex items-center justify-between mb-3">
-                                <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                                  <History className="w-4 h-4 text-gray-400" />
+                                <h4 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                                  <History className="w-4 h-4 text-muted-foreground/80" />
                                   Pencarian Terakhir
                                 </h4>
                                 <button
                                   onClick={clearRecentSearches}
-                                  className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 transition-colors"
+                                  className="text-xs text-muted-foreground hover:text-foreground/80 flex items-center gap-1 transition-colors"
                                 >
                                   <Trash2 className="w-3 h-3" />
                                   Hapus
@@ -646,7 +646,7 @@ export function Header() {
                                   <button
                                     key={idx}
                                     onClick={() => setSearchValue(search)}
-                                    className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full hover:bg-emerald-100 transition-colors border border-emerald-200"
+                                    className="px-3 py-1.5 bg-forest-soft text-forest text-xs font-medium rounded-full hover:bg-forest-tint transition-colors border border-forest-tint"
                                   >
                                     {search}
                                   </button>
@@ -657,7 +657,7 @@ export function Header() {
 
                           {/* Popular Categories */}
                           <div>
-                            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">
+                            <h4 className="text-xs font-bold text-foreground uppercase tracking-wider mb-3">
                               Kategori Populer
                             </h4>
                             <div className="space-y-2">
@@ -667,15 +667,15 @@ export function Header() {
                                   onClick={() => setSearchValue(category.name)}
                                   className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-white transition-colors text-left"
                                 >
-                                  <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                                    <Leaf className="w-4 h-4 text-emerald-600" />
+                                  <div className="w-8 h-8 rounded-lg bg-forest-tint flex items-center justify-center flex-shrink-0">
+                                    <Leaf className="w-4 h-4 text-forest" />
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                    <p className="text-sm font-medium text-foreground truncate">
                                       {category.name}
                                     </p>
                                     {category.description && (
-                                      <p className="text-xs text-gray-500 truncate">
+                                      <p className="text-xs text-muted-foreground truncate">
                                         {category.description}
                                       </p>
                                     )}
@@ -687,23 +687,23 @@ export function Header() {
 
                           {/* Featured Product */}
                           {featuredLoading ? (
-                            <div className="mt-6 pt-6 border-t border-gray-200">
-                              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">
+                            <div className="mt-6 pt-6 border-t border-border">
+                              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider mb-3">
                                 Rekomendasi
                               </h4>
-                              <div className="bg-white rounded-xl border border-gray-100 p-3 flex gap-3 animate-pulse">
-                                <div className="w-16 h-16 rounded-lg bg-gray-200 flex-shrink-0" />
+                              <div className="bg-white rounded-xl border border-border p-3 flex gap-3 animate-pulse">
+                                <div className="w-16 h-16 rounded-lg bg-muted flex-shrink-0" />
                                 <div className="flex-1 min-w-0 space-y-2">
-                                  <div className="inline-block bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold w-[40px] h-[20px]" />
-                                  <div className="h-4 w-3/4 bg-gray-200 rounded" />
-                                  <div className="h-3 w-1/2 bg-gray-100 rounded" />
-                                  <div className="h-4 w-1/3 bg-emerald-100 rounded" />
+                                  <div className="inline-block bg-gold text-white text-[10px] px-2 py-0.5 rounded-full font-bold w-[40px] h-[20px]" />
+                                  <div className="h-4 w-3/4 bg-muted rounded" />
+                                  <div className="h-3 w-1/2 bg-muted rounded" />
+                                  <div className="h-4 w-1/3 bg-forest-tint rounded" />
                                 </div>
                               </div>
                             </div>
                           ) : featuredRecommendation && (
-                            <div className="mt-6 pt-6 border-t border-gray-200">
-                              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">
+                            <div className="mt-6 pt-6 border-t border-border">
+                              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider mb-3">
                                 Rekomendasi
                               </h4>
                               <Link
@@ -714,8 +714,8 @@ export function Header() {
                                   setSearchValue("");
                                 }}
                               >
-                                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-shadow p-3 flex gap-3">
-                                  <div className="w-16 h-16 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden">
+                                <div className="bg-white rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow p-3 flex gap-3">
+                                  <div className="w-16 h-16 rounded-lg bg-muted flex-shrink-0 overflow-hidden">
                                     {featuredRecommendation.image_url && (
                                       <img
                                         src={featuredRecommendation.image_url}
@@ -725,19 +725,19 @@ export function Header() {
                                     )}
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <div className="inline-block bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold mb-1">
+                                    <div className="inline-block bg-gold text-white text-[10px] px-2 py-0.5 rounded-full font-bold mb-1">
                                       HOT
                                     </div>
-                                    <h5 className="text-sm font-bold text-gray-900 truncate">
+                                    <h5 className="text-sm font-bold text-foreground truncate">
                                       {featuredRecommendation.name}
                                     </h5>
-                                    <p className="text-xs text-gray-500 mb-2">
+                                    <p className="text-xs text-muted-foreground mb-2">
                                       {
                                         featuredRecommendation
                                           .equipment_categories?.name
                                       }
                                     </p>
-                                    <span className="text-sm font-bold text-emerald-600">
+                                    <span className="text-sm font-bold text-forest">
                                       Rp
                                       {Number(
                                         featuredRecommendation.price_per_night ||
@@ -755,10 +755,10 @@ export function Header() {
 
                     {/* View All CTA */}
                     {searchValue.length >= 2 && products.length > 0 && (
-                      <div className="bg-white border-t border-gray-100 p-3 text-center flex-shrink-0">
+                      <div className="bg-white border-t border-border p-3 text-center flex-shrink-0">
                         <button
                           onClick={() => handleSearch(searchValue)}
-                          className="text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
+                          className="text-sm font-bold text-forest hover:text-forest transition-colors"
                         >
                           Lihat Semua Hasil ({products.length} produk)
                         </button>
@@ -773,13 +773,13 @@ export function Header() {
           {/* 3. Navigation & Actions */}
           <div className="flex items-center gap-1">
             {/* Desktop Links */}
-            <div className="hidden lg:flex items-center gap-1 mr-2">
+            <div className="hidden md:flex items-center gap-1 mr-2">
               {/* Dropdown Layanan */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="font-semibold text-emerald-900/80 text-[14px] flex items-center gap-1"
+                    className="font-semibold text-forest/80 text-[14px] flex items-center gap-1"
                   >
                     Layanan
                     <ChevronDown className="w-4 h-4 opacity-70" />
@@ -787,7 +787,7 @@ export function Header() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="start"
-                  className="w-48 bg-white border border-gray-200 shadow-lg"
+                  className="w-48 bg-white border border-border shadow-lg"
                 >
                   {layananItems.map((item) => {
                     const Icon = item.icon;
@@ -795,14 +795,14 @@ export function Header() {
                       <DropdownMenuItem key={item.href} asChild>
                         <Link
                           href={item.href}
-                          className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-emerald-50"
+                          className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-forest-soft"
                         >
-                          <Icon className="w-4 h-4 text-emerald-600" />
+                          <Icon className="w-4 h-4 text-forest" />
                           <div className="flex flex-col">
-                            <span className="text-sm font-semibold text-emerald-900">
+                            <span className="text-sm font-semibold text-forest">
                               {item.label}
                             </span>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-muted-foreground">
                               {item.description}
                             </span>
                           </div>
@@ -816,7 +816,7 @@ export function Header() {
               <Link href="/bundles">
                 <Button
                   variant="ghost"
-                  className="font-bold text-orange-700 hover:text-orange-800 hover:bg-orange-50 text-[14px]"
+                  className="font-bold text-gold hover:text-gold hover:bg-accent text-[14px]"
                 >
                   Promo
                 </Button>
@@ -827,7 +827,7 @@ export function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden text-emerald-900/70"
+              className="md:hidden text-forest/70"
               aria-label="Cari"
               onClick={() => setIsMobileSearchOpen(true)}
             >
@@ -837,13 +837,13 @@ export function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="relative text-emerald-900/70"
+              className="relative text-forest/70"
               asChild
             >
               <Link href="/cart">
                 <ShoppingCart className="w-5.5 h-5.5" />
                 {isClient && totalItems > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-orange-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-[#F2EDE4]">
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-secondary text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-background">
                     {totalItems}
                   </span>
                 )}
@@ -856,7 +856,7 @@ export function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden ml-1 text-emerald-900"
+              className="lg:hidden ml-1 text-forest"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
               {isMenuOpen ? (
@@ -877,17 +877,17 @@ export function Header() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-[70] md:hidden bg-[#F2EDE4] flex flex-col"
+            className="fixed inset-0 z-[70] md:hidden bg-cream flex flex-col"
           >
             {/* Search Input Bar */}
-            <div className="flex items-center gap-2 p-3 border-b border-emerald-900/10 bg-white">
-              <div className="flex-1 h-11 flex items-center px-3 rounded-lg bg-gray-100">
-                <Search className="w-5 h-5 mr-2 text-gray-500 flex-shrink-0" />
+            <div className="flex items-center gap-2 p-3 border-b border-border bg-white">
+              <div className="flex-1 h-11 flex items-center px-3 rounded-lg bg-muted">
+                <Search className="w-5 h-5 mr-2 text-muted-foreground flex-shrink-0" />
                 <input
                   type="text"
                   autoFocus
                   placeholder="Cari perlengkapan, kategori..."
-                  className="bg-transparent border-none outline-none text-sm flex-1 text-gray-800 placeholder-gray-500"
+                  className="bg-transparent border-none outline-none text-sm flex-1 text-foreground/90 placeholder-gray-500"
                   value={searchValue}
                   onChange={(e) => setSearchValue(e.target.value)}
                   onKeyDown={(e) => {
@@ -903,15 +903,15 @@ export function Header() {
                       setSearchValue("");
                       setSearchError(null);
                     }}
-                    className="ml-1 p-1 hover:bg-gray-200 rounded transition-colors"
+                    className="ml-1 p-1 hover:bg-muted rounded transition-colors"
                   >
-                    <X className="w-4 h-4 text-gray-400" />
+                    <X className="w-4 h-4 text-muted-foreground/80" />
                   </button>
                 )}
               </div>
               <button
                 onClick={() => setIsMobileSearchOpen(false)}
-                className="px-2 py-2 text-sm font-semibold text-emerald-800"
+                className="px-2 py-2 text-sm font-semibold text-forest-dark"
               >
                 Batal
               </button>
@@ -921,8 +921,8 @@ export function Header() {
             <div className="flex-1 overflow-y-auto">
               {/* Error */}
               {searchError && searchValue.length >= 2 && !isLoading && (
-                <div className="p-4 bg-red-50 border-b border-red-100">
-                  <div className="flex items-center gap-3 text-red-700">
+                <div className="p-4 bg-error/10 border-b border-error/20">
+                  <div className="flex items-center gap-3 text-error">
                     <AlertCircle className="w-5 h-5 flex-shrink-0" />
                     <p className="text-sm font-medium">{searchError}</p>
                   </div>
@@ -932,8 +932,8 @@ export function Header() {
               {/* Loading */}
               {isLoading && searchValue.length >= 2 && (
                 <div className="p-8 text-center">
-                  <div className="w-8 h-8 border-3 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mx-auto"></div>
-                  <p className="text-sm text-gray-500 mt-3">Mencari produk...</p>
+                  <div className="w-8 h-8 border-3 border-forest-tint border-t-forest rounded-full animate-spin mx-auto"></div>
+                  <p className="text-sm text-muted-foreground mt-3">Mencari produk...</p>
                 </div>
               )}
 
@@ -941,10 +941,10 @@ export function Header() {
               {!isLoading &&
                 searchValue.length >= 2 &&
                 keywordSuggestions.length > 0 && (
-                  <div className="p-4 border-b border-gray-200">
+                  <div className="p-4 border-b border-border">
                     <div className="flex items-center gap-2 mb-2.5">
-                      <Search className="w-3.5 h-3.5 text-gray-400" />
-                      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                      <Search className="w-3.5 h-3.5 text-muted-foreground/80" />
+                      <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                         Kata Kunci
                       </span>
                     </div>
@@ -953,7 +953,7 @@ export function Header() {
                         <button
                           key={idx}
                           onClick={() => setSearchValue(kw)}
-                          className="px-3 py-1.5 bg-white text-gray-700 text-xs font-medium rounded-full border border-gray-200 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                          className="px-3 py-1.5 bg-white text-foreground/80 text-xs font-medium rounded-full border border-border hover:border-forest-light hover:bg-forest-soft hover:text-forest transition-colors"
                         >
                           {kw}
                         </button>
@@ -976,8 +976,8 @@ export function Header() {
                         setSearchValue("");
                       }}
                     >
-                      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-all">
-                        <div className="aspect-square bg-gray-100 overflow-hidden">
+                      <div className="bg-white rounded-xl border border-border overflow-hidden hover:shadow-md transition-all">
+                        <div className="aspect-square bg-muted overflow-hidden">
                           {product.image_url ? (
                             <img
                               src={product.image_url}
@@ -985,19 +985,19 @@ export function Header() {
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-100 to-emerald-200">
-                              <Mountain className="w-8 h-8 text-emerald-600" />
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-forest-tint to-forest-tint">
+                              <Mountain className="w-8 h-8 text-forest" />
                             </div>
                           )}
                         </div>
                         <div className="p-3">
-                          <h4 className="text-xs font-bold text-gray-900 truncate mb-1">
+                          <h4 className="text-xs font-bold text-foreground truncate mb-1">
                             {product.name}
                           </h4>
-                          <p className="text-xs text-gray-500 truncate mb-2">
+                          <p className="text-xs text-muted-foreground truncate mb-2">
                             {product.equipment_categories?.name || "Gear"}
                           </p>
-                          <span className="text-sm font-bold text-emerald-600">
+                          <span className="text-sm font-bold text-forest">
                             Rp
                             {Number(
                               product.price_per_night || product.price || 0,
@@ -1016,13 +1016,13 @@ export function Header() {
                   {recentSearches.length > 0 && (
                     <div className="mb-6">
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                          <History className="w-4 h-4 text-gray-400" />
+                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                          <History className="w-4 h-4 text-muted-foreground/80" />
                           Pencarian Terakhir
                         </h4>
                         <button
                           onClick={clearRecentSearches}
-                          className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                          className="text-xs text-muted-foreground hover:text-foreground/80 flex items-center gap-1"
                         >
                           <Trash2 className="w-3 h-3" />
                           Hapus
@@ -1033,7 +1033,7 @@ export function Header() {
                           <button
                             key={idx}
                             onClick={() => setSearchValue(search)}
-                            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full hover:bg-emerald-100 transition-colors border border-emerald-200"
+                            className="px-3 py-1.5 bg-forest-soft text-forest text-xs font-medium rounded-full hover:bg-forest-tint transition-colors border border-forest-tint"
                           >
                             {search}
                           </button>
@@ -1043,7 +1043,7 @@ export function Header() {
                   )}
 
                   <div>
-                    <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">
+                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wider mb-3">
                       Kategori Populer
                     </h4>
                     <div className="space-y-2">
@@ -1053,10 +1053,10 @@ export function Header() {
                           onClick={() => setSearchValue(category.name)}
                           className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-white transition-colors text-left"
                         >
-                          <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                            <Leaf className="w-4 h-4 text-emerald-600" />
+                          <div className="w-8 h-8 rounded-lg bg-forest-tint flex items-center justify-center flex-shrink-0">
+                            <Leaf className="w-4 h-4 text-forest" />
                           </div>
-                          <p className="text-sm font-medium text-gray-900 truncate flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate flex-1 min-w-0">
                             {category.name}
                           </p>
                         </button>
@@ -1074,13 +1074,13 @@ export function Header() {
       <AnimatePresence>
         {isMenuOpen && (
           /* Menggunakan h-screen dan inset-0 untuk memastikan overlay menutup seluruh layar */
-          <div className="fixed inset-0 z-50 lg:hidden h-screen overflow-hidden">
+          <div className="fixed inset-0 z-[70] lg:hidden h-screen overflow-hidden">
             {/* Backdrop Overlay */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-emerald-950/40 backdrop-blur-[2px]"
+              className="absolute inset-0 bg-forest-dark/40 backdrop-blur-[2px]"
               onClick={closeMenu}
             />
 
@@ -1093,8 +1093,8 @@ export function Header() {
               className="absolute right-0 top-0 bottom-0 w-[280px] h-full bg-white shadow-2xl flex flex-col z-10"
             >
               {/* Header - Fixed & Flex Shrink 0 */}
-              <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 flex-shrink-0">
-                <h2 className="text-xs font-bold text-emerald-900/40 uppercase tracking-widest">
+              <div className="flex justify-between items-center px-6 py-4 border-b border-border flex-shrink-0">
+                <h2 className="text-xs font-bold text-stone-900 uppercase tracking-widest">
                   Navigasi
                 </h2>
                 <Button
@@ -1121,21 +1121,21 @@ export function Header() {
                       onClick={closeMenu}
                       className={`flex items-center justify-between px-4 py-4 rounded-md text-[15px] font-bold mb-2 transition-all ${
                         user
-                          ? "text-emerald-700 bg-emerald-50"
-                          : "text-orange-700 bg-orange-50 border border-orange-100"
+                          ? "text-forest bg-forest-soft"
+                          : "text-gold bg-accent border border-accent"
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         {user ? (
                           <>
-                            <div className="w-6 h-6 rounded-full bg-emerald-200 flex items-center justify-center overflow-hidden flex-shrink-0">
-                              <User className="w-4 h-4 text-emerald-700" />
+                            <div className="w-6 h-6 rounded-full bg-forest-tint flex items-center justify-center overflow-hidden flex-shrink-0">
+                              <User className="w-4 h-4 text-forest" />
                             </div>
                             <div className="flex flex-col min-w-0">
                               <span className="leading-none truncate">
                                 {user.email?.split("@")[0] || "Akun Saya"}
                               </span>
-                              <span className="text-[10px] font-medium text-emerald-700 mt-1">
+                              <span className="text-[10px] font-medium text-forest mt-1">
                                 Lihat Profil
                               </span>
                             </div>
@@ -1159,7 +1159,7 @@ export function Header() {
                           expandedMobileMenu === "layanan" ? null : "layanan",
                         )
                       }
-                      className="w-full flex items-center justify-between px-4 py-4 rounded-md text-[15px] font-semibold text-emerald-900/80 hover:bg-emerald-50 transition-colors"
+                      className="w-full flex items-center justify-between px-4 py-4 rounded-md text-[15px] font-semibold text-forest/80 hover:bg-forest-soft transition-colors"
                     >
                       <span>Layanan</span>
                       <ChevronDown
@@ -1186,14 +1186,14 @@ export function Header() {
                                   key={item.href}
                                   href={item.href}
                                   onClick={closeMenu}
-                                  className="flex items-start gap-3 px-4 py-3 rounded-md text-[14px] font-medium text-emerald-900/70 hover:bg-emerald-50 transition-colors border-l-2 border-emerald-600"
+                                  className="flex items-start gap-3 px-4 py-3 rounded-md text-[14px] font-medium text-forest/70 hover:bg-forest-soft transition-colors border-l-2 border-forest"
                                 >
-                                  <Icon className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                                  <Icon className="w-4 h-4 text-forest flex-shrink-0 mt-0.5" />
                                   <div className="flex flex-col min-w-0">
                                     <span className="truncate">
                                       {item.label}
                                     </span>
-                                    <span className="text-xs text-gray-500 line-clamp-1">
+                                    <span className="text-xs text-muted-foreground line-clamp-1">
                                       {item.description}
                                     </span>
                                   </div>
@@ -1221,22 +1221,22 @@ export function Header() {
               </div>
 
               {/* Footer - Fixed & Flex Shrink 0 */}
-              <div className="px-6 py-4 border-t border-gray-100 flex-shrink-0 space-y-4 bg-white">
-                <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-lg">
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <ShieldCheck className="w-5 h-5 text-emerald-600" />
+              <div className="px-6 py-4 border-t border-border flex-shrink-0 space-y-4 bg-white">
+                <div className="flex items-center gap-3 px-4 py-3 bg-muted/50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-forest-tint flex items-center justify-center flex-shrink-0">
+                    <ShieldCheck className="w-5 h-5 text-forest" />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    <p className="text-[10px] font-bold text-muted-foreground/80 uppercase tracking-wider">
                       Status Member
                     </p>
-                    <p className="text-xs font-bold text-emerald-900 truncate">
+                    <p className="text-xs font-bold text-forest truncate">
                       Verified Adventurer
                     </p>
                   </div>
                 </div>
                 <Link href="/catalog_rental" onClick={closeMenu} className="block">
-                  <Button className="w-full bg-[#1B4332] hover:bg-[#133024] text-white font-bold h-12 shadow-lg shadow-emerald-900/20 transition-colors">
+                  <Button className="w-full bg-forest hover:bg-forest-dark text-white font-bold h-12 shadow-lg shadow-forest/20 transition-colors">
                     Sewa Sekarang
                   </Button>
                 </Link>
@@ -1262,7 +1262,7 @@ function MobileNavLink({
     <Link
       href={href}
       onClick={onClick}
-      className="flex items-center justify-between px-4 py-4 rounded-md text-[15px] font-semibold text-emerald-900/80 hover:bg-emerald-50 transition-colors border-l-2 border-transparent hover:border-emerald-700"
+      className="flex items-center justify-between px-4 py-4 rounded-md text-[15px] font-semibold text-forest/80 hover:bg-forest-soft transition-colors border-l-2 border-transparent hover:border-forest"
     >
       {label}
       <Compass className="w-4 h-4 opacity-20 flex-shrink-0" />

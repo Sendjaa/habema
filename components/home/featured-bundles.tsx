@@ -66,23 +66,23 @@ function FeaturedBundlesCard({ pkg, index, branchPhone }: { pkg: Package; index:
     >
       <div className="relative rounded-[28px] overflow-hidden bg-white shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 border border-stone-100 flex flex-col">
         {/* IMAGE */}
-        <div className="relative h-52 overflow-hidden flex-shrink-0">
-          <Image
+        <div className="relative h-10 overflow-hidden flex-shrink-1 flex">
+          {/* <Image
             src={pkg.image}
             alt={pkg.label}
             fill
             className="object-cover transition-transform duration-700 group-hover:scale-110"
             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+          /> */}
+          {/* <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" /> */}
 
           {/* category pill */}
-          <span
+          {/* <span
             className="absolute top-3 left-3 text-[11px] font-bold tracking-widest uppercase px-3 py-1 rounded-full"
             style={{ background: pkg.accentLight, color: pkg.accent }}
           >
             {pkg.category}
-          </span>
+          </span> */}
 
           {/* badge */}
           {pkg.badge && (
@@ -95,13 +95,13 @@ function FeaturedBundlesCard({ pkg, index, branchPhone }: { pkg: Package; index:
           )}
 
           {/* price */}
-          <div className="absolute bottom-3 right-3 text-right">
-            {pkg.priceOld && (
+          {/* <div className="absolute bottom-3 right-3 text-right"> */}
+            {/* {pkg.priceOld && (
               <p className="text-white/60 text-xs line-through leading-none">
                 Rp {pkg.priceOld}
               </p>
-            )}
-            {pkg.price ? (
+            )} */}
+            {/* {pkg.price ? (
               <p className="text-white font-black text-lg leading-tight drop-shadow-md">
                 Rp {pkg.price}
                 {pkg.unit && (
@@ -114,27 +114,43 @@ function FeaturedBundlesCard({ pkg, index, branchPhone }: { pkg: Package; index:
               <p className="text-white/90 font-semibold text-sm italic drop-shadow">
                 Harga custom
               </p>
-            )}
-          </div>
+            )} */}
+          {/* </div> */}
         </div>
 
         {/* BODY */}
         <div className="p-5 flex flex-col flex-1 gap-3">
-          <h3
-            className="font-display text-lg font-black text-stone-900 leading-snug"
-            style={{ fontFamily: "'Fraunces', serif" }}
-          >
+          <h3 className="text-2xl md:text-3xl font-bold font-sans text-stone-900 leading-snug">
             {pkg.label}
           </h3>
+          {pkg.priceOld && (
+            <p className="text-black/60 text-xs line-through leading-none">
+              Rp {pkg.priceOld}
+            </p>
+          )}
+          {pkg.price ? (
+            <p className="text-black font-black text-3xl md:text-3xl leading-tight">
+              Rp {pkg.price}
+              {pkg.unit && (
+                <span className="text-black/70 font-normal text-xs ml-1">
+                  {pkg.unit}
+                </span>
+              )}
+            </p>
+          ) : (
+            <p className="text-black/90 font-semibold text-sm italic">
+              Harga custom
+            </p>
+          )}
+
           {pkg.paxLabel && (
             <span
-              className="inline-flex w-fit items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full"
-              style={{ background: pkg.accentLight, color: pkg.accent }}
+              className="inline-flex w-fit items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-accent"
             >
-              👥 {pkg.paxLabel} · per paket/malam
+              {pkg.paxLabel} · per paket/malam
             </span>
           )}
-          <p className="text-stone-500 text-sm leading-relaxed">{pkg.desc}</p>
+          <p className="text-stone-500 text-base leading-relaxed">{pkg.desc}</p>
 
           {/* include */}
           <div className="flex-1">
@@ -149,7 +165,7 @@ function FeaturedBundlesCard({ pkg, index, branchPhone }: { pkg: Package; index:
                 <li key={it} className="flex gap-2 text-sm text-stone-600">
                   <span
                     style={{ color: pkg.accent }}
-                    className="flex-shrink-0 mt-0.5 text-xs font-bold text-green-400"
+                    className="flex-shrink-0 mt-0.5 text-xs font-bold text-forest"
                   >
                     ✓
                   </span>
@@ -166,7 +182,7 @@ function FeaturedBundlesCard({ pkg, index, branchPhone }: { pkg: Package; index:
                 <ul className="space-y-1">
                   {pkg.exclude?.map?.((it) => (
                     <li key={it} className="flex gap-2 text-sm text-stone-600">
-                      <span className="flex-shrink-0 mt-0.5 text-xs text-red-500">✕</span>
+                      <span className="flex-shrink-0 mt-0.5 text-xs text-stone-400">✕</span>
                       {it}
                     </li>
                   ))}
@@ -254,8 +270,8 @@ export function FeaturedBundles() {
       desc: 'Perlengkapan dasar untuk pendakian singkat',
       image: '/images/bundles/basic.jpg',
       include: ['Tenda', 'Sleeping Bag', 'Carrier'],
-      accent: '#1B4332',
-      accentLight: '#E8F5E8'
+      accent: '#0F766E',
+      accentLight: '#F0FDFA'
     },
     {
       id: 'fallback-2',
@@ -267,8 +283,8 @@ export function FeaturedBundles() {
       desc: 'Perlengkapan lengkap untuk camping nyaman',
       image: '/images/bundles/premium.jpg',
       include: ['Tenda', 'Sleeping Bag', 'Carrier', 'Matras', 'Cooking Set'],
-      accent: '#FF6B35',
-      accentLight: '#FFE8DC'
+      accent: '#F97316',
+      accentLight: '#FFEDD5'
     },
     {
       id: 'fallback-3',
@@ -280,8 +296,8 @@ export function FeaturedBundles() {
       desc: 'Perlengkapan profesional untuk petualangan ekstrem',
       image: '/images/bundles/pro.jpg',
       include: ['Tenda Premium', 'Sleeping Bag Premium', 'Carrier Pro', 'Matras', 'Cooking Set Pro', 'Headlamp'],
-      accent: '#2D5016',
-      accentLight: '#F0F8E8'
+      accent: '#115E59',
+      accentLight: '#CCFBF1'
     }
   ]
 
@@ -293,10 +309,10 @@ export function FeaturedBundles() {
   }, [])
 
   return (
-    <section className="py-20 bg-[#f9f7f4]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <section className="py-20 bg-stone-50" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`
         * { box-sizing: border-box; }
-        body { margin: 0; background: #f9f7f4; }
+        body { margin: 0; background: #fafaf9; }
 
         @keyframes fadeUp {
           from { opacity:0; transform:translateY(20px); }
@@ -305,26 +321,25 @@ export function FeaturedBundles() {
 
         /* custom scrollbar */
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #f9f7f4; }
+        ::-webkit-scrollbar-track { background: #fafaf9; }
         ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 99px; }
       `}</style>
       
-      <div className="max-w-6xl mx-auto px-4 md:px-8">
+      <div className="max-w-7xl mx-auto px-4 ">
         {/* Header */}
-        <div className="text-center mb-12 space-y-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 mb-2">
+        <div className="text-left mb-12 space-y-2">
+          {/* <p className="text-xs font-bold uppercase tracking-widest text-gold mb-2">
             Paket Terpopuler
-          </p>
-          <h2 
-            className="text-3xl md:text-4xl font-black text-stone-900 leading-tight"
-            style={{ fontFamily: "'Fraunces', serif" }}
+          </p> */}
+          <h3
+            className="text-4xl md:text-5xl lg:text-6xl font-black text-stone-900 font-sans leading-tight"
           >
             Petualangan Terbaik<br />
             {/* <span style={{ fontStyle: "italic", color: "#5a5a5a" }}> */}
               Untuk Anda
             {/* </span> */}
-          </h2>
-          <p className="text-stone-600 max-w-2xl mx-auto">
+          </h3>
+          <p className="text-stone-600 max-w-2xl text-left text-base md:text-xl lg:text-2xl">
             Hemat hingga 25% dengan paket bundling kami yang dirancang khusus untuk setiap jenis petualangan.
           </p>
         </div>

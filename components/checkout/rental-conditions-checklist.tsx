@@ -120,7 +120,7 @@ export function RentalConditionsChecklist({
         <div className="flex items-start gap-4">
           <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-bold text-green-900 mb-1">Checklist Selesai</h3>
+            <h3 className="font-bold text-stone-900 mb-1">Checklist Selesai</h3>
             <p className="text-sm text-green-800">
               Peralatan telah diperiksa dan disetujui. Silakan lanjutkan ke
               tahap berikutnya.
@@ -134,7 +134,7 @@ export function RentalConditionsChecklist({
   return (
     <Card className="p-4 sm:p-6 bg-white border-border">
       <div className="mb-4 sm:mb-6">
-        <h3 className="text-base sm:text-lg font-bold text-forest mb-1 sm:mb-2">
+        <h3 className="text-base sm:text-lg font-bold text-stone-900 mb-1 sm:mb-2">
           Daftar Periksa Kondisi - {equipmentName}
         </h3>
         <p className="text-xs sm:text-sm text-muted-foreground">

@@ -34,13 +34,13 @@ export function OptimizedImage({
     <div className={cn('relative overflow-hidden', wrapperClassName)}>
       {/* Loading skeleton */}
       {isLoading && (
-        <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+        <div className="absolute inset-0 bg-muted animate-pulse" />
       )}
       
       {/* Error fallback */}
       {hasError && (
-        <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
-          <span className="text-gray-400 text-sm">Image not available</span>
+        <div className="absolute inset-0 bg-muted/60 flex items-center justify-center">
+          <span className="text-muted-foreground text-sm">Image not available</span>
         </div>
       )}
       

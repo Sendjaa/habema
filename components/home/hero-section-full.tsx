@@ -4,9 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { motion, Variants } from "framer-motion";
+import { format } from "date-fns";
 import {
   ArrowRight,
-  Calendar,
   ChevronDown,
   Compass,
   Search,
@@ -14,21 +14,19 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DateTimePicker } from "@/components/ui/datetime-picker";
 
 /**
- * Hero alternatif: foto memenuhi layar dengan overlay gelap, konten di tengah.
+ * Hero: foto memenuhi layar dengan overlay gelap, konten di tengah — bentuk
+ * yang diminta aturan "lead with large, high-quality photography".
  *
- * Komponen ini BELUM dipakai di app/page.tsx — beranda masih memakai
- * components/home/hero-section.tsx. Untuk menukarnya, ubah impor di
- * app/page.tsx menjadi:
+ * Komponen ini yang dipakai app/page.tsx sebagai section pertama. Hero lama
+ * (components/home/hero-section.tsx) masih ada tapi tidak dirender.
  *
- *     import { HeroSectionFull } from "@/components/home/hero-section-full";
- *     ...
- *     <HeroSectionFull />
- *
- * Alur dan tujuan tautannya sengaja dibuat sama persis dengan hero lama
- * (tanggal sewa ikut ke /catalog_rental, tab Open Trip ke /opentrip), supaya
- * menukar komponen tidak mengubah perilaku apa pun.
+ * Alur dan tujuan tautannya sengaja sama persis dengan hero lama (tanggal sewa
+ * ikut ke /catalog_rental, tab Open Trip ke /opentrip). Kalimatnya sudah diubah
+ * mencakup toko juga — Habema sekarang menjual gear, bukan hanya menyewakan —
+ * dengan tautan /catalog_shop di baris bukti sosial.
  */
 
 // Foto latar. Ganti lewat prop `imageSrc` kalau mood-nya tidak cocok —
@@ -43,30 +41,34 @@ interface HeroSectionFullProps {
 
 export function HeroSectionFull({
   imageSrc = DEFAULT_IMAGE,
-  imageAlt = "Berkemah di alam terbuka — sewa alat camping dan outdoor Habema",
+          imageAlt = "Berkemah di alam terbuka — sewa dan beli perlengkapan outdoor Habema",
 }: HeroSectionFullProps) {
   const [bookingType, setBookingType] = useState<"rental" | "opentrip">(
     "rental",
   );
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [departDate, setDepartDate] = useState("");
+  const [startDate, setStartDate] = useState<Date>();
+  const [endDate, setEndDate] = useState<Date>();
+  const [departDate, setDepartDate] = useState<Date>();
   const [destination, setDestination] = useState("");
   const [pax, setPax] = useState("2");
 
   // Sama seperti hero lama: tanggal sewa dibawa sebagai query, supaya katalog
-  // bisa menyaring ketersediaan sejak awal.
-  const rentalHref =
-    startDate || endDate
-      ? `/catalog_rental?startDate=${startDate}&endDate=${endDate}`
-      : "/catalog_rental";
+  // bisa menyaring ketersediaan sejak awal. Query tetap `yyyy-MM-dd` — hanya
+  // jamnya yang dibuang, karena katalog menyaring per hari.
+  const rentalParams = new URLSearchParams();
+  if (startDate) rentalParams.set("startDate", format(startDate, "yyyy-MM-dd"));
+  if (endDate) rentalParams.set("endDate", format(endDate, "yyyy-MM-dd"));
+  const rentalHref = rentalParams.size
+    ? `/catalog_rental?${rentalParams}`
+    : "/catalog_rental";
 
   // Hero lama membuang pilihan destinasi dan peserta begitu saja. Di sini
   // ikut dikirim sebagai query — halaman /opentrip boleh mengabaikannya, tapi
   // lebih baik diteruskan daripada menghilang diam-diam.
   const opentripParams = new URLSearchParams();
   if (destination) opentripParams.set("destination", destination);
-  if (departDate) opentripParams.set("departDate", departDate);
+  if (departDate)
+    opentripParams.set("departDate", format(departDate, "yyyy-MM-dd"));
   if (pax) opentripParams.set("pax", pax);
   const opentripHref = opentripParams.size
     ? `/opentrip?${opentripParams}`
@@ -82,12 +84,17 @@ export function HeroSectionFull({
   };
 
   const inputShell =
-    "flex items-center gap-2.5 bg-white border border-stone-200 rounded-xl px-3.5 h-12 transition-all focus-within:border-[#1B4332] focus-within:ring-2 focus-within:ring-[#1B4332]/15";
+    "flex items-center gap-2.5 bg-white border border-border rounded-xl px-3.5 h-12 transition-all focus-within:border-forest focus-within:ring-2 focus-within:ring-forest/15";
+  // DateTimePicker merender <Button>, bukan <input>, jadi gayanya dioper
+  // langsung — tidak ada div pembungkus. Warna teks sengaja tidak diatur di
+  // sini supaya placeholder tetap kelabu dari komponennya.
+  const pickerShell =
+    "h-12 w-full justify-start gap-2.5 rounded-xl border-border bg-white px-3.5 text-sm font-semibold hover:bg-white focus-visible:border-forest focus-visible:ring-2 focus-visible:ring-forest/15 [&_svg]:text-black/60";
   const fieldLabel =
     "text-[11px] font-bold uppercase tracking-wider text-white/70 mb-1.5 pl-0.5";
 
   return (
-    <section className="relative min-h-svh w-full overflow-hidden bg-[#0B1F17]">
+    <section className="relative min-h-svh w-full overflow-hidden bg-forest-dark items-center align-middle">
       {/* Latar: foto + overlay gelap. Overlay wajib — tanpa itu teks putih
           kehilangan kontras begitu fotonya berganti. */}
       <Image
@@ -101,40 +108,31 @@ export function HeroSectionFull({
       />
       <div className="absolute inset-0 bg-linear-to-b from-black/75 via-black/55 to-black/85" />
 
-      <div className="relative z-10 mx-auto flex min-h-svh max-w-4xl flex-col items-center justify-center px-6 pb-16 pt-28 text-center">
-        <motion.span
-          custom={0}
-          variants={fadeUp}
-          initial="hidden"
-          animate="visible"
-          className="mb-4 block text-[11px] font-bold uppercase tracking-[0.2em] text-orange-400"
-        >
-          Rental &amp; Open Trip Outdoor Bandung
-        </motion.span>
+      <div className="relative z-10 mx-auto flex min-h-svh max-w-4xl flex-col items-center justify-center px-6 pb-16 pt-10 text-center">
 
-        <motion.h1
+        <motion.h2
           custom={0.08}
           variants={fadeUp}
           initial="hidden"
           animate="visible"
-          className="text-4xl font-black leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl"
+          className="text-4xl text-left font-sans font-bold leading-[1.05] tracking-tight text-white sm:text-5xl mb-10 md:mb-25 lg:text-6xl"
         >
-          Sewa Alat Camping &amp;{" "}
-          <span className="font-serif font-semibold italic text-orange-400">
-            Outdoor Terpercaya
-          </span>
-        </motion.h1>
+          Sewa Buat Sekali Jalan,{" "}
+            Beli Buat Selamanya
+        </motion.h2>
 
-        <motion.p
+        {/* <motion.p
           custom={0.16}
           variants={fadeUp}
           initial="hidden"
           animate="visible"
-          className="mt-5 max-w-xl text-sm leading-relaxed text-white/75 sm:text-base"
+          className="mt-5 max-w-2xl text-sm leading-relaxed text-white/75 sm:text-base"
         >
-          Tenda, sleeping bag, carrier, dan cooking gear berkualitas. Ambil di
-          Bandung, pakai sepuasnya, kembalikan setelah trip selesai.
-        </motion.p>
+          Jangan biarkan alat pas-pasan merusak momen di puncak. Sewa gear
+          berkualitas yang selalu kami rawat untuk trip berikutnya, atau bawa
+          pulang gear pilihan dari toko dan mulai bangun perlengkapan
+          andalanmu sendiri.
+        </motion.p> */}
 
         {/* Tab Sewa Alat / Open Trip */}
         <motion.div
@@ -157,7 +155,7 @@ export function HeroSectionFull({
               aria-pressed={bookingType === key}
               className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all duration-300 ${
                 bookingType === key
-                  ? "bg-white text-[#1B4332] shadow-sm"
+                  ? "bg-white text-black shadow-sm"
                   : "text-white/70 hover:text-white"
               }`}
             >
@@ -183,34 +181,31 @@ export function HeroSectionFull({
             >
               <label className="flex flex-col">
                 <span className={fieldLabel}>Mulai Sewa</span>
-                <div className={inputShell}>
-                  <Calendar className="h-4 w-4 shrink-0 text-[#1B4332]/60" />
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full cursor-pointer bg-transparent text-sm font-semibold text-stone-800 focus:outline-none"
-                  />
-                </div>
+                <DateTimePicker
+                  id="hero-start-date"
+                  value={startDate}
+                  onChange={setStartDate}
+                  placeholder="Pilih tanggal"
+                  className={pickerShell}
+                />
               </label>
 
               <label className="flex flex-col">
                 <span className={fieldLabel}>Selesai Sewa</span>
-                <div className={inputShell}>
-                  <Calendar className="h-4 w-4 shrink-0 text-[#1B4332]/60" />
-                  <input
-                    type="date"
-                    value={endDate}
-                    min={startDate || undefined}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full cursor-pointer bg-transparent text-sm font-semibold text-stone-800 focus:outline-none"
-                  />
-                </div>
+                <DateTimePicker
+                  id="hero-end-date"
+                  value={endDate}
+                  onChange={setEndDate}
+                  placeholder="Pilih tanggal"
+                  fromDate={startDate}
+                  className={pickerShell}
+                />
               </label>
 
               <Button
                 asChild
-                className="h-12 rounded-xl bg-orange-600 px-7 text-xs font-bold uppercase text-white shadow-lg shadow-orange-900/20 transition-all hover:bg-orange-700 active:scale-[0.98]"
+                variant="secondary"
+                className="h-12 rounded-xl px-7 text-xs font-bold uppercase shadow-lg shadow-black/25 active:scale-[0.98]"
               >
                 <Link href={rentalHref}>
                   <Search className="h-4 w-4" />
@@ -226,7 +221,7 @@ export function HeroSectionFull({
               <label className="flex flex-col">
                 <span className={fieldLabel}>Destinasi</span>
                 <div className={inputShell}>
-                  <Compass className="h-4 w-4 shrink-0 text-[#1B4332]/60" />
+                  <Compass className="h-4 w-4 shrink-0 text-forest/60" />
                   <select
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
@@ -244,21 +239,19 @@ export function HeroSectionFull({
 
               <label className="flex flex-col">
                 <span className={fieldLabel}>Keberangkatan</span>
-                <div className={inputShell}>
-                  <Calendar className="h-4 w-4 shrink-0 text-[#1B4332]/60" />
-                  <input
-                    type="date"
-                    value={departDate}
-                    onChange={(e) => setDepartDate(e.target.value)}
-                    className="w-full cursor-pointer bg-transparent text-sm font-semibold text-stone-800 focus:outline-none"
-                  />
-                </div>
+                <DateTimePicker
+                  id="hero-depart-date"
+                  value={departDate}
+                  onChange={setDepartDate}
+                  placeholder="Pilih tanggal"
+                  className={pickerShell}
+                />
               </label>
 
               <label className="flex flex-col">
                 <span className={fieldLabel}>Peserta</span>
                 <div className={inputShell}>
-                  <Users className="h-4 w-4 shrink-0 text-[#1B4332]/60" />
+                  <Users className="h-4 w-4 shrink-0 text-forest/60" />
                   <select
                     value={pax}
                     onChange={(e) => setPax(e.target.value)}
@@ -275,7 +268,8 @@ export function HeroSectionFull({
 
               <Button
                 asChild
-                className="h-12 rounded-xl bg-orange-600 px-7 text-xs font-bold uppercase text-white shadow-lg shadow-orange-900/20 transition-all hover:bg-orange-700 active:scale-[0.98]"
+                variant="secondary"
+                className="h-12 rounded-xl px-7 text-xs font-bold uppercase shadow-lg shadow-black/25 active:scale-[0.98]"
               >
                 <Link href={opentripHref}>
                   <Search className="h-4 w-4" />
@@ -317,14 +311,22 @@ export function HeroSectionFull({
           <div className="text-[10px] font-extrabold uppercase tracking-widest text-white/80 sm:text-[11px]">
             Bergabung dengan 2.000+ petualang
           </div>
-          <span className="hidden h-4 w-px bg-white/20 sm:block" />
+          {/* <span className="hidden h-4 w-px bg-white/20 sm:block" />
           <Link
             href="/catalog_rental"
-            className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-orange-400 transition-colors hover:text-orange-300 sm:text-[11px]"
+            className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-gold-light transition-colors hover:text-gold sm:text-[11px]"
           >
-            Lihat katalog
+            Lihat katalog sewa
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
+          <span className="hidden h-4 w-px bg-white/20 sm:block" />
+          <Link
+            href="/catalog_shop"
+            className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-gold-light transition-colors hover:text-gold sm:text-[11px]"
+          >
+            Belanja di toko
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link> */}
         </motion.div>
       </div>
     </section>

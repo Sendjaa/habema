@@ -78,7 +78,7 @@ function ProductCard({
         href={`/product/${product.id}${dateQuery}`}
         className="group block h-full"
       >
-        <Card className="group flex flex-col h-full rounded-xl border border-stone-200 bg-white shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer">
+        <Card className="group flex flex-col h-full rounded-xl bg-white hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer">
           {/* Image Section */}
           <div
             className="relative aspect-square bg-stone-100 overflow-hidden rounded-t-xl"
@@ -155,8 +155,8 @@ function ProductCard({
             <Badge
               className={`absolute top-3 right-0 rounded-l-full text-xs font-bold px-2 py-1 drop-shadow-md ${
                 stockStatus === "tersedia"
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-red-100 text-red-700"
+                  ? "bg-forest-soft text-forest"
+                  : "bg-stone-100 text-stone-500"
               }`}
             >
               {stockStatus === "tersedia" ? "Tersedia" : "Habis"}
@@ -165,10 +165,10 @@ function ProductCard({
 
           {/* Content Section */}
           <div className="flex flex-col flex-1 p-4">
-            <h5 className="font-bolder truncate text-stone-900 line-clamp-2 mb-1 group-hover:text-forest transition-colors flex-1">
+            <h5 className="font-semibold font-sans truncate text-stone-900 line-clamp-2 mb-1 group-hover:text-stone-900 transition-colors flex-1">
               {product.name}
             </h5>
-            <div className="mb-3">
+            <div className="mb-1">
               <span className="text-lg font-black text-forest">
                 Rp{price.toLocaleString("id-ID")}
               </span>
@@ -185,7 +185,7 @@ function ProductCard({
                     return (
                       <Star
                         key={i}
-                        className={`w-3 h-3 ${filled ? 'fill-yellow-400 text-yellow-400' : partial ? 'fill-yellow-400/50 text-yellow-400/50' : 'fill-stone-300 text-stone-300'}`}
+                        className={`w-3 h-3 ${filled ? 'fill-gold text-gold' : partial ? 'fill-gold/50 text-gold/50' : 'fill-stone-300 text-stone-300'}`}
                       />
                     );
                   })}
