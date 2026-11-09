@@ -234,7 +234,7 @@ export default function ReviewsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F0F2F5] p-6">
+      <div className="min-h-screen bg-white p-6">
         <div className="max-w-4xl mx-auto">
           <Skeleton className="h-8 w-32 mb-6" />
           <Skeleton className="h-64 w-full rounded-xl" />
@@ -245,7 +245,7 @@ export default function ReviewsPage() {
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-[#F0F2F5] flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <p className="text-slate-500">Produk tidak ditemukan</p>
           <Button onClick={() => router.back()} className="mt-4">
@@ -259,7 +259,7 @@ export default function ReviewsPage() {
   const filteredReviews = getFilteredReviews(reviews, activeFilter);
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5]">
+    <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-4xl mx-auto p-6">

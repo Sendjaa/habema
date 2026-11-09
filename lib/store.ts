@@ -110,6 +110,14 @@ export interface ClaimedDiscount {
   max_discount: number | null;
   applies_to: 'all' | 'category' | 'equipment';
   target_id: string | null;
+  voucher_type: 'all' | 'rental' | 'shop' | 'opentrip';
+  conditions: {
+    must_invite_friends?: boolean;
+    min_friends?: number;
+    first_time_only?: boolean;
+    requires_identity_verified?: boolean;
+    [key: string]: any;
+  };
   claimed_at: string;
 }
 

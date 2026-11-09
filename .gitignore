@@ -32,3 +32,8 @@ dumps/
 
 # Binari pihak ketiga untuk dev lokal (PostgREST) — diunduh, bukan di-commit
 tools/
+
+# Foto tile kegiatan yang diunggah saat dev lokal (/admin/activities menulis ke
+# sini karena gateway tidak melayani Storage). Di production file-nya ada di
+# bucket Supabase, jadi isi folder ini tidak pernah dibutuhkan repo.
+public/uploads/

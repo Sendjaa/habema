@@ -22,7 +22,9 @@
  *
  * Rumpun ketiga (storage) belum ada; permintaannya dibalas 501 dengan pesan
  * yang jelas. Selama itu, upload foto/bukti bayar belum jalan — itu tahap
- * berikutnya, bukan kerusakan.
+ * berikutnya, bukan kerusakan. Rumpun keempat (realtime/websocket) juga belum
+ * ada, jadi notifikasi admin realtime hanya jalan di production; di dev,
+ * supabase-js akan terus mencoba dan gagal diam-diam.
  *
  * CATATAN KEAMANAN — baca sebelum mengandalkannya:
  *   - `authorization` dibuang dari setiap permintaan yang menuju PostgREST.

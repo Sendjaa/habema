@@ -27,9 +27,26 @@
  * Untuk sengaja menyasar production: ALLOW_PRODUCTION_DB=true
  */
 
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { loadEnvFile } from 'node:process'
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+
+// Muat .env.local lalu .env supaya ALLOW_PRODUCTION_DB (dan var lain) bisa
+// diatur dari file, sama seperti `next dev`. loadEnvFile tidak menimpa variabel
+// yang sudah ada di environment terminal, jadi override manual tetap menang.
+for (const file of ['.env.local', '.env']) {
+  const path = join(ROOT, file)
+  if (!existsSync(path)) continue
+  try {
+    loadEnvFile(path)
+  } catch {
+    // File ada tapi tidak bisa dibaca/di-parse — biarkan guard memakai
+    // environment terminal saja.
+  }
+}
 
 // Sama dengan PRODUCTION_PROJECT_REF di next.config.mjs. Kalau project
 // production berpindah, ubah di KEDUA tempat — tidak ada yang menyamakan

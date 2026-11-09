@@ -230,13 +230,35 @@ export function createAuthHandler(connectionString) {
     const method = req.method ?? 'GET'
     const query = url.searchParams
 
+    // Aplikasi memanggil shim ini dari http://localhost:3000 sedangkan shim
+    // duduk di http://127.0.0.1:54321 — beda origin, jadi browser menuntut
+    // izin CORS. PostgREST sudah mengirimnya sendiri; hanya rumpun /auth/v1
+    // yang harus diberi di sini. Dipasang di sini supaya semua jalur
+    // keluaran (json, writeHead langsung) ikut ter-cover.
+    res.setHeader('access-control-allow-origin', req.headers.origin ?? '*')
+    res.setHeader('access-control-allow-methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+    res.setHeader(
+      'access-control-allow-headers',
+      'apikey, authorization, content-type, x-client-info, x-supabase-api-version, range'
+    )
+    res.setHeader('access-control-max-age', '86400')
+    res.setHeader('vary', 'origin')
+
+    if (method === 'OPTIONS') {
+      res.writeHead(204)
+      res.end()
+      return
+    }
+
     try {
       await ensureSchema()
 
       // ── Token: login, refresh, tukar kode PKCE ──────────────────────
       if (path === '/token' && method === 'POST') {
         const body = await readBody(req)
-        const grant = query.get('grant_type')
+        // grant_type dikirim di body oleh supabase-js (signInWithPassword),
+        // bukan di query string. Baca dulu dari query, jatuh ke body.
+        const grant = query.get('grant_type') ?? body.grant_type
 
         if (grant === 'refresh_token') {
           const payload = readJwtPayload(body.refresh_token ?? '')

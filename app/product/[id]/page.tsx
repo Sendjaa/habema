@@ -32,6 +32,8 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { LoginModal } from "@/components/auth/login-modal";
+import { ReviewForm } from "@/components/product/review-form";
+import { ProductReviewsSection } from "@/components/product/ProductReviewsSection";
 import { useRouter } from "next/navigation";
 import { useCartStore, type ClaimedDiscount } from "@/lib/store";
 import { toast } from "sonner";
@@ -50,6 +52,8 @@ function formatWeight(kg: number): string {
   if (whole > 0) return `${whole} kg`;
   return `${grams} g`;
 }
+
+const WISHLIST_STORAGE_KEY = "habema_wishlist";
 
 export default function ProductDetailPage({
   params,
@@ -81,6 +85,8 @@ export default function ProductDetailPage({
   const [claimingVoucher, setClaimingVoucher] = useState(false);
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<string>("Semua");
+  const [canReview, setCanReview] = useState(false);
+  const [reviewEligibilityReason, setReviewEligibilityReason] = useState("");
 
   // Tanggal sewa yang dibawa dari katalog (via query string). Diteruskan ke
   // halaman booking agar pengguna tidak perlu memilih tanggal ulang.
@@ -95,6 +101,31 @@ export default function ProductDetailPage({
     const str = q.toString();
     setDateQuery(str ? `&${str}` : "");
   }, []);
+
+  // Status wishlist disimpan di localStorage supaya tetap terlihat saat
+  // pengguna kembali ke halaman produk yang sama.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(WISHLIST_STORAGE_KEY);
+      const ids: string[] = raw ? JSON.parse(raw) : [];
+      setIsWishlisted(ids.includes(id));
+    } catch {
+      setIsWishlisted(false);
+    }
+  }, [id]);
+
+  const toggleWishlist = () => {
+    const next = !isWishlisted;
+    setIsWishlisted(next);
+    try {
+      const raw = localStorage.getItem(WISHLIST_STORAGE_KEY);
+      const ids: string[] = raw ? JSON.parse(raw) : [];
+      const merged = next
+        ? Array.from(new Set([...ids, id]))
+        : ids.filter((existing) => existing !== id);
+      localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(merged));
+    } catch {}
+  };
 
   // Fetch nomor telepon cabang
   useEffect(() => {
@@ -187,8 +218,11 @@ export default function ProductDetailPage({
       const authorName = originalReview?.users?.full_name || "User";
 
       // Insert reply (using reviews table with special prefix in comment)
+      const replyTarget = isShop
+        ? { shop_product_id: id }
+        : { equipment_id: id };
       const replyData = {
-        equipment_id: id,
+        ...replyTarget,
         user_id: user.id,
         rating: 5, // Use valid rating (1-5) to satisfy check constraint
         comment: `@${authorName}: ${replyText.trim()}`, // Prefix with @mention
@@ -220,7 +254,7 @@ export default function ProductDetailPage({
       const { data: refreshedReviews } = await supabase
         .from("reviews")
         .select("*, users(full_name)")
-        .eq("equipment_id", id)
+        .eq(isShop ? "shop_product_id" : "equipment_id", id)
         .order("created_at", { ascending: false });
 
       setReviews(refreshedReviews || []);
@@ -234,9 +268,13 @@ export default function ProductDetailPage({
 
   const reviewFilters = ["Semua", "Dengan Foto", "Bintang 5", "Bintang 4"];
 
-  // Calculate rating statistics from reviews
+  // Calculate rating statistics from reviews (exclude replies)
   const ratingStats = useMemo(() => {
-    if (reviews.length === 0) {
+    const validReviews = reviews.filter(
+      (review) => !(review.comment || "").startsWith("@"),
+    );
+
+    if (validReviews.length === 0) {
       return {
         average: 0,
         total: 0,
@@ -245,12 +283,12 @@ export default function ProductDetailPage({
       };
     }
 
-    const total = reviews.length;
-    const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+    const total = validReviews.length;
+    const sum = validReviews.reduce((acc, r) => acc + r.rating, 0);
     const average = sum / total;
 
     const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-    reviews.forEach((r) => {
+    validReviews.forEach((r) => {
       distribution[r.rating as keyof typeof distribution]++;
     });
 
@@ -267,7 +305,7 @@ export default function ProductDetailPage({
       supabase
         .from("reviews")
         .select("*, users(full_name)")
-        .eq("equipment_id", product.id)
+        .eq(isShop ? "shop_product_id" : "equipment_id", product.id)
         .order("created_at", { ascending: false })
         .then(({ data }) => setReviews(data || []));
     }
@@ -297,6 +335,18 @@ export default function ProductDetailPage({
               average_rating: 0,
               review_count: 0,
             });
+            // Cek eligibility ulasan untuk produk toko
+            try {
+              const eligRes = await fetch(`/api/reviews?shopProductId=${id}`, { credentials: "include" });
+              if (eligRes.ok) {
+                const eligData = await eligRes.json();
+                setCanReview(eligData.canReview ?? false);
+                setReviewEligibilityReason(eligData.reason ?? "");
+              }
+            } catch {
+              setCanReview(false);
+              setReviewEligibilityReason("Gagal memeriksa eligibility");
+            }
           } else {
             const { data: rentalData } = await supabase
               .from("equipment")
@@ -307,6 +357,18 @@ export default function ProductDetailPage({
             if (rentalData) {
               setIsShop(false);
               setProduct(rentalData);
+              // Cek eligibility ulasan untuk rental
+              try {
+                const eligRes = await fetch(`/api/reviews?equipmentId=${id}`, { credentials: "include" });
+                if (eligRes.ok) {
+                  const eligData = await eligRes.json();
+                  setCanReview(eligData.canReview ?? false);
+                  setReviewEligibilityReason(eligData.reason ?? "");
+                }
+              } catch {
+                setCanReview(false);
+                setReviewEligibilityReason("Gagal memeriksa eligibility");
+              }
             } else {
               setProduct(null);
             }
@@ -316,6 +378,20 @@ export default function ProductDetailPage({
 
         setIsShop(data.type !== "rental");
         setProduct(data);
+
+        // Cek eligibility ulasan
+        try {
+          const param = isShop ? `shopProductId=${id}` : `equipmentId=${id}`;
+          const eligRes = await fetch(`/api/reviews?${param}`, { credentials: "include" });
+          if (eligRes.ok) {
+            const eligData = await eligRes.json();
+            setCanReview(eligData.canReview ?? false);
+            setReviewEligibilityReason(eligData.reason ?? "");
+          }
+        } catch {
+          setCanReview(false);
+          setReviewEligibilityReason("Gagal memeriksa eligibility");
+        }
       } catch (err) {
         if (attempt < 2) {
           setTimeout(() => fetchProduct(attempt + 1), 1200);
@@ -341,13 +417,21 @@ export default function ProductDetailPage({
           .order("created_at", { ascending: false });
         if (cancelled) return;
         const applicable = (data || []).filter((d: any) => {
+          // Filter by applies_to (produk/kategori tertentu)
           if (d.applies_to === "all") return true;
           if (d.applies_to === "category")
             return d.target_id === product.category;
           if (d.applies_to === "equipment") return d.target_id === product.id;
+          
+          // Filter by voucher_type (rental/shop/opentrip)
+          const voucherType = d.voucher_type || 'all';
+          if (voucherType === 'shop') return true; // Ini produk shop, jadi voucher shop bisa dipakai
+          if (voucherType === 'all') return true; // Voucher all bisa dipakai untuk semua
+          
+          // Voucher rental/opentrip tidak bisa dipakai untuk shop
           return false;
         });
-        setShopVouchers(applicable.slice(0, 1));
+        setShopVouchers(applicable);
       } catch {
         if (!cancelled) setShopVouchers([]);
       }
@@ -389,6 +473,8 @@ export default function ProductDetailPage({
         max_discount: d.max_discount ? Number(d.max_discount) : null,
         applies_to: d.applies_to as "all" | "category" | "equipment",
         target_id: d.target_id,
+        voucher_type: d.voucher_type as "all" | "rental" | "shop" | "opentrip",
+        conditions: d.conditions || {},
         claimed_at: result.claim?.claimed_at || new Date().toISOString(),
       };
       setClaimedDiscount(claimed);
@@ -415,36 +501,68 @@ export default function ProductDetailPage({
   }, [product]);
 
   useEffect(() => {
-    if (isShop || !product) return;
+    if (!product) return;
 
-    if (product) {
+    if (!isShop) {
       supabase
         .from("equipment")
         .select(`*, equipment_categories(name)`)
         .neq("id", product.id)
         .limit(8)
         .then(({ data }) => setPopularProducts(data || []));
-
-      // Fetch reviews
-      supabase
-        .from("reviews")
-        .select("*, users(full_name)")
-        .eq("equipment_id", product.id)
-        .order("created_at", { ascending: false })
-        .then(({ data }) => setReviews(data || []));
     }
-  }, [product]);
+
+    // Ulasan: rental memakai equipment_id, produk toko memakai shop_product_id.
+    supabase
+      .from("reviews")
+      .select("*, users(full_name)")
+      .eq(isShop ? "shop_product_id" : "equipment_id", product.id)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setReviews(data || []));
+  }, [product, isShop]);
 
   if (loading)
     return (
-      <div className="max-w-7xl mx-auto p-6">
-        <Skeleton className="h-[500px] w-full rounded-2xl" />
+      <div className="min-h-screen bg-white">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 pt-4 md:pt-8 lg:pt-12">
+          {/* Breadcrumb skeleton */}
+          <div className="hidden md:flex items-center gap-2 mb-6">
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-4 w-2" />
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-2" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+            {/* Image skeleton */}
+            <div className="lg:col-span-1">
+              <Skeleton className="aspect-square w-full rounded-xl" />
+            </div>
+            
+            {/* Info skeleton */}
+            <div className="lg:col-span-2 space-y-4">
+              <Skeleton className="h-10 w-3/4" />
+              <Skeleton className="h-6 w-1/2" />
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-5 w-20" />
+                <Skeleton className="h-5 w-2" />
+                <Skeleton className="h-5 w-24" />
+              </div>
+              <Skeleton className="h-20 w-full" />
+              <div className="grid grid-cols-2 gap-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   if (!product)
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center">
-        <h1 className="text-3xl font-black text-forest mb-2">
+        <h1 className="text-3xl font-black text-stone-900 mb-2">
           Produk Tidak Ditemukan
         </h1>
         <p className="text-stone-500 font-medium mb-6 max-w-md">
@@ -499,10 +617,12 @@ export default function ProductDetailPage({
     router.push("/checkout");
   };
 
+const filteredReviews = getFilteredReviews(reviews, activeFilter);
+
   if (isShop)
     return (
-      <div className="min-h-screen bg-[#F0F2F5] pb-15 md:pb-16">
-        <nav className="bg-white hidden border-b border-slate-200 py-3 px-4 md:px-6">
+      <div className="min-h-screen bg-white pb-15 md:pb-16">
+        <nav className="bg-white py-3 px-4 md:px-6 lg:px-12">
           <div className="max-w-7xl mx-auto flex items-center gap-2 text-[10px] md:text-xs font-medium text-slate-500 capitalize">
             <Link
               href="/catalog_shop"
@@ -519,7 +639,7 @@ export default function ProductDetailPage({
           </div>
         </nav>
 
-        <div className="max-w-7xl mx-auto md:px-4 md:py-6">
+        <div className="max-w-7xl mx-auto md:px-4 pt-4 md:pt-8 lg:pt-12">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Image gallery */}
             <div className="lg:w-1/3 px-4 md:px-0">
@@ -530,6 +650,7 @@ export default function ProductDetailPage({
                       src={shopImages[selectedImage]}
                       alt={product.name}
                       fill
+                      sizes="(max-width: 1024px) 100vw, 33vw"
                       className="object-cover"
                     />
                   ) : (
@@ -568,8 +689,8 @@ export default function ProductDetailPage({
             {/* Info column */}
             <div className="lg:w-5/12 px-4 md:px-0 space-y-4">
               <div className="bg-white p-6 rounded-xl shadow-sm space-y-3 border border-slate-100">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl font-bolder text-slate-800 capitalize leading-tight">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-xl font-sans font-bold text-slate-800 capitalize leading-tight">
                     {product.name}
                   </h1>
                   <span className="text-[#FF6B35] font-bold text-2xl">
@@ -587,20 +708,24 @@ export default function ProductDetailPage({
                     Rp{shopOriginalPrice.toLocaleString("id-ID")}
                   </p>
                 )}
-                <div className="flex items-center gap-3 text-sm">
-                  <div className="flex items-center text-amber-500 font-bold">
-                    <Star className="w-4 h-4 fill-current mr-1" />{" "}
-                    {product.average_rating?.toFixed(1) || "0.0"}
-                  </div>
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-sm">
+                  {ratingStats.total > 0 ? (
+                    <span className="inline-flex items-center gap-1 font-semibold text-amber-600">
+                      <Star className="w-4 h-4 fill-current" />
+                      {ratingStats.average.toFixed(1)}
+                    </span>
+                  ) : (
+                    <span className="text-slate-500">Belum ada ulasan</span>
+                  )}
                   <span className="text-slate-300">|</span>
                   <span className="text-slate-500">
                     Terjual {Number(product.sold_count || 0)}x
                   </span>
-                  {product.review_count > 0 && (
+                  {ratingStats.total > 0 && (
                     <>
                       <span className="text-slate-300">|</span>
                       <span className="text-slate-500">
-                        {product.review_count} Ulasan
+                        {ratingStats.total} Ulasan
                       </span>
                     </>
                   )}
@@ -624,97 +749,121 @@ export default function ProductDetailPage({
               </div>
 
               {shopVouchers.length > 0 && (
-                <div className="bg-gradient-to-br from-emerald-50 via-white to-white rounded-xl shadow-sm border border-emerald-200/70 overflow-hidden">
-                  <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-dashed border-emerald-200/70">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
                     <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-emerald-800">
                       <Tag className="w-3.5 h-3.5" />
                       Voucher Toko
                     </span>
                     <span className="text-[10px] text-emerald-600 font-semibold uppercase tracking-wide">
-                      Gratis diklaim
+                      {shopVouchers.filter((v) => claimedDiscount?.code !== v.code).length} tersedia
                     </span>
                   </div>
 
-                  {shopVouchers.map((voucher) => {
-                    const isClaimed = claimedDiscount?.code === voucher.code;
-                    const discountText =
-                      voucher.discount_type === "fixed"
-                        ? `Potongan Rp${Number(voucher.discount_value).toLocaleString("id-ID")}`
-                        : `Diskon ${voucher.discount_value}%`;
-                    return (
-                      <div key={voucher.id} className="p-5">
-                        <p className="text-sm font-semibold text-slate-800 leading-snug">
-                          {voucher.description || "Voucher belanja toko Habema"}
-                        </p>
-
-                        <div className="mt-3 flex items-center gap-2">
-                          <div className="flex-1 flex items-center justify-center rounded-xl border-2 border-dashed border-emerald-400 font-mono font-bold tracking-widest text-sm py-2.5 bg-white text-emerald-700 select-all">
-                            {voucher.code}
-                          </div>
-                          {isClaimed ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setClaimedDiscount(null);
-                                toast.info("Voucher dibatalkan");
-                              }}
-                              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
-                            >
-                              <Check className="w-4 h-4" />
-                              Diklaim
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleClaimVoucher(voucher)}
-                              disabled={claimingVoucher}
-                              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs text-white bg-[#1B4332] hover:bg-[#143326] transition-colors disabled:opacity-60"
-                            >
-                              {claimingVoucher ? (
-                                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {shopVouchers.map((voucher) => {
+                      const isClaimed = claimedDiscount?.code === voucher.code;
+                      const discountText =
+                        voucher.discount_type === "fixed"
+                          ? `Potongan Rp${Number(voucher.discount_value).toLocaleString("id-ID")}`
+                          : `Diskon ${voucher.discount_value}%`;
+                      return (
+                        <div
+                          key={voucher.id}
+                          className={`relative overflow-hidden rounded-xl border-2 transition-all ${
+                            isClaimed
+                              ? "border-emerald-300 bg-emerald-50"
+                              : "border-dashed border-emerald-400 bg-white hover:border-emerald-500"
+                          }`}
+                        >
+                          <div className="p-4 space-y-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
+                                  {voucher.code}
+                                </p>
+                                <p className="text-xs font-semibold text-slate-700 mt-1 line-clamp-2">
+                                  {voucher.description || "Voucher belanja"}
+                                </p>
+                              </div>
+                              {isClaimed ? (
+                                <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 text-white">
+                                  <Check className="w-4 h-4" />
+                                </div>
                               ) : (
-                                <Gift className="w-4 h-4" />
+                                <button
+                                  type="button"
+                                  onClick={() => handleClaimVoucher(voucher)}
+                                  disabled={claimingVoucher}
+                                  className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-[#1B4332] text-white hover:bg-[#143326] transition-colors disabled:opacity-60"
+                                >
+                                  {claimingVoucher ? (
+                                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    <Gift className="w-4 h-4" />
+                                  )}
+                                </button>
                               )}
-                              {claimingVoucher ? "Memproses..." : "Klaim"}
-                            </button>
-                          )}
+                            </div>
+
+                            <div className="pt-2 border-t border-dashed border-emerald-200">
+                              <p className="text-xs font-bold text-[#FF6B35]">
+                                {discountText}
+                              </p>
+                              {voucher.min_purchase > 0 && (
+                                <p className="text-[10px] text-slate-500 mt-1">
+                                  Min. belanja Rp
+                                  {Number(voucher.min_purchase).toLocaleString("id-ID")}
+                                </p>
+                              )}
+                              {voucher.max_discount > 0 && (
+                                <p className="text-[10px] text-slate-500 mt-0.5">
+                                  Max. potongan Rp
+                                  {Number(voucher.max_discount).toLocaleString("id-ID")}
+                                </p>
+                              )}
+                              {voucher.voucher_type && voucher.voucher_type !== 'all' && (
+                                <p className="text-[10px] text-emerald-600 mt-1 font-medium">
+                                  {voucher.voucher_type === 'rental' ? 'Khusus rental' : voucher.voucher_type === 'shop' ? 'Khusus belanja' : voucher.voucher_type === 'opentrip' ? 'Khusus open trip' : ''}
+                                </p>
+                              )}
+                              {voucher.conditions && Object.keys(voucher.conditions).length > 0 && (
+                                <div className="space-y-0.5 mt-1">
+                                  {voucher.conditions.first_time_only && (
+                                    <p className="text-[10px] text-amber-600 font-medium">• Khusus pembeli pertama</p>
+                                  )}
+                                  {voucher.conditions.must_invite_friends && (
+                                    <p className="text-[10px] text-amber-600 font-medium">• Wajib undang {voucher.conditions.min_friends || 'teman'}</p>
+                                  )}
+                                  {voucher.conditions.requires_identity_verified && (
+                                    <p className="text-[10px] text-amber-600 font-medium">• Wajib verifikasi KTP</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {isClaimed && (
+                              <div className="pt-2 flex items-center justify-between">
+                                <p className="text-[10px] text-emerald-700 font-medium">
+                                  Sudah diklaim
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setClaimedDiscount(null);
+                                    toast.info("Voucher dibatalkan");
+                                  }}
+                                  className="text-[10px] text-red-600 hover:text-red-700 font-medium underline"
+                                >
+                                  Batal
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-
-                        <ul className="mt-3 space-y-1">
-                          {discountText && (
-                            <li className="flex gap-2 text-xs text-stone-500">
-                              <span className="text-emerald-500">✓</span>{" "}
-                              {discountText}
-                            </li>
-                          )}
-                          {voucher.min_purchase > 0 && (
-                            <li className="flex gap-2 text-xs text-stone-500">
-                              <span className="text-emerald-500">✓</span>{" "}
-                              Minimal belanja Rp
-                              {Number(voucher.min_purchase).toLocaleString(
-                                "id-ID",
-                              )}
-                            </li>
-                          )}
-                          {voucher.max_discount > 0 && (
-                            <li className="flex gap-2 text-xs text-stone-500">
-                              <span className="text-emerald-500">✓</span>{" "}
-                              Maksimal potongan Rp
-                              {Number(voucher.max_discount).toLocaleString(
-                                "id-ID",
-                              )}
-                            </li>
-                          )}
-                        </ul>
-
-                        {isClaimed && (
-                          <p className="mt-3 text-[11px] text-emerald-600 font-medium text-center">
-                            Voucher otomatis dipakai saat checkout
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -870,6 +1019,28 @@ export default function ProductDetailPage({
               </div>
             </div>
           </div>
+
+          <ProductReviewsSection
+              id={id}
+              isShop={isShop}
+              reviews={reviews}
+              ratingStats={ratingStats}
+              filteredReviews={filteredReviews}
+              reviewFilters={reviewFilters}
+              activeFilter={activeFilter}
+              setActiveFilter={setActiveFilter}
+              showReviewForm={showReviewForm}
+              setShowReviewForm={setShowReviewForm}
+              replyingTo={replyingTo}
+              setReplyingTo={setReplyingTo}
+              replyText={replyText}
+              setReplyText={setReplyText}
+              submittingReply={submittingReply}
+              handleReplySubmit={handleReplySubmit}
+              getRepliesForReview={getRepliesForReview}
+              canReview={canReview}
+              onReviewSubmitted={handleReviewSubmitted}
+            />
         </div>
       </div>
     );
@@ -931,7 +1102,7 @@ export default function ProductDetailPage({
   );
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] pb-15 md:pb-16">
+    <div className="min-h-screen bg-white pb-15 md:pb-16">
       <nav className="bg-white hidden border-b border-slate-200 py-3 px-4 md:px-6">
         <div className="max-w-7xl mx-auto flex items-center gap-2 text-[10px] md:text-xs font-medium text-slate-500 capitalize">
           <Link
@@ -951,44 +1122,50 @@ export default function ProductDetailPage({
         </div>
       </nav>
 
-      {/* Mobile Top Nav */}
-      <div className="hidden md:flex bg-white items-center p-2 top-0 md:z-0 shadow-sm border-b ps-55">
-        <button
-          onClick={() => router.back()}
-          className="group flex items-center justify-center w-10 h-5"
-          aria-label="Kembali"
-        >
-          <ArrowLeft className="w-4 h-4 text-gray-900 group-hover:text-forest transition-colors" />
-        </button>
+      {/* Top nav: tombol kembali + breadcrumb. Bilahnya tetap full-bleed,
+          tapi isinya duduk di kontainer yang sama dengan konten di bawahnya
+          (`max-w-7xl mx-auto px-4`, sama seperti `md:px-4` pada blok produk).
+          Sebelumnya `ps-55` — 220px tetap, yang cuma kebetulan benar di satu
+          lebar layar dan meleset di semua yang lain. */}
+      <div className="hidden md:block bg-white top-0 md:z-0 shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 py-2 flex items-center gap-2">
+          <button
+            onClick={() => router.back()}
+            className="group flex items-center justify-center w-10 h-5 shrink-0"
+            aria-label="Kembali"
+          >
+            <ArrowLeft className="w-4 h-4 text-gray-900 group-hover:text-forest transition-colors" />
+          </button>
 
-        <Breadcrumb>
-          <BreadcrumbList className="text-[10px] md:text-xs font-bold tracking-0.1em text-gray-900">
-            <BreadcrumbItem>
-              <BreadcrumbLink
-                href="/"
-                className="hover:text-[#D4AF37] text-gray-900 transition-colors"
-              >
-                Beranda /
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            {/* <BreadcrumbSeparator className="text-white/40" /> */}
-            <BreadcrumbItem>
-              <BreadcrumbLink
-                href="/"
-                className="hover:text-[#D4AF37] text-gray-900 transition-colors"
-              >
-                Rental /
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbItem>
-              <BreadcrumbLink>
-                <BreadcrumbPage className="text-[#D4AF37] font-extrabold">
-                  {product.name}
-                </BreadcrumbPage>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+          <Breadcrumb>
+            <BreadcrumbList className="text-[10px] md:text-xs font-bold tracking-[0.1em] text-gray-900">
+              <BreadcrumbItem>
+                <BreadcrumbLink
+                  href="/"
+                  className="hover:text-[#FF6B35] text-gray-900 transition-colors"
+                >
+                  Beranda /
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              {/* <BreadcrumbSeparator className="text-white/40" /> */}
+              <BreadcrumbItem>
+                <BreadcrumbLink
+                  href="/catalog_rental"
+                  className="hover:text-[#FF6B35] text-gray-900 transition-colors"
+                >
+                  Rental /
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbItem>
+                <BreadcrumbLink>
+                  <BreadcrumbPage className="text-[#FF6B35] font-extrabold">
+                    {product.name}
+                  </BreadcrumbPage>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
       </div>
 
       {/* MOBILE BOTTOM NAVIGATION */}
@@ -1110,184 +1287,6 @@ export default function ProductDetailPage({
           </div>
         </div>
 
-        {/* MODAL SHARE */}
-        {showShare && (
-          <>
-            {/* OVERLAY GELAP */}
-            <div
-              className="fixed inset-0 z-1 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
-              onClick={() => setShowShare(false)}
-            />
-
-            {/* PANEL SHARE - Desktop Center */}
-            <div className="fixed inset-0 z-1 items-center justify-center hidden md:flex">
-              <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 animate-in zoom-in-95 duration-300">
-                <div className="p-6 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <h3 className="text-lg font-bold text-slate-800">
-                        Bagikan Produk
-                      </h3>
-                      <p className="text-sm text-slate-500">
-                        Share ke teman dan keluargamu!
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setShowShare(false)}
-                      className="p-2 bg-slate-100 rounded-full text-slate-400 hover:bg-slate-200 transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  {/* GRID ICON MEDIA SOSIAL - Desktop */}
-                  <div className="grid grid-cols-4 gap-4">
-                    <ShareOption
-                      icon="WhatsApp"
-                      label="WhatsApp"
-                      color="bg-green-500"
-                      productUrl={product?.id ? `/product/${product.id}` : ""}
-                      productName={product?.name || "Produk"}
-                    />
-                    <ShareOption
-                      icon="Instagram"
-                      label="Instagram"
-                      color="bg-pink-600"
-                      productUrl={product?.id ? `/product/${product.id}` : ""}
-                      productName={product?.name || "Produk"}
-                    />
-                    <ShareOption
-                      icon="Facebook"
-                      label="Facebook"
-                      color="bg-blue-600"
-                      productUrl={product?.id ? `/product/${product.id}` : ""}
-                      productName={product?.name || "Produk"}
-                    />
-                    <ShareOption
-                      icon="Messenger"
-                      label="Messenger"
-                      color="bg-blue-500"
-                      productUrl={product?.id ? `/product/${product.id}` : ""}
-                      productName={product?.name || "Produk"}
-                    />
-                    <ShareOption
-                      icon="Telegram"
-                      label="Telegram"
-                      color="bg-sky-500"
-                      productUrl={product?.id ? `/product/${product.id}` : ""}
-                      productName={product?.name || "Produk"}
-                    />
-                    <ShareOption
-                      icon="Line"
-                      label="Line"
-                      color="bg-green-400"
-                      productUrl={product?.id ? `/product/${product.id}` : ""}
-                      productName={product?.name || "Produk"}
-                    />
-                    <ShareOption
-                      icon="Copy"
-                      label="Salin Link"
-                      color="bg-slate-500"
-                      productUrl={product?.id ? `/product/${product.id}` : ""}
-                      productName={product?.name || "Produk"}
-                    />
-                    <ShareOption
-                      icon="More"
-                      label="Lainnya"
-                      color="bg-slate-800"
-                      productUrl={product?.id ? `/product/${product.id}` : ""}
-                      productName={product?.name || "Produk"}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* PANEL SHARE - Mobile Bottom */}
-            <div className="md:hidden fixed bottom-0 left-0 right-0 z-1">
-              <div className="relative bg-white border-t rounded-t-2xl shadow-[0_-10px_15px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom duration-300">
-                <div className="p-6 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <h3 className="text-sm font-bold text-slate-800">
-                        Bagikan Produk
-                      </h3>
-                      <p className="text-[10px] text-slate-500 font-medium">
-                        Share ke teman dan keluargamu!
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setShowShare(false)}
-                      className="p-1 bg-slate-100 rounded-full text-slate-400"
-                    >
-                      <X className="w-5 h-5 rotate-90" />
-                    </button>
-                  </div>
-
-                  {/* GRID ICON MEDIA SOSIAL - Mobile */}
-                  <div className="grid grid-cols-4 gap-y-6">
-                    <ShareOption
-                      icon="WhatsApp"
-                      label="WhatsApp"
-                      color="bg-green-500"
-                      productUrl={product?.id ? `/product/${product.id}` : ""}
-                      productName={product?.name || "Produk"}
-                    />
-                    <ShareOption
-                      icon="Instagram"
-                      label="Instagram"
-                      color="bg-pink-600"
-                      productUrl={product?.id ? `/product/${product.id}` : ""}
-                      productName={product?.name || "Produk"}
-                    />
-                    <ShareOption
-                      icon="Facebook"
-                      label="Facebook"
-                      color="bg-blue-600"
-                      productUrl={product?.id ? `/product/${product.id}` : ""}
-                      productName={product?.name || "Produk"}
-                    />
-                    <ShareOption
-                      icon="Messenger"
-                      label="Messenger"
-                      color="bg-blue-500"
-                      productUrl={product?.id ? `/product/${product.id}` : ""}
-                      productName={product?.name || "Produk"}
-                    />
-                    <ShareOption
-                      icon="Telegram"
-                      label="Telegram"
-                      color="bg-sky-500"
-                      productUrl={product?.id ? `/product/${product.id}` : ""}
-                      productName={product?.name || "Produk"}
-                    />
-                    <ShareOption
-                      icon="Line"
-                      label="Line"
-                      color="bg-green-400"
-                      productUrl={product?.id ? `/product/${product.id}` : ""}
-                      productName={product?.name || "Produk"}
-                    />
-                    <ShareOption
-                      icon="Copy"
-                      label="Salin Link"
-                      color="bg-slate-500"
-                      productUrl={product?.id ? `/product/${product.id}` : ""}
-                      productName={product?.name || "Produk"}
-                    />
-                    <ShareOption
-                      icon="More"
-                      label="Lainnya"
-                      color="bg-slate-800"
-                      productUrl={product?.id ? `/product/${product.id}` : ""}
-                      productName={product?.name || "Produk"}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
         {/* ketika click keranjang ada pop up dimasukkan ke keranjang! */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-1">
           {/* OVERLAY GELAP */}
@@ -1328,7 +1327,7 @@ export default function ProductDetailPage({
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto md:px-4 md:py-6">
+        <div className="max-w-7xl mx-auto md:px-4 pt-4 md:pt-8 lg:pt-12">
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="lg:w-1/3">
             <div className="bg-white md:rounded-xl overflow-hidden sticky md:top-24 shadow-sm border border-slate-100">
@@ -1338,6 +1337,7 @@ export default function ProductDetailPage({
                     src={allImages[selectedImage]}
                     alt={product.name}
                     fill
+                    sizes="(max-width: 1024px) 100vw, 33vw"
                     className="object-cover"
                   />
                 ) : (
@@ -1386,17 +1386,49 @@ export default function ProductDetailPage({
               <h1 className="text-xl font-bold text-slate-800 capitalize leading-tight">
                 {product.name}
               </h1>
-              <div className="flex items-center gap-3 text-sm">
-                <div className="flex items-center text-amber-500 font-bold">
-                  <Star className="w-4 h-4 fill-current mr-1" />{" "}
-                  {calculateRatingFromReviews(reviews).average.toFixed(1)}
-                </div>
-                <span className="text-slate-300">|</span>
-                <span className="text-slate-500">
-                  {reviews.length > 0
-                    ? `${reviews.length} Review`
-                    : `Tersewa ${product.rental_count || "50"}+ kali`}
-                </span>
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-sm">
+                {ratingStats.total > 0 ? (
+                  <>
+                    <span className="inline-flex items-center gap-1 font-semibold text-amber-600">
+                      <Star className="w-4 h-4 fill-current" />
+                      {ratingStats.average.toFixed(1)}
+                    </span>
+                    <span className="text-slate-300">|</span>
+                    <span className="text-slate-500">
+                      {ratingStats.total} Review
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-slate-500">
+                    Tersewa {product.rental_count || "50"}+ kali
+                  </span>
+                )}
+              </div>
+              {/* Aksi versi non-desktop-large: panel kanan (lg:w-1/4) baru muncul di lg, jadi wishlist/bagikan perlu versi sendiri di bawahnya. */}
+              <div className="mt-1 pt-3 border-t flex gap-3 lg:hidden">
+                <button
+                  type="button"
+                  onClick={toggleWishlist}
+                  aria-pressed={isWishlisted}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-lg border py-2.5 text-xs font-bold transition-colors ${
+                    isWishlisted
+                      ? "border-red-200 bg-red-50 text-red-600"
+                      : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  <Heart
+                    className={`w-4 h-4 ${isWishlisted ? "fill-red-500 text-red-500" : ""}`}
+                  />
+                  {isWishlisted ? "Tersimpan" : "Wishlist"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowShare(true)}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 py-2.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Bagikan
+                </button>
               </div>
             </div>
 
@@ -1494,7 +1526,9 @@ export default function ProductDetailPage({
               <div className="mt-6 pt-4 border-t flex justify-around">
                 <button
                   className="flex flex-col items-center gap-1 group"
-                  onClick={() => setIsWishlisted(!isWishlisted)}
+                  onClick={toggleWishlist}
+                  type="button"
+                  aria-pressed={isWishlisted}
                 >
                   <Heart
                     className={`w-5 h-5 transition-colors ${isWishlisted ? "fill-red-500 text-red-500" : "text-slate-400 group-hover:text-slate-600"}`}
@@ -1505,12 +1539,7 @@ export default function ProductDetailPage({
                 </button>
                 <button
                   className="flex flex-col items-center gap-1 group cursor-pointer"
-                  onClick={() => {
-                    console.log("Share button clicked - desktop sidebar");
-                    console.log("Current showShare state:", showShare);
-                    setShowShare(true);
-                    console.log("Set showShare to true");
-                  }}
+                  onClick={() => setShowShare(true)}
                   type="button"
                 >
                   <Share2 className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
@@ -1523,7 +1552,27 @@ export default function ProductDetailPage({
           </div>
         </div>
 
-        {/* SECTION ULASAN DIHAPUS */}
+        <ProductReviewsSection
+            id={id}
+            isShop={isShop}
+            reviews={reviews}
+            ratingStats={ratingStats}
+            filteredReviews={filteredReviews}
+            reviewFilters={reviewFilters}
+            activeFilter={activeFilter}
+            setActiveFilter={setActiveFilter}
+            showReviewForm={showReviewForm}
+            setShowReviewForm={setShowReviewForm}
+            replyingTo={replyingTo}
+            setReplyingTo={setReplyingTo}
+            replyText={replyText}
+            setReplyText={setReplyText}
+            submittingReply={submittingReply}
+            handleReplySubmit={handleReplySubmit}
+            getRepliesForReview={getRepliesForReview}
+            canReview={canReview}
+            onReviewSubmitted={handleReviewSubmitted}
+          />
 
         <div className="mt-16 px-4 md:px-0">
           <div className="flex items-center gap-2 mb-6">
@@ -1561,6 +1610,185 @@ export default function ProductDetailPage({
           </div>
         </div>
       </div>
+      {/* MODAL SHARE */}
+      {showShare && (
+        <>
+          {/* OVERLAY GELAP */}
+          <div
+            className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+            onClick={() => setShowShare(false)}
+          />
+
+          {/* PANEL SHARE - Desktop Center */}
+          <div className="fixed inset-0 z-[70] items-center justify-center hidden md:flex">
+            <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 animate-in zoom-in-95 duration-300">
+              <div className="p-6 space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-bold text-slate-800">
+                      Bagikan Produk
+                    </h3>
+                    <p className="text-sm text-slate-500">
+                      Share ke teman dan keluargamu!
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowShare(false)}
+                    className="p-2 bg-slate-100 rounded-full text-slate-400 hover:bg-slate-200 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* GRID ICON MEDIA SOSIAL - Desktop */}
+                <div className="grid grid-cols-4 gap-4">
+                  <ShareOption
+                    icon="WhatsApp"
+                    label="WhatsApp"
+                    color="bg-green-500"
+                    productUrl={product?.id ? `/product/${product.id}` : ""}
+                    productName={product?.name || "Produk"}
+                  />
+                  <ShareOption
+                    icon="Instagram"
+                    label="Instagram"
+                    color="bg-pink-600"
+                    productUrl={product?.id ? `/product/${product.id}` : ""}
+                    productName={product?.name || "Produk"}
+                  />
+                  <ShareOption
+                    icon="Facebook"
+                    label="Facebook"
+                    color="bg-blue-600"
+                    productUrl={product?.id ? `/product/${product.id}` : ""}
+                    productName={product?.name || "Produk"}
+                  />
+                  <ShareOption
+                    icon="Messenger"
+                    label="Messenger"
+                    color="bg-blue-500"
+                    productUrl={product?.id ? `/product/${product.id}` : ""}
+                    productName={product?.name || "Produk"}
+                  />
+                  <ShareOption
+                    icon="Telegram"
+                    label="Telegram"
+                    color="bg-sky-500"
+                    productUrl={product?.id ? `/product/${product.id}` : ""}
+                    productName={product?.name || "Produk"}
+                  />
+                  <ShareOption
+                    icon="Line"
+                    label="Line"
+                    color="bg-green-400"
+                    productUrl={product?.id ? `/product/${product.id}` : ""}
+                    productName={product?.name || "Produk"}
+                  />
+                  <ShareOption
+                    icon="Copy"
+                    label="Salin Link"
+                    color="bg-slate-500"
+                    productUrl={product?.id ? `/product/${product.id}` : ""}
+                    productName={product?.name || "Produk"}
+                  />
+                  <ShareOption
+                    icon="More"
+                    label="Lainnya"
+                    color="bg-slate-800"
+                    productUrl={product?.id ? `/product/${product.id}` : ""}
+                    productName={product?.name || "Produk"}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* PANEL SHARE - Mobile Bottom */}
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-[70]">
+            <div className="relative bg-white border-t rounded-t-2xl shadow-[0_-10px_15px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom duration-300">
+              <div className="p-6 space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-bold text-slate-800">
+                      Bagikan Produk
+                    </h3>
+                    <p className="text-[10px] text-slate-500 font-medium">
+                      Share ke teman dan keluargamu!
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowShare(false)}
+                    className="p-1 bg-slate-100 rounded-full text-slate-400"
+                  >
+                    <X className="w-5 h-5 rotate-90" />
+                  </button>
+                </div>
+
+                {/* GRID ICON MEDIA SOSIAL - Mobile */}
+                <div className="grid grid-cols-4 gap-y-6">
+                  <ShareOption
+                    icon="WhatsApp"
+                    label="WhatsApp"
+                    color="bg-green-500"
+                    productUrl={product?.id ? `/product/${product.id}` : ""}
+                    productName={product?.name || "Produk"}
+                  />
+                  <ShareOption
+                    icon="Instagram"
+                    label="Instagram"
+                    color="bg-pink-600"
+                    productUrl={product?.id ? `/product/${product.id}` : ""}
+                    productName={product?.name || "Produk"}
+                  />
+                  <ShareOption
+                    icon="Facebook"
+                    label="Facebook"
+                    color="bg-blue-600"
+                    productUrl={product?.id ? `/product/${product.id}` : ""}
+                    productName={product?.name || "Produk"}
+                  />
+                  <ShareOption
+                    icon="Messenger"
+                    label="Messenger"
+                    color="bg-blue-500"
+                    productUrl={product?.id ? `/product/${product.id}` : ""}
+                    productName={product?.name || "Produk"}
+                  />
+                  <ShareOption
+                    icon="Telegram"
+                    label="Telegram"
+                    color="bg-sky-500"
+                    productUrl={product?.id ? `/product/${product.id}` : ""}
+                    productName={product?.name || "Produk"}
+                  />
+                  <ShareOption
+                    icon="Line"
+                    label="Line"
+                    color="bg-green-400"
+                    productUrl={product?.id ? `/product/${product.id}` : ""}
+                    productName={product?.name || "Produk"}
+                  />
+                  <ShareOption
+                    icon="Copy"
+                    label="Salin Link"
+                    color="bg-slate-500"
+                    productUrl={product?.id ? `/product/${product.id}` : ""}
+                    productName={product?.name || "Produk"}
+                  />
+                  <ShareOption
+                    icon="More"
+                    label="Lainnya"
+                    color="bg-slate-800"
+                    productUrl={product?.id ? `/product/${product.id}` : ""}
+                    productName={product?.name || "Produk"}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} />
 
     </div>
@@ -1795,6 +2023,7 @@ function ProductCard({ item }: { item: any }) {
               src={imageSrc}
               alt={item.name}
               fill
+              sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw"
               className="object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (

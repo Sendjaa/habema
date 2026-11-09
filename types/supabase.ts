@@ -717,6 +717,7 @@ export type Database = {
       }
       equipment: {
         Row: {
+          activities: string[] | null
           average_rating: number | null
           brand: string | null
           capacity: string | null
@@ -749,6 +750,7 @@ export type Database = {
           weight_kg: number | null
         }
         Insert: {
+          activities?: string[] | null
           average_rating?: number | null
           brand?: string | null
           capacity?: string | null
@@ -781,6 +783,7 @@ export type Database = {
           weight_kg?: number | null
         }
         Update: {
+          activities?: string[] | null
           average_rating?: number | null
           brand?: string | null
           capacity?: string | null
@@ -1057,9 +1060,10 @@ export type Database = {
           comment: string | null
           condition_on_return: string | null
           created_at: string | null
-          equipment_id: string
+          equipment_id: string | null
           id: string
           rating: number | null
+          shop_product_id: string | null
           title: string | null
           user_id: string
         }
@@ -1068,9 +1072,10 @@ export type Database = {
           comment?: string | null
           condition_on_return?: string | null
           created_at?: string | null
-          equipment_id: string
+          equipment_id?: string | null
           id?: string
           rating?: number | null
+          shop_product_id?: string | null
           title?: string | null
           user_id: string
         }
@@ -1079,9 +1084,10 @@ export type Database = {
           comment?: string | null
           condition_on_return?: string | null
           created_at?: string | null
-          equipment_id?: string
+          equipment_id?: string | null
           id?: string
           rating?: number | null
+          shop_product_id?: string | null
           title?: string | null
           user_id?: string
         }
@@ -1098,6 +1104,13 @@ export type Database = {
             columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_shop_product_id_fkey"
+            columns: ["shop_product_id"]
+            isOneToOne: false
+            referencedRelation: "shop_products"
             referencedColumns: ["id"]
           },
           {

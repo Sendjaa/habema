@@ -1,0 +1,18 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "datetime-picker-demo",
+  "title": "Datetime Picker Demo",
+  "description": "component for the Datetime Picker Demo",
+  "registryDependencies": [
+    "datetime-picker"
+  ],
+  "files": [
+    {
+      "path": "app/registry/datetime-picker/datetime-picker-demo.tsx",
+      "content": "\"use client\";\nimport React, { useState } from \"react\";\nimport { DateTimePicker } from \"@/components/ui/datetime-picker\";\n\nconst DatetimePickerDemo = () => {\n  const [date, setDate] = useState<Date | undefined>(undefined);\n  return (\n    <DateTimePicker\n      value={date}\n      onChange={setDate}\n      className=\"w-[280px]\"\n      locale={undefined}\n      weekStartsOn={undefined}\n      showWeekNumber={undefined}\n      showOutsideDays={undefined}\n    />\n  );\n};\n\nexport default DatetimePickerDemo;\n",
+      "type": "registry:component",
+      "target": "components/spectrumui/autosize-textarea-customize.tsx"
+    }
+  ],
+  "type": "registry:component"
+}
