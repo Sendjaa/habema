@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Loader2, Truck, Store, Package } from 'lucide-react'
-import { COURIER_OPTIONS, type ShippingOption, type RajaOngkirDestination } from '@/lib/rajaongkir'
+import { Loader2, Truck, Store, Package, Search } from 'lucide-react'
+import { COURIER_OPTIONS, searchDestination, type ShippingOption, type RajaOngkirDestination } from '@/lib/rajaongkir'
 
 interface ShippingSelectorProps {
   originId?: number
@@ -29,6 +29,46 @@ export function ShippingSelector({
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([])
   const [selectedShipping, setSelectedShipping] = useState<ShippingOption | null>(null)
   const [isCalculating, setIsCalculating] = useState(false)
+
+  // Destination search (Raja Ongkir)
+  const [destinationQuery, setDestinationQuery] = useState('')
+  const [destinations, setDestinations] = useState<RajaOngkirDestination[]>([])
+  const [destinationsOpen, setDestinationsOpen] = useState(false)
+  const [searchDestinationsError, setSearchDestinationsError] = useState<string | null>(null)
+
+  const searchDestinations = useCallback(async (keyword: string) => {
+    if (!keyword || keyword.length < 2) {
+      setDestinations([])
+      setSearchDestinationsError(null)
+      return
+    }
+    setSearchDestinationsError(null)
+    try {
+      const results = await searchDestination(keyword)
+      setDestinations(results)
+    } catch (error: any) {
+      setDestinations([])
+      setSearchDestinationsError(error.message || 'Gagal mencari tujuan')
+    }
+  }, [])
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout
+    if (destinationQuery.length >= 2) {
+      timer = setTimeout(() => searchDestinations(destinationQuery), 300)
+    } else {
+      setDestinations([])
+      setSearchDestinationsError(null)
+    }
+    return () => clearTimeout(timer)
+  }, [destinationQuery, searchDestinations])
+
+  const selectDestination = (dest: RajaOngkirDestination) => {
+    setSelectedDestination(dest)
+    setDestinationQuery(dest.label)
+    setDestinations([])
+    setDestinationsOpen(false)
+  }
 
   // Calculate shipping cost when destination is selected
   useEffect(() => {
@@ -126,8 +166,49 @@ export function ShippingSelector({
         <div className="space-y-4 p-4 rounded-xl border border-stone-200 bg-stone-50">
           {/* Shipping Options */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-800">Pilih Ekspedisi</label>
+            {/* Destination */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-slate-800">Tujuan Pengiriman</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                <input
+                  type="text"
+                  value={destinationQuery}
+                  onChange={(e) => setDestinationQuery(e.target.value)}
+                  onFocus={() => setDestinationsOpen(true)}
+                  placeholder="Kota / kabupaten (mis. Bandung)"
+                  className="w-full h-10 pl-9 pr-4 rounded-xl border border-stone-200 focus:border-[#1B4332] focus:ring-1 focus:ring-[#1B4332] text-sm outline-none"
+                />
+                {searchDestinationsError && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-red-600">{searchDestinationsError}</span>
+                )}
+              </div>
+              {destinationsOpen && destinations.length > 0 && (
+                <div className="absolute z-20 w-full max-h-48 overflow-y-auto rounded-xl border border-stone-200 bg-white shadow-sm mt-1">
+                  {destinations.map((dest) => (
+                    <button
+                      key={dest.id}
+                      type="button"
+                      onClick={() => selectDestination(dest)}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-emerald-50 transition-colors"
+                    >
+                      <div className="font-medium text-slate-800">{dest.label}</div>
+                      <div className="text-[10px] text-stone-500">{dest.city_name}, {dest.province_name}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {destinationsOpen && destinations.length === 0 && destinationQuery.length >= 2 && searchDestinationsError === null && (
+                <div className="py-2 text-center text-xs text-stone-400">Tujuan tidak ditemukan</div>
+              )}
+              {selectedDestination && (
+                <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50/60 rounded-xl px-3 py-2 border border-emerald-100">
+                  <span className="font-semibold">Tujuan:</span> {selectedDestination.label}
+                </div>
+              )}
+            </div>
 
+            <label className="text-sm font-semibold text-slate-800">Pilih Ekspedisi</label>
               {isCalculating ? (
                 <div className="flex items-center gap-2 py-4 text-stone-500">
                   <Loader2 className="w-4 h-4 animate-spin" />

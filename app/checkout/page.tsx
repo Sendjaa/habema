@@ -685,7 +685,7 @@ onChange={(e) => setForm({ ...form, email: e.target.value })}
                 </div>
                 <ShippingSelector
                   originId={31555}
-                  weight={1000}
+                  weight={Math.max(500, cart.reduce((acc, item) => acc + ((item.weight_score || 1) * 1000 * (item.quantity || 1)), 0))}
                   onShippingSelect={(data) => {
                     setShippingData(data);
                   }}
