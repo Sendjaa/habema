@@ -31,8 +31,8 @@ import { DateTimePicker } from "@/components/ui/datetime-picker";
 
 // Foto latar. Ganti lewat prop `imageSrc` kalau mood-nya tidak cocok —
 // host harus terdaftar di images.remotePatterns (next.config.mjs).
-const DEFAULT_IMAGE =
-  "https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=1920&q=80";
+
+const DEFAULT_IMAGE = "/images/bannerImage.jpeg";
 
 interface HeroSectionFullProps {
   imageSrc?: string;
