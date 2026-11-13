@@ -1,35 +1,16 @@
 import { NextResponse } from 'next/server'
-import { asc } from 'drizzle-orm'
-import { getDb } from '@/lib/db'
-import { equipmentCategories } from '@/lib/db/schema'
+import { createServerSupabaseClient } from '@/lib/supabaseServer'
 
 export async function GET() {
   try {
-    // Lazy init – handle missing POSTGRES_URL gracefully, sama seperti sebelumnya
-    // saat klien Supabase gagal dibuat.
-    let db: ReturnType<typeof getDb>
-    try {
-      db = getDb()
-    } catch (e: any) {
-      console.error('Database init failed:', e.message)
-      return NextResponse.json(
-        { error: 'Database not configured. Set POSTGRES_URL in .env.local' },
-        { status: 503 }
-      )
-    }
+    const supabase = await createServerSupabaseClient()
 
-    // Nama kolom diambil satu per satu agar hasilnya tetap snake_case seperti
-    // `select('*')` PostgREST — komponen pemanggil mengharapkan bentuk itu.
-    const data = await db
-      .select({
-        id: equipmentCategories.id,
-        name: equipmentCategories.name,
-        description: equipmentCategories.description,
-        display_order: equipmentCategories.displayOrder,
-        created_at: equipmentCategories.createdAt,
-      })
-      .from(equipmentCategories)
-      .orderBy(asc(equipmentCategories.displayOrder))
+    const { data, error } = await supabase
+      .from('equipment_categories')
+      .select('*')
+      .order('display_order', { ascending: true })
+
+    if (error) throw new Error(error.message)
 
     return NextResponse.json(data)
   } catch (error) {

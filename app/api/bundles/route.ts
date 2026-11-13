@@ -1,34 +1,22 @@
 import { NextResponse } from 'next/server'
-import { desc, eq } from 'drizzle-orm'
-import { getDb } from '@/lib/db'
-import { bundles } from '@/lib/db/schema'
+import { createServerSupabaseClient } from '@/lib/supabaseServer'
 
 export async function GET() {
-  // Lazy init – handle missing POSTGRES_URL gracefully, sama seperti sebelumnya
-  // saat klien Supabase gagal dibuat.
-  let db: ReturnType<typeof getDb>
   try {
-    db = getDb()
-  } catch (e: any) {
-    console.error('Database init failed:', e.message)
-    return NextResponse.json(
-      { error: 'Database not configured. Set POSTGRES_URL in .env.local' },
-      { status: 503 }
-    )
-  }
+    const supabase = await createServerSupabaseClient()
 
-  try {
-    // Dulu `supabase.from('bundles').select('*').eq('is_active', true)`.
-    const rows = await db
-      .select()
-      .from(bundles)
-      .where(eq(bundles.isActive, true))
-      .orderBy(desc(bundles.createdAt))
+    const { data, error } = await supabase
+      .from('bundles')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
 
-    console.log('Number of bundles found:', rows.length)
+    if (error) throw new Error(error.message)
+
+    console.log('Number of bundles found:', data?.length ?? 0)
 
     // Transform database data to match frontend Package type
-    const transformedBundles = rows.map((bundle) => {
+    const transformedBundles = (data || []).map((bundle: any) => {
       // Generate accent colors based on target_audience
       const getAccentColors = (targetAudience: string | null) => {
         // Hanya tiga keluarga warna: forest, gold, stone.
@@ -91,12 +79,12 @@ export async function GET() {
         return null
       }
 
-      // Kolom numeric datang dari driver pg sebagai STRING (bukan number
-      // seperti dari PostgREST) — normalisasi dulu supaya perbandingan
-      // (`price === 600000`) dan toLocaleString tetap benar.
-      const bundlePrice = bundle.bundlePrice != null ? Number(bundle.bundlePrice) : 0
-      const originalPrice = bundle.originalPrice != null ? Number(bundle.originalPrice) : null
-      const colors = getAccentColors(bundle.targetAudience)
+      // Kolom numeric dari PostgREST bisa berupa number maupun string;
+      // normalisasi dulu supaya perbandingan (`price === 600000`) dan
+      // toLocaleString tetap benar.
+      const bundlePrice = bundle.bundle_price != null ? Number(bundle.bundle_price) : 0
+      const originalPrice = bundle.original_price != null ? Number(bundle.original_price) : null
+      const colors = getAccentColors(bundle.target_audience)
 
       // includes/excludes dikelola dari admin; normalisasi ke string[].
       const toList = (v: unknown): string[] =>
@@ -104,19 +92,19 @@ export async function GET() {
 
       return {
         id: bundle.id,
-        category: bundle.targetAudience || 'General',
+        category: bundle.target_audience || 'General',
         label: bundle.name,
         badge: getBadge(bundle.name),
         price: formatPrice(bundlePrice || null),
-        priceRaw: bundle.bundlePrice != null ? bundlePrice : null,
+        priceRaw: bundle.bundle_price != null ? bundlePrice : null,
         priceOld: formatOriginalPrice(originalPrice),
-        unit: getUnit(bundle.targetAudience, bundlePrice),
-        paxMin: bundle.paxMin ?? null,
-        paxMax: bundle.paxMax ?? null,
-        paxLabel: getPaxLabel(bundle.paxMin, bundle.paxMax),
+        unit: getUnit(bundle.target_audience, bundlePrice),
+        paxMin: bundle.pax_min ?? null,
+        paxMax: bundle.pax_max ?? null,
+        paxLabel: getPaxLabel(bundle.pax_min, bundle.pax_max),
         bookableOnline: true,
         desc: bundle.description,
-        image: bundle.imageUrl || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80',
+        image: bundle.image_url || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80',
         include: toList(bundle.includes),
         exclude: toList(bundle.excludes),
         accent: colors.accent,

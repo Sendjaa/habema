@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
-import { and, desc, eq, gt, gte, or } from 'drizzle-orm'
-import { getDb } from '@/lib/db'
-import { equipment } from '@/lib/db/schema'
+import { createServerSupabaseClient } from '@/lib/supabaseServer'
 
 // Cache TTL in seconds
 const CACHE_TTL = 600; // 10 minutes
@@ -12,21 +10,10 @@ export async function GET(request: Request) {
   const now = Date.now();
   const { searchParams } = new URL(request.url)
 
-  // Lazy init – handle missing POSTGRES_URL gracefully, sama seperti sebelumnya
-  // saat klien Supabase gagal dibuat.
-  let db: ReturnType<typeof getDb>
-  try {
-    db = getDb()
-  } catch (e: any) {
-    console.error('Database init failed:', e.message)
-    return NextResponse.json(
-      { error: 'Database not configured. Set POSTGRES_URL in .env.local' },
-      { status: 503 }
-    )
-  }
+  const supabase = await createServerSupabaseClient();
+
   const limit = parseInt(searchParams.get('limit') || '15')
 
-  // Generate cache key based on limit
   const cacheKey = `featured-products-${limit}`;
 
   // Return cached data if still valid
@@ -40,61 +27,32 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Query yang sama dengan `.eq('is_active', true).or('rental_count.gt.10,
-    // average_rating.gte.4.5')` — PostgREST menggabungkannya sebagai
-    // `is_active AND (rental_count > 10 OR average_rating >= 4.5)`.
-    //
-    // '4.5' dikirim sebagai string karena kolom numeric dipetakan Drizzle ke
-    // string; mengirim number akan kehilangan presisi desimal.
-    let rows = await db.query.equipment.findMany({
-      columns: {
-        id: true,
-        name: true,
-        description: true,
-        pricePerNight: true,
-        imageUrl: true,
-        rentalCount: true,
-        averageRating: true,
-      },
-      with: { category: { columns: { name: true } } },
-      where: and(
-        eq(equipment.isActive, true),
-        or(gt(equipment.rentalCount, 0), gte(equipment.averageRating, '4.0'))
-      ),
-      orderBy: [desc(equipment.rentalCount), desc(equipment.averageRating)],
-      limit,
-    })
+    const { data, error } = await supabase
+      .from('equipment')
+      .select(`
+        *,
+        equipment_categories (
+          id,
+          name
+        )
+      `)
+      .eq('is_active', true)
+      .gte('rental_count', 0)
+      .gte('average_rating', '4.0')
+      .order('rental_count', { ascending: false })
+      .limit(limit)
 
-    if (rows.length === 0) {
-      rows = await db.query.equipment.findMany({
-        columns: {
-          id: true,
-          name: true,
-          description: true,
-          pricePerNight: true,
-          imageUrl: true,
-          rentalCount: true,
-          averageRating: true,
-        },
-        with: { category: { columns: { name: true } } },
-        where: eq(equipment.isActive, true),
-        orderBy: [desc(equipment.rentalCount), desc(equipment.averageRating)],
-        limit,
-      })
-    }
+    const rows = data || [];
 
-    // Transform data for frontend. Konversi Number() dipertahankan apa adanya:
-    // kolom numeric datang sebagai string, dan `|| 4.9` bergantung pada 0
-    // menjadi falsy — "0.00" sebagai string justru truthy.
-    const transformedData = rows.map((item) => ({
+    const transformedData = rows.map((item: any) => ({
       id: item.id,
       name: item.name,
       description: item.description,
-      price_per_night: Number(item.pricePerNight) || 0,
-      image_url: item.imageUrl,
-      rental_count: Number(item.rentalCount) || 0,
-      average_rating: Number(item.averageRating) || 4.9,
-      equipment_categories: item.category ?? null,
+      price_per_night: Number(item.price_per_night) || 0,
+      image_url: item.image_url,
+      rental_count: Number(item.rental_count) || 0,
+      average_rating: Number(item.average_rating) || 4.9,
+      equipment_categories: item.equipment_categories ?? null,
     }))
 
     // Cache successful response
