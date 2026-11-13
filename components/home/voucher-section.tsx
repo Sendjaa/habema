@@ -121,12 +121,17 @@ export function VoucherSection() {
                 Klaim voucher dan hemat belanja Anda
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="w-40 h-24 rounded-xl bg-stone-100 animate-pulse flex items-center justify-center flex-col gap-2">
-                  <div className="w-12 h-12 rounded-full bg-stone-200 animate-pulse" />
-                  <div className="w-3/4 h-3 bg-stone-200 rounded animate-pulse" />
-                  <div className="w-1/2 h-2.5 bg-stone-200 rounded animate-pulse" />
+            <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 snap-x">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="w-72 sm:w-80 md:w-96 flex-shrink-0 p-3 rounded-2xl border border-stone-200 bg-white animate-pulse space-y-3"
+                >
+                  <div className="h-3 w-28 bg-stone-200 rounded" />
+                  <div className="h-2.5 w-3/4 bg-stone-200 rounded" />
+                  <div className="pt-2 border-t border-stone-100">
+                    <div className="h-5 w-32 bg-stone-200 rounded" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -151,65 +156,72 @@ export function VoucherSection() {
             </p>
           </div>
 
-          {/* Fully responsive flex: wraps on mobile, row on desktop */}
-          <div className="flex flex-wrap gap-4">
+          {/* Horizontal scroll slider */}
+          <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 snap-x">
             {vouchers.map((voucher) => {
               const isClaimed = claimedDiscount?.code === voucher.code;
               const discountText = getDiscountText(voucher);
               const typeLabel = getVoucherTypeLabel(voucher.voucher_type);
 
               return (
-                <Card
-                  key={voucher.id}
-                  className={`relative overflow-hidden rounded-2xl border transition-all ${
-                    isClaimed
-                      ? "border-emerald-200 bg-emerald-50/50"
-                      : "border-stone-200 bg-white hover:border-emerald-300 hover:shadow-lg hover:-translate-y-1"
-                  } w-full sm:w-[calc(50%-2rem)] md:w-[calc(33.333%-2.67rem)] max-w-none`}
-                >
-                  <div className="p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-sm font-bold text-forest uppercase tracking-wide">
-                            {voucher.code}
-                          </p>
-                          {typeLabel && (
-                            <Badge className="bg-emerald-100 text-emerald-700 text-[9px] font-medium">
-                              {typeLabel}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-[10px] font-medium text-slate-600 line-clamp-2">
-                          {voucher.description || "Voucher belanja"}
-                        </p>
-                      </div>
-                      {isClaimed ? (
-                        <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-emerald-600 text-white shadow-sm">
-                          <Check className="w-4 h-4" />
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleClaimVoucher(voucher)}
-                          disabled={claimingVoucher === voucher.code}
-                          className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-forest text-white hover:bg-forest/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                          {claimingVoucher === voucher.code ? (
-                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <span className="text-[10px] font-bold">Klaim</span>
-                          )}
-                        </button>
+<Card
+              key={voucher.id}
+              className={`relative overflow-hidden rounded-2xl border transition-all flex-shrink-0 w-72 sm:w-80 md:w-96 max-w-none ${
+                isClaimed
+                  ? "border-emerald-200 bg-emerald-50/50"
+                  : "border-stone-200 bg-white hover:border-emerald-300 hover:shadow-lg hover:-translate-y-1"
+              }`}
+            >
+              <div className="p-3 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-sm font-bold text-forest uppercase tracking-wide">
+                        {voucher.code}
+                      </p>
+                      {typeLabel && (
+                        <Badge className="bg-emerald-100 text-emerald-700 text-[9px] font-medium">
+                          {typeLabel}
+                        </Badge>
                       )}
                     </div>
+                    <p className="text-[10px] font-medium text-slate-600 line-clamp-2">
+                      {voucher.description || "Voucher belanja"}
+                    </p>
+                  </div>
+                  {isClaimed && (
+                    <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-emerald-600 text-white shadow-sm">
+                      <Check className="w-4 h-4" />
+                    </div>
+                  )}
+                </div>
 
-                    <div className="pt-2 border-t border-stone-100">
-                      <div className="flex items-baseline gap-1">
-                        <p className="text-xl font-bold text-[#FF6B35]">
-                          {discountText}
-                        </p>
+                <div className="pt-1.5 border-t border-stone-100">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="flex items-baseline gap-1">
+                      <p className="text-lg font-bold text-[#FF6B35]">
+                        {discountText}
+                      </p>
+                    </div>
+                    {isClaimed ? (
+                      <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-emerald-600 text-white shadow-sm">
+                        <Check className="w-4 h-4" />
                       </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleClaimVoucher(voucher)}
+                        disabled={claimingVoucher === voucher.code}
+                        className="shrink-0 flex items-center justify-center px-3 py-1.5 rounded-lg bg-forest text-white hover:bg-forest/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed text-[10px] font-bold"
+                      >
+                        {claimingVoucher === voucher.code ? (
+                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <span>Klaim</span>
+                        )}
+                      </button>
+                    )}
+                  </div>
                       {voucher.min_purchase && voucher.min_purchase > 0 && (
                         <p className="text-[10px] text-slate-500 mt-1">
                           Min. belanja Rp{Number(voucher.min_purchase).toLocaleString("id-ID")}
