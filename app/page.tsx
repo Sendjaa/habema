@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { HeroSectionFull } from '@/components/home/hero-section-full'
 import { LogoCloud } from '@/components/home/logo-cloud'
 import { ActivityCategories } from '@/components/home/activity-categories'
