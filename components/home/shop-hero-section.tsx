@@ -10,7 +10,7 @@ export async function ShopHeroSection() {
   const { media, ...rest } = content
 
   return (
-    <div className="relative mx-auto max-w-7xl overflow-hidden px-4 pb-12 pt-2 md:px-6 mb:py-5 lg:h-[70vh] py-4 md:py-4">
+    <div className="relative mx-auto max-w-7xl overflow-hidden px-4 pb-12 pt-2 md:px-6 md:py-5 lg:h-[70vh] py-4 md:py-4">
       <div className="relative grid grid-cols-1 gap-6 lg:h-full lg:grid-cols-2">
         {/* Kiri: carousel image + video, rasio 1080x1350 */}
         <ShopHeroCarousel media={media} heading={rest.heading} />

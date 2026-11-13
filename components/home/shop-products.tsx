@@ -37,8 +37,8 @@ export function ShopProducts() {
   }, [])
 
   return (
-    <section className="py-4 md:py-8 lg:py-12 pt-4 md:pt-8 ld:pt-12 bg-background">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 pt-4 md:pt-8 lg:pt-12">
+      <section className="py-4 md:py-8 lg:py-12 pt-4 md:pt-8 lg:pt-12 bg-background">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 pt-4 md:pt-8 lg:pt-12">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 md:mb-12 gap-4">
           <div className="space-y-3">
             <h3 className="text-4xl md:text-5xl lg:text-6xl font-sans font-bold text-stone-900 tracking-tighter leading-[0.9]">

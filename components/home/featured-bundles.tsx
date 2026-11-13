@@ -310,21 +310,6 @@ export function FeaturedBundles() {
 
   return (
     <section className="py-20 bg-stone-50" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-      <style>{`
-        * { box-sizing: border-box; }
-        body { margin: 0; background: #fafaf9; }
-
-        @keyframes fadeUp {
-          from { opacity:0; transform:translateY(20px); }
-          to   { opacity:1; transform:translateY(0); }
-        }
-
-        /* custom scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #fafaf9; }
-        ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 99px; }
-      `}</style>
-      
       <div className="max-w-7xl mx-auto px-4 ">
         {/* Header */}
         <div className="text-left mb-12 space-y-2">

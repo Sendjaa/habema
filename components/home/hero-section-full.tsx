@@ -115,7 +115,7 @@ export function HeroSectionFull({
           variants={fadeUp}
           initial="hidden"
           animate="visible"
-          className="text-4xl text-left font-sans font-bold leading-[1.05] tracking-tight text-white sm:text-5xl mb-10 md:mb-25 lg:text-6xl"
+          className="text-4xl font-sans font-bold leading-[1.05] tracking-tight text-white sm:text-5xl mb-10 md:mb-20 lg:text-6xl"
         >
           Sewa Buat Sekali Jalan,{" "}
             Beli Buat Selamanya

@@ -110,7 +110,7 @@ export function VoucherSection() {
 
   if (loading) {
     return (
-      <section className="py-12 md:py-15 lg:py-15 bg-gradient-to-b from-white to-emerald-50/30">
+      <section className="py-12 md:py-16 lg:py-16 bg-gradient-to-b from-white to-emerald-50/30">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="text-left mb-8">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold font-sans text-stone-900 tracking-tighter leading-[0.9]">
