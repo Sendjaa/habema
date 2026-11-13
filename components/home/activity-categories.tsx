@@ -21,7 +21,7 @@ export function ActivityCategories() {
   if (items.length === 0) return null
 
   return (
-    <section className="pt-10 md:py-15 bg-background">
+    <section className="pt-10 md:pt-12 bg-background">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 md:mb-12 gap-4">
           <div className="space-y-3">

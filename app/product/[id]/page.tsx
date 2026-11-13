@@ -621,7 +621,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
 
   if (isShop)
     return (
-      <div className="min-h-screen bg-white pb-15 md:pb-16">
+      <div className="min-h-screen bg-white pb-16 md:pb-16">
         <nav className="bg-white py-3 px-4 md:px-6 lg:px-12">
           <div className="max-w-7xl mx-auto flex items-center gap-2 text-[10px] md:text-xs font-medium text-slate-500 capitalize">
             <Link
@@ -640,9 +640,9 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
         </nav>
 
         <div className="max-w-7xl mx-auto md:px-4 pt-4 md:pt-8 lg:pt-12">
-          <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex flex-col lg:grid lg:grid-cols-3 lg:gap-6">
             {/* Image gallery */}
-            <div className="lg:w-1/3 px-4 md:px-0">
+            <div className="px-4 md:px-0">
               <div className="bg-white md:rounded-xl overflow-hidden sticky md:top-24 shadow-sm border border-slate-100">
                 <div className="relative aspect-square">
                   {shopImages.length > 0 ? (
@@ -687,7 +687,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
             </div>
 
             {/* Info column */}
-            <div className="lg:w-5/12 px-4 md:px-0 space-y-4">
+            <div className="px-4 md:px-0 space-y-4">
               <div className="bg-white p-6 rounded-xl shadow-sm space-y-3 border border-slate-100">
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-xl font-sans font-bold text-slate-800 capitalize leading-tight">
@@ -869,7 +869,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
             </div>
 
             {/* Purchase card */}
-            <div className="lg:w-1/4 px-4 md:px-0">
+            <div className="px-4 md:px-0">
               <Card className="p-5 sticky top-24 rounded-xl shadow-md border-none">
                 <h3 className="font-bolder mb-1 text-slate-800 text-sm">
                   Atur Jumlah
@@ -1102,7 +1102,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
   );
 
   return (
-    <div className="min-h-screen bg-white pb-15 md:pb-16">
+    <div className="min-h-screen bg-white pb-16 md:pb-16">
       <nav className="bg-white hidden border-b border-slate-200 py-3 px-4 md:px-6">
         <div className="max-w-7xl mx-auto flex items-center gap-2 text-[10px] md:text-xs font-medium text-slate-500 capitalize">
           <Link
@@ -1272,14 +1272,14 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
             {!showSelection ? (
               <Button
                 onClick={() => setShowSelection(true)}
-                className="flex-2 bg-[#1B4332] hover:bg-[#143326] font-bold h-12 rounded-lg text-white"
+                className="flex-1 bg-[#1B4332] hover:bg-[#143326] font-bold h-12 rounded-lg text-white"
               >
                 Sewa Sekarang
               </Button>
             ) : (
               <Button
                 onClick={handleDirectBooking}
-                className="flex-2 bg-[#1B4332] hover:bg-[#143326] font-bold h-12 rounded-lg text-white shadow-lg"
+                className="flex-1 bg-[#1B4332] hover:bg-[#143326] font-bold h-12 rounded-lg text-white shadow-lg"
               >
                 Konfirmasi Sewa
               </Button>
@@ -1328,9 +1328,8 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
       </div>
 
         <div className="max-w-7xl mx-auto md:px-4 pt-4 md:pt-8 lg:pt-12">
-        <div className="flex flex-col lg:flex-row gap-6">
-          <div className="lg:w-1/3">
-            <div className="bg-white md:rounded-xl overflow-hidden sticky md:top-24 shadow-sm border border-slate-100">
+        <div className="flex flex-col lg:grid lg:grid-cols-3 lg:gap-6">
+          <div className="bg-white md:rounded-xl overflow-hidden sticky md:top-24 shadow-sm border border-slate-100">
               <div className="relative aspect-square">
                 {allImages.length > 0 ? (
                   <Image
@@ -1373,7 +1372,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
             </div>
           </div>
 
-          <div className="lg:w-5/12 px-4 md:px-0 space-y-4">
+          <div className="px-4 md:px-0 space-y-4">
             <div className="bg-white p-6 rounded-xl shadow-sm space-y-3 border border-slate-100">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -1470,7 +1469,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
             </div>
           </div>
 
-          <div className="lg:w-1/4 hidden lg:block">
+          <div className="hidden lg:block">
             <Card className="p-5 sticky top-24 rounded-xl shadow-md border-none">
               <h3 className="font-bold mb-4 text-slate-800 text-sm">
                 Atur Durasi Sewa
@@ -1609,7 +1608,6 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                 ))}
           </div>
         </div>
-      </div>
       {/* MODAL SHARE */}
       {showShare && (
         <>
