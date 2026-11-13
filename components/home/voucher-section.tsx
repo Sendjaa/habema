@@ -110,7 +110,7 @@ export function VoucherSection() {
 
   if (loading) {
     return (
-      <section className="py-8 md:py-12 lg:py-16 bg-[#F7F5F0]">
+      <section className="py-8 md:py-12 lg:py-16">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="space-y-4 flex flex-col">
             <div className="flex-1">
@@ -144,7 +144,7 @@ export function VoucherSection() {
   if (vouchers.length === 0) return null;
 
   return (
-    <section className="py-8 md:py-12 lg:py-16 bg-[#F7F5F0]">
+    <section className="py-8 md:py-12 lg:py-16">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="space-y-6 flex flex-col">
           <div>
@@ -157,7 +157,7 @@ export function VoucherSection() {
           </div>
 
           {/* Horizontal scroll slider */}
-          <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 snap-x">
+          <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 pt-4 snap-x">
             {vouchers.map((voucher) => {
               const isClaimed = claimedDiscount?.code === voucher.code;
               const discountText = getDiscountText(voucher);
@@ -169,7 +169,7 @@ export function VoucherSection() {
               className={`relative overflow-hidden rounded-2xl border transition-all flex-shrink-0 w-72 sm:w-80 md:w-96 max-w-none ${
                 isClaimed
                   ? "border-emerald-200 bg-emerald-50/50"
-                  : "border-stone-200 bg-white hover:border-emerald-300 hover:shadow-lg hover:-translate-y-1"
+                  : "border-stone-200 bg-white hover:border-[#FF6B35] hover:shadow-lg"
               }`}
             >
               <div className="p-3 space-y-2">
