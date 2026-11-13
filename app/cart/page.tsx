@@ -78,10 +78,10 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] py-12">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl lg:text-4xl font-bold font-sans text-stone-900">Keranjang Belanja</h1>
+    <div className="min-h-screen bg-[#FDFCFB] py-6 md:py-12">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl lg:text-4xl font-bold font-sans text-stone-900">Keranjang Belanja</h1>
           <Button variant="ghost" onClick={clearCart} className="text-red-500 font-bold text-xs">KOSONGKAN</Button>
         </div>
 
@@ -90,7 +90,7 @@ export default function CartPage() {
             {cart.map((item) => (
               <Card key={item.id} className="p-5 bg-white border border-forest/5 rounded-2xl">
                 <div className="flex flex-col sm:flex-row gap-6 items-start">
-                  <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-slate-100">
+                  <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-100">
                     <Image 
                       src={item.image_url || '/placeholder.svg'} 
                       alt={item.name} 
@@ -165,7 +165,7 @@ export default function CartPage() {
           </div>
 
           <div className="lg:col-span-1">
-            <Card className="p-6 bg-white border-2 border-gold sticky top-24 space-y-6 rounded-2xl shadow-xl">
+            <Card className="p-6 bg-white border-2 border-gold md:sticky md:top-24 space-y-6 rounded-2xl shadow-xl">
               <h3 className="font-bold text-xl text-stone-900">Ringkasan Sewa</h3>
                
               <div className="bg-forest/5 p-4 rounded-xl space-y-3">

@@ -96,15 +96,15 @@ export function FeaturedProducts() {
 
   if (loading)
     return (
-      <section className="relative py-10 md:py-24 bg-background overflow-hidden">
+      <section className="relative py-4 md:py-24 bg-background overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 md:mb-20 gap-6">
             <div className="space-y-3 md:space-y-4 max-w-2xl">
               {/* <div className="flex items-center gap-2 text-gold font-bold text-[9px] md:text-[10px] uppercase tracking-[0.3em]">
                 <Flame size={14} fill="currentColor" /> Paling Sering Di-rental
               </div> */}
-              <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-stone-900 tracking-tighter leading-[0.9]">
-                Gear Terfavorit Pilihan Pro
+              <h2 className="text-4xl md:text-5xl font-sans lg:text-6xl font-black text-stone-900 tracking-tighter leading-[0.9]">
+                Gear Terfavorit
               </h2>
             </div>
             <div className="px-6 md:px-8 py-3 md:py-4 bg-white border border-black/10 rounded-xl md:rounded-2xl font-bold text-black text-xs text-center w-[140px]">
@@ -137,9 +137,6 @@ export function FeaturedProducts() {
 
   return (
     <section className="relative overflow-hidden py-16 md:py-24 bg-background">
-      {/* Background Decor — blob 384px ini sengaja di luar isi, tapi tanpa
-          overflow-hidden pada section-nya dia melebar sampai 478px di layar
-          375px dan seluruh halaman bisa digeser mendatar. */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-gold/5 rounded-full blur-[120px] -z-10" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-forest/5 rounded-full blur-[120px] -z-10" />
 

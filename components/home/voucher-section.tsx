@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tag, Gift, Check } from "lucide-react";
+import { Tag, Check } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { useCartStore } from "@/lib/store";
@@ -110,24 +110,31 @@ export function VoucherSection() {
 
   if (loading) {
     return (
-      <section className="py-12 md:py-16 lg:py-16 bg-gradient-to-b from-white to-emerald-50/30">
+      <section className="py-8 md:py-12 lg:py-16">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="text-left mb-8">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold font-sans text-stone-900 tracking-tighter leading-[0.9]">
-            Promo Setiap Hari
-          </h2>
-          <p className="text-slate-500 mt-2">
-            Klaim voucher dan hemat belanja Anda
-          </p>
-        </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="p-4 animate-pulse">
-                <div className="h-4 bg-slate-200 rounded w-3/4 mb-3" />
-                <div className="h-3 bg-slate-200 rounded w-full mb-2" />
-                <div className="h-3 bg-slate-200 rounded w-2/3" />
-              </Card>
-            ))}
+          <div className="space-y-4 flex flex-col">
+            <div className="flex-1">
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold font-sans text-stone-900 tracking-tighter leading-[0.9]">
+                Promo Setiap Hari
+              </h2>
+              <p className="text-slate-500 mt-2 text-sm md:text-base">
+                Klaim voucher dan hemat belanja Anda
+              </p>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 snap-x">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="w-72 sm:w-80 md:w-96 flex-shrink-0 p-3 rounded-2xl border border-stone-200 bg-white animate-pulse space-y-3"
+                >
+                  <div className="h-3 w-28 bg-stone-200 rounded" />
+                  <div className="h-2.5 w-3/4 bg-stone-200 rounded" />
+                  <div className="pt-2 border-t border-stone-100">
+                    <div className="h-5 w-32 bg-stone-200 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -137,50 +144,67 @@ export function VoucherSection() {
   if (vouchers.length === 0) return null;
 
   return (
-    <section className="py-12 bg-gradient-to-b from-white to-emerald-50/30">
+    <section className="py-8 md:py-12 lg:py-16">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
-        <div className="text-left mb-8">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold font-sans text-stone-900 tracking-tighter leading-[0.9]">
-            Promo Setiap Hari
-          </h2>
-          <p className="text-slate-500 mt-2">
-            Klaim voucher dan hemat belanja Anda
-          </p>
-        </div>
+        <div className="space-y-6 flex flex-col">
+          <div>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold font-sans text-stone-900 tracking-tighter leading-[0.9]">
+              Promo Setiap Hari
+            </h2>
+            <p className="text-slate-500 mt-2 text-sm md:text-base">
+              Klaim voucher dan hemat belanja Anda
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {vouchers.map((voucher) => {
-            const isClaimed = claimedDiscount?.code === voucher.code;
-            const discountText = getDiscountText(voucher);
+          {/* Horizontal scroll slider */}
+          <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 pt-4 snap-x">
+            {vouchers.map((voucher) => {
+              const isClaimed = claimedDiscount?.code === voucher.code;
+              const discountText = getDiscountText(voucher);
+              const typeLabel = getVoucherTypeLabel(voucher.voucher_type);
 
-            return (
-              <Card
-                key={voucher.id}
-                className={`relative overflow-hidden rounded-xl border-2 transition-all ${
-                  isClaimed
-                    ? "border-emerald-300 bg-emerald-50"
-                    : "border-dashed border-emerald-400 bg-white hover:border-emerald-500 hover:shadow-md"
-                }`}
-              >
-                <div className="p-5 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-bold text-emerald-800 uppercase tracking-wide">
-                          {voucher.code}
-                        </p>
-                        {getVoucherTypeLabel(voucher.voucher_type) && (
-                          <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">
-                            {getVoucherTypeLabel(voucher.voucher_type)}
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm font-semibold text-slate-700 mt-1 line-clamp-2">
-                        {voucher.description || "Voucher belanja"}
+              return (
+<Card
+              key={voucher.id}
+              className={`relative overflow-hidden rounded-2xl border transition-all flex-shrink-0 w-72 sm:w-80 md:w-96 max-w-none ${
+                isClaimed
+                  ? "border-emerald-200 bg-emerald-50/50"
+                  : "border-stone-200 bg-white hover:border-[#FF6B35] hover:shadow-lg"
+              }`}
+            >
+              <div className="p-3 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-sm font-bold text-forest uppercase tracking-wide">
+                        {voucher.code}
+                      </p>
+                      {typeLabel && (
+                        <Badge className="bg-emerald-100 text-emerald-700 text-[9px] font-medium">
+                          {typeLabel}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-[10px] font-medium text-slate-600 line-clamp-2">
+                      {voucher.description || "Voucher belanja"}
+                    </p>
+                  </div>
+                  {isClaimed && (
+                    <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-emerald-600 text-white shadow-sm">
+                      <Check className="w-4 h-4" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-1.5 border-t border-stone-100">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="flex items-baseline gap-1">
+                      <p className="text-lg font-bold text-[#FF6B35]">
+                        {discountText}
                       </p>
                     </div>
                     {isClaimed ? (
-                      <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 text-white">
+                      <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-emerald-600 text-white shadow-sm">
                         <Check className="w-4 h-4" />
                       </div>
                     ) : (
@@ -188,73 +212,73 @@ export function VoucherSection() {
                         type="button"
                         onClick={() => handleClaimVoucher(voucher)}
                         disabled={claimingVoucher === voucher.code}
-                        className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-[#1B4332] text-white hover:bg-[#143326] transition-colors disabled:opacity-60"
+                        className="shrink-0 flex items-center justify-center px-3 py-1.5 rounded-lg bg-forest text-white hover:bg-forest/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed text-[10px] font-bold"
                       >
                         {claimingVoucher === voucher.code ? (
                           <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         ) : (
-                          <Gift className="w-4 h-4" />
+                          <span>Klaim</span>
                         )}
                       </button>
                     )}
                   </div>
+                      {voucher.min_purchase && voucher.min_purchase > 0 && (
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          Min. belanja Rp{Number(voucher.min_purchase).toLocaleString("id-ID")}
+                        </p>
+                      )}
+                      {voucher.max_discount && voucher.max_discount > 0 && (
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          Maks. potongan Rp{Number(voucher.max_discount).toLocaleString("id-ID")}
+                        </p>
+                      )}
+                      {voucher.conditions && (
+                        <div className="space-y-1 mt-3 pt-2 border-t border-stone-100">
+                          {voucher.conditions.first_time_only && (
+                            <p className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
+                              <Tag className="w-2.5 h-2.5" />
+                              Khusus pembeli pertama
+                            </p>
+                          )}
+                          {voucher.conditions.must_invite_friends && (
+                            <p className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
+                              <Tag className="w-2.5 h-2.5" />
+                              Wajib undang teman
+                            </p>
+                          )}
+                          {voucher.conditions.requires_identity_verified && (
+                            <p className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
+                              <Tag className="w-2.5 h-2.5" />
+                              Wajib verifikasi KTP
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="pt-3 border-t border-dashed border-emerald-200">
-                    <p className="text-sm font-bold text-[#FF6B35]">
-                      {discountText}
-                    </p>
-                    {voucher.min_purchase && voucher.min_purchase > 0 && (
-                      <p className="text-[10px] text-slate-500 mt-1">
-                        Min. belanja Rp{Number(voucher.min_purchase).toLocaleString("id-ID")}
-                      </p>
-                    )}
-                    {voucher.max_discount && voucher.max_discount > 0 && (
-                      <p className="text-[10px] text-slate-500 mt-0.5">
-                        Max. potongan Rp{Number(voucher.max_discount).toLocaleString("id-ID")}
-                      </p>
-                    )}
-                    {voucher.conditions && (
-                      <div className="space-y-0.5 mt-2">
-                        {voucher.conditions.first_time_only && (
-                          <p className="text-[10px] text-amber-600 font-medium">
-                            • Khusus pembeli pertama
-                          </p>
-                        )}
-                        {voucher.conditions.must_invite_friends && (
-                          <p className="text-[10px] text-amber-600 font-medium">
-                            • Wajib undang teman
-                          </p>
-                        )}
-                        {voucher.conditions.requires_identity_verified && (
-                          <p className="text-[10px] text-amber-600 font-medium">
-                            • Wajib verifikasi KTP
-                          </p>
-                        )}
+                    {isClaimed && (
+                      <div className="pt-3 flex items-center justify-between border-t border-stone-100">
+                        <p className="text-[10px] text-emerald-600 font-medium flex items-center gap-1">
+                          <Check className="w-2.5 h-2.5" />
+                          Sudah diklaim - tersedia di cart
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setClaimedDiscount(null);
+                            toast.info("Voucher dibatalkan");
+                          }}
+                          className="text-[10px] text-red-600 hover:text-red-700 font-medium underline"
+                        >
+                          Batal
+                        </button>
                       </div>
                     )}
                   </div>
-
-                  {isClaimed && (
-                    <div className="pt-2 flex items-center justify-between">
-                      <p className="text-[10px] text-emerald-700 font-medium">
-                        Sudah diklaim - tersedia di cart
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setClaimedDiscount(null);
-                          toast.info("Voucher dibatalkan");
-                        }}
-                        className="text-[10px] text-red-600 hover:text-red-700 font-medium underline"
-                      >
-                        Batal
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            );
-          })}
+                </Card>
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>

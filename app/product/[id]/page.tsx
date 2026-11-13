@@ -91,6 +91,7 @@ export default function ProductDetailPage({
   // Tanggal sewa yang dibawa dari katalog (via query string). Diteruskan ke
   // halaman booking agar pengguna tidak perlu memilih tanggal ulang.
   const [dateQuery, setDateQuery] = useState("");
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     const s = sp.get("startDate");
@@ -613,7 +614,7 @@ export default function ProductDetailPage({
   };
 
   const handleShopBuyNow = () => {
-    handleShopAddToCart();
+    // Tidak auto-simpan ke keranjang — langsung ke halaman checkout
     router.push("/checkout");
   };
 
@@ -760,7 +761,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-2">
                     {shopVouchers.map((voucher) => {
                       const isClaimed = claimedDiscount?.code === voucher.code;
                       const discountText =
@@ -773,16 +774,23 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                           className={`relative overflow-hidden rounded-xl border-2 transition-all ${
                             isClaimed
                               ? "border-emerald-300 bg-emerald-50"
-                              : "border-dashed border-emerald-400 bg-white hover:border-emerald-500"
-                          }`}
+                              : "border-dashed border-emerald-400 bg-white hover:border-emerald-500 hover:shadow-md"
+                          } flex flex-col gap-3`}
                         >
                           <div className="p-4 space-y-3">
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
-                                <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
-                                  {voucher.code}
-                                </p>
-                                <p className="text-xs font-semibold text-slate-700 mt-1 line-clamp-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
+                                    {voucher.code}
+                                  </p>
+                                  {getVoucherTypeLabel(voucher.voucher_type) && (
+                                    <Badge className="bg-emerald-100 text-emerald-700 text-[9px]">
+                                      {getVoucherTypeLabel(voucher.voucher_type)}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-[10px] font-semibold text-slate-700 mt-1 line-clamp-2">
                                   {voucher.description || "Voucher belanja"}
                                 </p>
                               </div>
@@ -800,7 +808,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                                   {claimingVoucher ? (
                                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                   ) : (
-                                    <Gift className="w-4 h-4" />
+                                    <span className="text-[10px] font-bold">Klaim</span>
                                   )}
                                 </button>
                               )}
@@ -971,7 +979,11 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                 </h2>
               </div>
               <div className="p-6">
-                <Markdown>{product.description}</Markdown>
+                <DescriptionContent
+                  text={product.description ?? ""}
+                  isExpanded={isDescriptionExpanded}
+                  onToggle={() => setIsDescriptionExpanded((prev) => !prev)}
+                />
 
                 <div className="flex flex-wrap gap-2 pt-4">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
@@ -1041,6 +1053,95 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
               canReview={canReview}
               onReviewSubmitted={handleReviewSubmitted}
             />
+
+          {/* Produk-produk yang lainnya di bawah ulasan */}
+          <div className="mt-16 px-4 md:px-0">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="p-1.5 bg-emerald-100 rounded-md">
+                <TrendingUp className="w-4 h-4 text-[#1B4332]" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-800">
+                Pilihan Serupa di {product.equipment_categories?.name}
+              </h2>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+              {relatedProducts.map((item) => (
+                <ProductCard key={item.id} item={item} />
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-20 px-4 md:px-0">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="p-1.5 bg-orange-100 rounded-md">
+                <Flame className="w-4 h-4 text-[#FF6B35]" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-800">
+                Sering Disewa Bareng
+              </h2>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+              {popularProducts.length > 0
+                ? popularProducts.map((item) => (
+                    <ProductCard key={item.id} item={item} />
+                  ))
+                : [...Array(4)].map((_, i) => (
+                    <Skeleton key={i} className="aspect-[3/4] rounded-xl" />
+                  ))}
+            </div>
+          </div>
+
+          {/* Mobile fixed bottom bar for shop products */}
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-stone-200">
+            <div className="px-4 py-3 flex flex-col gap-3">
+              <div className="flex items-center justify-between bg-stone-50 p-3 rounded-xl border border-stone-100">
+                <div className="flex items-center gap-3 border rounded-lg p-1 bg-white">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-8 h-8 text-[#1B4332] font-black"
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  >
+                    -
+                  </Button>
+                  <span className="text-xs font-bold w-8 text-center text-slate-700">
+                    {quantity}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-8 h-8 text-[#1B4332] font-black"
+                    onClick={() => setQuantity(quantity + 1)}
+                  >
+                    +
+                  </Button>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-slate-400">Subtotal</p>
+                  <p className="font-bold text-lg text-[#FF6B35]">
+                    Rp{(shopPrice * quantity).toLocaleString("id-ID")}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleShopAddToCart}
+                  disabled={shopStock <= 0}
+                  variant="outline"
+                  className="flex-1 font-bold py-3 rounded-xl text-[#1B4332] border-[#1B4332] hover:bg-emerald-50 text-[12px]"
+                >
+                  Masuk Keranjang
+                </Button>
+                <Button
+                  onClick={handleShopBuyNow}
+                  disabled={shopStock <= 0}
+                  className="flex-1 bg-[#1B4332] hover:bg-[#143326] font-bold py-3 rounded-xl shadow-lg text-[12px] text-white"
+                >
+                  Beli Sekarang
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -1431,13 +1532,15 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-              <h2 className="font-bold mb-3 text-sm uppercase tracking-wide">
-                Detail & Spesifikasi
-              </h2>
-              <p className="text-sm text-slate-600 leading-relaxed mb-4">
-                {product.description}
-              </p>
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <h2 className="font-bold mb-3 text-sm uppercase tracking-wide">
+                  Detail & Spesifikasi
+                </h2>
+                <DescriptionContent
+                  text={product.description ?? ""}
+                  isExpanded={isDescriptionExpanded}
+                  onToggle={() => setIsDescriptionExpanded((prev) => !prev)}
+                />
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
                   <span className="text-slate-400">Kategori</span>
@@ -2053,5 +2156,43 @@ function ProductCard({ item }: { item: any }) {
         </div>
       </Card>
     </Link>
+  );
+}
+
+/**
+ * Description with hide/show toggle. Truncates to 3 lines by default.
+ */
+function DescriptionContent({
+  text,
+  isExpanded,
+  onToggle,
+}: {
+  text: string;
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <p className={`text-sm text-slate-600 leading-relaxed mb-2 ${isExpanded ? "line-clamp-none max-h-none" : "line-clamp-3"}`}>
+        {text}
+      </p>
+      {text.length > 120 && (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="text-xs font-bold text-[#1B4332] hover:text-[#143326] underline underline-offset-4 transition-colors flex items-center gap-1"
+        >
+          {isExpanded ? (
+            <>
+              Tampilkan lebih sedikit <X className="w-3 h-3" />
+            </>
+          ) : (
+            <>
+              Lihat semua <ChevronRight className="w-3 h-3" />
+            </>
+          )}
+        </button>
+      )}
+    </div>
   );
 }

@@ -45,18 +45,5 @@ export const shopHeroContent: ShopHeroContent = {
   secondaryCtaLabel: "Bundling Hemat",
   secondaryCtaHref: "/bundles",
   note: "Produk original dengan garansi tukar 7 hari. Pembayaran aman via Midtrans.",
-  media: [
-    {
-      url: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=1080&h=1350&fit=crop&q=80",
-      alt: "Tenda camping menyala di malam hari",
-    },
-    {
-      url: "https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=1080&h=1350&fit=crop&q=80",
-      alt: "Api ungup pinggir tebing saat berkemah",
-    },
-    {
-      url: "https://images.unsplash.com/photo-1551632811-561732d1e306?w=1080&h=1350&fit=crop&q=80",
-      alt: "Berselancar jalur pendakian",
-    },
-  ],
+  media: [],
 }
