@@ -337,5 +337,22 @@ export const bookingItemsRelations = relations(bookingItems, ({ one }) => ({
   booking: one(bookings, {
     fields: [bookingItems.bookingId],
     references: [bookings.id],
-  }),
+  })
 }))
+
+// ── activities ────────────────────────────────────────────────────────
+// Katalog kegiatan untuk homepage dan filter katalog. Dikelola lewat
+// /admin/activities. Migrasi: 20261113000000_activities_crud.sql
+export const activities = pgTable('activities', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  slug: text('slug').notNull().unique(),
+  label: text('label').notNull(),
+  blurb: text('blurb'),
+  imageUrl: text('image_url'),
+  imageAlt: text('image_alt'),
+  isActive: boolean('is_active').notNull().default(true),
+  displayOrder: integer('display_order').notNull().default(0),
+  sections: text('sections').array().notNull().default(sql`array[]::text[]`),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
