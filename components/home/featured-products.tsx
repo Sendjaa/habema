@@ -192,7 +192,7 @@ export function FeaturedProducts() {
           role="region"
           aria-label="Daftar gear terfavorit"
           tabIndex={0}
-          className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest/40 focus-visible:ring-offset-2 [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-0 [scrollbar-width:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest/40 focus-visible:ring-offset-2 [&::-webkit-scrollbar]:hidden"
         >
           {Array.isArray(products) && products.length > 0 ? (
             products.map((product, index) => {
