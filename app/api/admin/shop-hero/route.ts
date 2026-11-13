@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
   const files = form.getAll('files') as File[]
   const newMediaUrls: string[] = []
 
-  for (const file of files) {
+      for (const file of files) {
     if (file && typeof file !== 'string' && file.size > 0) {
       if (!ALLOWED_TYPES.includes(file.type)) {
         return NextResponse.json({ error: `Tipe file tidak didukung: ${file.type}` }, { status: 400 })
@@ -198,9 +198,9 @@ export async function POST(request: NextRequest) {
       try {
         const url = await storeHeroMedia(file)
         newMediaUrls.push(url)
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Database tidak tersedia', status: 503 })
-  }
+      } catch (e: any) {
+        return NextResponse.json({ error: 'Database tidak tersedia', status: 503 })
+      }
     }
   }
 
