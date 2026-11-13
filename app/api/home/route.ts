@@ -75,7 +75,7 @@ export async function GET() {
         return {
           slug: a.slug,
           label: a.label,
-          blurb: a.blurb ?? null,
+          blurb: a.blurb ?? '',
           count,
           imageUrl: a.imageUrl ?? fallbackActivityImage,
           imageAlt: a.imageAlt ?? null,

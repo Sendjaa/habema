@@ -699,7 +699,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                   </span>
                   {/* <span className="text-slate-400 text-sm">/ unit</span> */}
                   {shopDiscount && (
-                    <Badge className="bg-gold text-[#FF6B35] rounded-full text-xs font-bold px-2 py-1 bg-amber-400/10">
+                    <Badge className="bg-amber-400/10 text-[#FF6B35] rounded-full text-xs font-bold px-2 py-1">
                       -{shopDiscount}%
                     </Badge>
                   )}
@@ -780,16 +780,16 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                           <div className="p-4 space-y-3">
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
-                                    {voucher.code}
-                                  </p>
-                                  {getVoucherTypeLabel(voucher.voucher_type) && (
-                                    <Badge className="bg-emerald-100 text-emerald-700 text-[9px]">
-                                      {getVoucherTypeLabel(voucher.voucher_type)}
-                                    </Badge>
-                                  )}
-                                </div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
+                                      {voucher.code}
+                                    </p>
+                                    {voucher.voucher_type && voucher.voucher_type !== "all" && (
+                                      <Badge className="bg-emerald-100 text-emerald-700 text-[9px]">
+                                        {voucher.voucher_type === "rental" ? "Khusus rental" : voucher.voucher_type === "shop" ? "Khusus belanja" : voucher.voucher_type === "opentrip" ? "Khusus open trip" : null}
+                                      </Badge>
+                                    )}
+                                  </div>
                                 <p className="text-[10px] font-semibold text-slate-700 mt-1 line-clamp-2">
                                   {voucher.description || "Voucher belanja"}
                                 </p>
@@ -1086,7 +1086,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                     <ProductCard key={item.id} item={item} />
                   ))
                 : [...Array(4)].map((_, i) => (
-                    <Skeleton key={i} className="aspect-[3/4] rounded-xl" />
+                    <Skeleton key={i} className="aspect-3/4 rounded-xl" />
                   ))}
             </div>
           </div>
@@ -1239,7 +1239,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
           </button>
 
           <Breadcrumb>
-            <BreadcrumbList className="text-[10px] md:text-xs font-bold tracking-[0.1em] text-gray-900">
+              <BreadcrumbList className="text-[10px] md:text-xs font-bold tracking-widest text-gray-900">
               <BreadcrumbItem>
                 <BreadcrumbLink
                   href="/"
@@ -1707,7 +1707,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                   <ProductCard key={item.id} item={item} />
                 ))
               : [...Array(4)].map((_, i) => (
-                  <Skeleton key={i} className="aspect-[3/4] rounded-xl" />
+                  <Skeleton key={i} className="aspect-3/4 rounded-xl" />
                 ))}
           </div>
         </div>
@@ -1716,12 +1716,12 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
         <>
           {/* OVERLAY GELAP */}
           <div
-            className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+            className="fixed inset-0 z-70 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
             onClick={() => setShowShare(false)}
           />
 
           {/* PANEL SHARE - Desktop Center */}
-          <div className="fixed inset-0 z-[70] items-center justify-center hidden md:flex">
+          <div className="fixed inset-0 z-70 items-center justify-center hidden md:flex">
             <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 animate-in zoom-in-95 duration-300">
               <div className="p-6 space-y-6">
                 <div className="flex items-center justify-between">
@@ -1805,7 +1805,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
           </div>
 
           {/* PANEL SHARE - Mobile Bottom */}
-          <div className="md:hidden fixed bottom-0 left-0 right-0 z-[70]">
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-70">
             <div className="relative bg-white border-t rounded-t-2xl shadow-[0_-10px_15px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom duration-300">
               <div className="p-6 space-y-6">
                 <div className="flex items-center justify-between">
@@ -2138,7 +2138,7 @@ function ProductCard({ item }: { item: any }) {
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
             {item.equipment_categories?.name || "Outdoor"}
           </p>
-          <h3 className="text-sm font-medium text-slate-800 line-clamp-2 min-h-[40px] leading-snug">
+          <h3 className="text-sm font-medium text-slate-800 line-clamp-2 min-h-10 leading-snug">
             {item.name}
           </h3>
           <p className="text-[#FF6B35] font-bold text-base">
