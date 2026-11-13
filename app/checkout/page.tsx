@@ -407,8 +407,8 @@ export default function CheckoutPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] py-12">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#FDFCFB] py-6 md:py-12">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-sans font-bold text-stone-800 mb-8">Checkout</h1>
 
         <Card className="p-6 bg-white border border-stone-200 rounded-2xl shadow-sm mb-8">
@@ -717,7 +717,7 @@ onChange={(e) => setForm({ ...form, email: e.target.value })}
             </div>
 
             <div className="lg:col-span-1">
-              <Card className="p-6 bg-white border-2 border-gold rounded-2xl shadow-xl sticky top-8 lg:top-24">
+              <Card className="p-6 bg-white border-2 border-gold rounded-2xl shadow-xl sticky top-8 md:top-24">
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b border-stone-100">
                   <Tag className="w-5 h-5 text-[#1B4332]" />
                   <h3 className="font-bold  font-sans text-stone-800">Ringkasan Pesanan</h3>
