@@ -1,8 +1,37 @@
-import { NextResponse } from "next/dist/server/web/exports";
+import { NextResponse } from 'next/server'
+import { createServerSupabaseClient } from '@/lib/supabaseServer'
 
 export async function GET() {
-  const featured = [
-    { id: "1", name: "Tenda Arpenaz 4.1", price: 75000, image: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=500", rating: 4.9 }
-  ];
-  return NextResponse.json(featured);
+  try {
+    const supabase = await createServerSupabaseClient();
+
+    const { data, error } = await supabase
+      .from('equipment')
+      .select(`
+        *,
+        equipment_categories (
+          name
+        )
+      `)
+      .eq('is_active', true)
+      .eq('is_promo', true)
+      .limit(6)
+      .order('rental_count', { ascending: false })
+
+    if (error) throw new Error(error.message)
+
+    const featured = (data || []).map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      price: Number(item.price_per_night) || 0,
+      image: item.image_url || '',
+      rating: Number(item.average_rating) || 0,
+      equipment_categories: item.equipment_categories,
+    }));
+
+    return NextResponse.json(featured)
+  } catch (error) {
+    console.error('Features API error:', error)
+    return NextResponse.json([])
+  }
 }

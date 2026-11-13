@@ -1,19 +1,9 @@
 import { NextResponse } from 'next/server'
+import { createServerSupabaseClient } from '@/lib/supabaseServer'
 
 export async function GET() {
   try {
-    let supabase: any
-    try {
-      const mod = await import('@/lib/supabaseClient')
-      supabase = mod.supabase
-    } catch (e: any) {
-      console.error('Supabase client init failed:', e.message)
-      return NextResponse.json(
-        { error: 'Database not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local' },
-        { status: 503 }
-      )
-    }
-
+    const supabase = await createServerSupabaseClient();
     const now = new Date().toISOString()
 
     const { data, error } = await supabase
@@ -29,7 +19,7 @@ export async function GET() {
       .eq('is_promo', true)
       .lte('promo_start_date', now)
       .gte('promo_end_date', now)
-      .order('discount_percentage', { ascending: false, nulls: 'last' })
+      .order('discount_percentage', { ascending: false, nullsFirst: false })
 
     if (error) {
       console.error('Error fetching promo products:', error)
