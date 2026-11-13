@@ -61,6 +61,7 @@ export async function GET() {
         counts.set(slug, (counts.get(slug) ?? 0) + 1)
       }
     }
+    console.error('[home] debug: rows=', rows.length, 'counts=', Object.fromEntries(counts))
 
     const activityRows = await db
       .select()
