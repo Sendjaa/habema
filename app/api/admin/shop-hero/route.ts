@@ -7,6 +7,7 @@ import { shopHero } from '@/lib/db/schema'
 import { DEV_LOCAL_AUTH } from '@/lib/dev-local-auth'
 import { requireAdmin } from '@/lib/admin-auth'
 import { revalidateHome } from '@/lib/home-data'
+import { revalidatePath } from 'next/cache'
 
 const BUCKET = 'shop-hero'
 const MAX_SIZE = 50 * 1024 * 1024 // 50MB untuk video
@@ -244,6 +245,7 @@ export async function POST(request: NextRequest) {
       .returning()
 
     revalidateHome()
+    revalidatePath('/')
     return NextResponse.json({ success: true, data: toResponse(row) })
   } catch (e: any) {
     // Cleanup uploaded files on failure
@@ -314,6 +316,7 @@ export async function PUT(request: NextRequest) {
       .returning()
 
     revalidateHome()
+    revalidatePath('/')
     return NextResponse.json({ success: true, data: toResponse(row) })
   } catch (e: any) {
     return NextResponse.json({ error: 'Database tidak tersedia', status: 503 })
@@ -348,6 +351,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     revalidateHome()
+    revalidatePath('/')
     return NextResponse.json({ success: true })
   } catch (e: any) {
     return NextResponse.json({ error: 'Database tidak tersedia', status: 503 })
