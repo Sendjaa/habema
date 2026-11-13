@@ -2161,6 +2161,7 @@ function ProductCard({ item }: { item: any }) {
 
 /**
  * Description with hide/show toggle. Truncates to 3 lines by default.
+ * Konten dari Quill editor tersimpan sebagai HTML; konten lama sebagai teks/Markdown.
  */
 function DescriptionContent({
   text,
@@ -2171,6 +2172,43 @@ function DescriptionContent({
   isExpanded: boolean;
   onToggle: () => void;
 }) {
+  const plain = text
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const isHtml = /^\s*(<([a-z][\w-]*)\b[^>]*>|<!--)/i.test(text);
+
+  if (isHtml) {
+    return (
+      <div className="space-y-3">
+        <div
+          className={`rte-content ql-editor text-sm leading-relaxed text-slate-600 mb-2 ${
+            isExpanded ? "" : "max-h-24 overflow-hidden"
+          }`}
+          dangerouslySetInnerHTML={{ __html: text }}
+        />
+        {plain.length > 120 && (
+          <button
+            type="button"
+            onClick={onToggle}
+            className="text-xs font-bold text-[#1B4332] hover:text-[#143326] underline underline-offset-4 transition-colors flex items-center gap-1"
+          >
+            {isExpanded ? (
+              <>
+                Tampilkan lebih sedikit <X className="w-3 h-3" />
+              </>
+            ) : (
+              <>
+                Lihat semua <ChevronRight className="w-3 h-3" />
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <p className={`text-sm text-slate-600 leading-relaxed mb-2 ${isExpanded ? "line-clamp-none max-h-none" : "line-clamp-3"}`}>

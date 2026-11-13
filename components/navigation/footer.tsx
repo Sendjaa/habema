@@ -63,7 +63,6 @@ export function Footer() {
               <li><Link href="/about" className="hover:text-gold transition-colors">Tentang Kami</Link></li>
               <li><Link href="/contact" className="hover:text-gold transition-colors">Hubungi Kami</Link></li>
               <li><Link href="/careers" className="hover:text-gold transition-colors">Karir</Link></li>
-              <li><Link href="/blog" className="hover:text-gold transition-colors">Blog</Link></li>
             </ul>
           </div>
 
