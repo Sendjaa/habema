@@ -1,41 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { mkdir, rm, writeFile } from 'fs/promises'
 import { join } from 'path'
-import { eq } from 'drizzle-orm'
+import { asc, desc, eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { activityTiles } from '@/lib/db/schema'
+import { activities } from '@/lib/db/schema'
 import { DEV_LOCAL_AUTH } from '@/lib/dev-local-auth'
 import { requireAdmin } from '@/lib/admin-auth'
 import { revalidateHome } from '@/lib/home-data'
-import {
-  activities as activityCatalog,
-  activitySlugs,
-  fallbackActivityImage,
-} from '@/lib/activities'
 
 /**
- * Foto tile kegiatan homepage (tabel activity_tiles).
+ * Katalog kegiatan lengkap (CRUD). Satu-satunya sumber kebenaran untuk
+ * slug, label, blurb, urutan, dan foto tile kegiatan di homepage.
  *
- * Hanya gambarnya yang ada di database. Slug, label, blurb, dan urutan tetap
- * dari lib/activities.ts — satu-satunya sumber yang juga dipakai filter
- * /catalog_rental?kegiatan=<slug> dan form alat di /admin/equipment. Karena
- * itu GET selalu mengembalikan SEMUA kegiatan, termasuk yang belum punya baris
- * di activity_tiles; halaman admin tidak perlu membuat baris dulu.
+ * Foto masuk sebagai FILE lewat multipart, bukan URL yang diketik — sama
+ * seperti /api/admin/promo-banners dan /api/admin/activities (lama).
  *
- * Foto masuk sebagai FILE, bukan URL yang diketik: POST menerima multipart dan
- * menyimpannya ke Storage, jadi tidak ada kemungkinan admin menempel tautan
- * yang mati atau host yang tidak diizinkan next/image.
- *
- * Lewat drizzle, sama seperti /api/home dan /api/admin/organizations.
+ * Endpoint:
+ *   GET     /api/admin/activities   — daftar semua kegiatan
+ *   POST    /api/admin/activities   — buat baru (multipart: slug, label, blurb, file?, sections?, display_order?, is_active?)
+ *   PUT     /api/admin/activities   — ubah (JSON: id + field yang berubah)
+ *   DELETE  /api/admin/activities?id= — hapus + foto-nya
  */
 
 const BUCKET = 'activities'
 const MAX_SIZE = 3 * 1024 * 1024
-/** Dev lokal: foto dilayani sebagai file statis dari public/uploads/activities. */
 const DEV_URL_PREFIX = '/uploads/activities'
 const DEV_DIR = join('public', DEV_URL_PREFIX)
-
-const knownSlugs = new Set<string>(activitySlugs)
 
 function connectDb() {
   try {
@@ -53,21 +43,35 @@ function trim(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
-/** Nama file: slug + waktu, ekstensi dari file asal (chars aman saja). */
+function parseBool(value: unknown, fallback: boolean): boolean {
+  if (value == null) return fallback
+  if (typeof value === 'boolean') return value
+  return String(value) !== 'false'
+}
+
+function parseOrder(value: unknown): number {
+  const n = Number(value)
+  return Number.isFinite(n) ? Math.trunc(n) : 0
+}
+
+function parseSections(value: unknown): string[] {
+  if (value == null) return []
+  if (Array.isArray(value)) return value.filter((v) => typeof v === 'string')
+  if (typeof value === 'string') {
+    const raw = value.trim()
+    if (!raw) return []
+    return raw.split(',').map((s) => s.trim()).filter(Boolean)
+  }
+  return []
+}
+
 function fileName(slug: string, file: File): string {
   const raw = file.name.split('.').pop() ?? ''
   const ext = raw.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 4) || 'jpg'
   return `${slug}-${Date.now()}.${ext}`
 }
 
-/**
- * Simpan byte dan balikan URL yang bisa dipakai next/image.
- *
- * Dev lokal lewat cabang file: gateway (`npm run dev:db`) tidak melayani
- * /storage/v1, jadi menulis ke Storage di sana selalu gagal. Build produksi
- * tidak pernah cocok dengan DEV_LOCAL_AUTH, jadi jalur file mati di production.
- */
-async function storeTileImage(slug: string, file: File): Promise<string> {
+async function storeActivityImage(slug: string, file: File): Promise<string> {
   const bytes = Buffer.from(await file.arrayBuffer())
   const name = fileName(slug, file)
 
@@ -86,7 +90,7 @@ async function storeTileImage(slug: string, file: File): Promise<string> {
   if (uploadError) {
     throw new Error(
       uploadError.message.includes('bucket')
-        ? `Bucket Storage "${BUCKET}" belum ada. Jalankan supabase/migrations/20261106000000_activity_tiles.sql.`
+        ? `Bucket Storage "${BUCKET}" belum ada. Jalankan supabase/migrations/20261113000000_activities_crud.sql.`
         : `Gagal menyimpan foto: ${uploadError.message}`,
     )
   }
@@ -96,7 +100,6 @@ async function storeTileImage(slug: string, file: File): Promise<string> {
   return data.publicUrl
 }
 
-/** Path objek di bucket dari URL tersimpan; null kalau bukan file kita. */
 function ownedPath(imageUrl: string): string | null {
   const prefix = `/${BUCKET}/`
   const at = imageUrl.indexOf(prefix)
@@ -105,7 +108,6 @@ function ownedPath(imageUrl: string): string | null {
   return path && !path.startsWith('http') ? decodeURIComponent(path) : null
 }
 
-/** Foto lama dibuang best-effort: penggantian foto tidak boleh meninggalkan sampah. */
 async function discardOldImage(imageUrl: string | null | undefined) {
   if (!imageUrl) return
   try {
@@ -122,6 +124,23 @@ async function discardOldImage(imageUrl: string | null | undefined) {
   }
 }
 
+function toResponse(row: any) {
+  return {
+    id: row.id as string,
+    slug: row.slug as string,
+    label: row.label as string,
+    blurb: row.blurb as string | null,
+    image_url: row.imageUrl as string | null,
+    image_alt: row.imageAlt as string | null,
+    is_active: Boolean(row.isActive),
+    display_order: Number(row.displayOrder ?? 0),
+    sections: Array.isArray(row.sections) ? row.sections : [],
+    created_at: row.createdAt ? new Date(row.createdAt).toISOString() : null,
+    updated_at: row.updatedAt ? new Date(row.updatedAt).toISOString() : null,
+  }
+}
+
+/** GET — daftar semua kegiatan, urut menurut display_order. */
 export async function GET() {
   const guard = await requireAdmin()
   if (!guard.ok) return guard.response
@@ -130,34 +149,25 @@ export async function GET() {
   if (conn.error) return conn.error
 
   try {
-    const rows = await conn.db.select().from(activityTiles)
-    const bySlug = new Map(rows.map((r) => [r.slug, r]))
+    const rows = await conn.db
+      .select()
+      .from(activities)
+      .orderBy(asc(activities.displayOrder), asc(activities.createdAt))
 
-    const data = activityCatalog
-      .slice()
-      .sort((a, b) => a.displayOrder - b.displayOrder)
-      .map((a) => {
-        const row = bySlug.get(a.slug)
-        return {
-          slug: a.slug,
-          label: a.label,
-          blurb: a.blurb,
-          display_order: a.displayOrder,
-          image_url: row?.imageUrl ?? null,
-          image_alt: row?.imageAlt ?? null,
-          is_active: row?.isActive ?? false,
-          fallback_image: a.image ?? fallbackActivityImage,
-        }
-      })
-
-    return NextResponse.json({ success: true, data })
+    return NextResponse.json({ success: true, data: rows.map(toResponse) })
   } catch (e: any) {
     console.error('[admin/activities] GET gagal:', text(e))
     return NextResponse.json({ error: text(e) }, { status: 500 })
   }
 }
 
-/** POST (multipart: slug + file [+ image_alt]) — unggah foto dan simpan barisnya. */
+/**
+ * POST multipart — buat kegiatan baru atau ganti foto kegiatan yang sudah ada.
+ *
+ * Tanpa `id` → buat baru. Field: slug (wajib), label (wajib), blurb, file
+ * (opsional), sections (comma-separated), display_order, is_active.
+ * Dengan `id` → ganti foto saja (file wajib).
+ */
 export async function POST(request: NextRequest) {
   const guard = await requireAdmin()
   if (!guard.ok) return guard.response
@@ -170,62 +180,107 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Body harus multipart/form-data' }, { status: 400 })
   }
 
+  const id = trim(form.get('id'))
+
+  // Ganti foto kegiatan yang sudah ada.
+  if (id) {
+    let uploaded: string | null = null
+    let saved = false
+    try {
+      const [previous] = await conn.db
+        .select({ imageUrl: activities.imageUrl })
+        .from(activities)
+        .where(eq(activities.id, id))
+
+      if (!previous) {
+        return NextResponse.json({ error: 'Kegiatan tidak ditemukan' }, { status: 404 })
+      }
+
+      const file = form.get('file')
+      if (!file || typeof file === 'string') {
+        return NextResponse.json({ error: 'File foto belum dipilih' }, { status: 400 })
+      }
+      if (!file.type.startsWith('image/')) {
+        return NextResponse.json({ error: 'File harus berupa gambar (JPG, PNG, WebP)' }, { status: 400 })
+      }
+      if (file.size > MAX_SIZE) {
+        return NextResponse.json({ error: 'File terlalu besar — maksimal 3MB' }, { status: 400 })
+      }
+
+      uploaded = await storeActivityImage(previous.slug as string, file)
+      const [row] = await conn.db
+        .update(activities)
+        .set({ imageUrl: uploaded, updatedAt: new Date() })
+        .where(eq(activities.id, id))
+        .returning()
+
+      saved = true
+      await discardOldImage(previous.imageUrl)
+      revalidateHome()
+      return NextResponse.json({ success: true, data: toResponse(row) })
+    } catch (e: any) {
+      if (uploaded && !saved) await discardOldImage(uploaded)
+      console.error('[admin/activities] ganti foto gagal:', text(e))
+      return NextResponse.json({ error: text(e) }, { status: 500 })
+    }
+  }
+
+  // Buat kegiatan baru.
   const slug = trim(form.get('slug')) ?? ''
-  if (!knownSlugs.has(slug)) {
-    return NextResponse.json(
-      { error: `Kegiatan "${slug}" tidak dikenal — daftar hidupnya di lib/activities.ts` },
-      { status: 400 },
-    )
+  if (!slug) {
+    return NextResponse.json({ error: 'Slug wajib diisi' }, { status: 400 })
+  }
+  const label = trim(form.get('label')) ?? ''
+  if (!label) {
+    return NextResponse.json({ error: 'Label wajib diisi' }, { status: 400 })
   }
 
+  const [existing] = await conn.db
+    .select({ id: activities.id })
+    .from(activities)
+    .where(eq(activities.slug, slug))
+  if (existing) {
+    return NextResponse.json({ error: `Slug "${slug}" sudah digunakan` }, { status: 409 })
+  }
+
+  const blurb = trim(form.get('blurb')) ?? null
+  const sections = parseSections(form.get('sections'))
+  const displayOrder = parseOrder(form.get('display_order'))
+  const isActive = parseBool(form.get('is_active'), true)
+
+  let imageUrl: string | null = null
   const file = form.get('file')
-  if (!file || typeof file === 'string') {
-    return NextResponse.json({ error: 'File foto belum dipilih' }, { status: 400 })
-  }
-  if (!file.type.startsWith('image/')) {
-    return NextResponse.json({ error: 'File harus berupa gambar (JPG, PNG, WebP)' }, { status: 400 })
-  }
-  if (file.size > MAX_SIZE) {
-    return NextResponse.json({ error: 'File terlalu besar (maksimal 3MB)' }, { status: 400 })
-  }
-
-  const imageAlt = trim(form.get('image_alt'))
-
-  let imageUrl: string
-  try {
-    imageUrl = await storeTileImage(slug, file)
-  } catch (e: any) {
-    console.error('[admin/activities] upload gagal:', text(e))
-    return NextResponse.json({ error: text(e) }, { status: 500 })
+  if (file && typeof file !== 'string') {
+    if (!file.type.startsWith('image/')) {
+      return NextResponse.json({ error: 'File harus berupa gambar (JPG, PNG, WebP)' }, { status: 400 })
+    }
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json({ error: 'File terlalu besar — maksimal 3MB' }, { status: 400 })
+    }
+    try {
+      imageUrl = await storeActivityImage(slug, file)
+    } catch (e: any) {
+      console.error('[admin/activities] upload foto gagal:', text(e))
+      return NextResponse.json({ error: text(e) }, { status: 500 })
+    }
   }
 
   try {
-    const [previous] = await conn.db
-      .select({ imageUrl: activityTiles.imageUrl })
-      .from(activityTiles)
-      .where(eq(activityTiles.slug, slug))
-
     const [row] = await conn.db
-      .insert(activityTiles)
-      .values({ slug, imageUrl, imageAlt, isActive: true })
-      .onConflictDoUpdate({
-        target: activityTiles.slug,
-        set: { imageUrl, imageAlt, isActive: true, updatedAt: new Date() },
-      })
+      .insert(activities)
+      .values({ slug, label, blurb, imageUrl, sections, displayOrder, isActive })
       .returning()
 
-    if (previous && previous.imageUrl !== imageUrl) await discardOldImage(previous.imageUrl)
-
     revalidateHome()
-    return NextResponse.json({ success: true, data: row })
+    return NextResponse.json({ success: true, data: toResponse(row) })
   } catch (e: any) {
-    await discardOldImage(imageUrl)
+    if (imageUrl) await discardOldImage(imageUrl)
     console.error('[admin/activities] POST gagal:', text(e))
     return NextResponse.json({ error: text(e) }, { status: 500 })
   }
 }
 
-/** PUT — hanya teks alternatif dan status pakai; foto baru selalu lewat POST. */
+/** PUT JSON — ubah field teks (slug, label, blurb, sections, display_order, is_active). Foto baru lewat POST ?id=. */
 export async function PUT(request: NextRequest) {
   const guard = await requireAdmin()
   if (!guard.ok) return guard.response
@@ -235,37 +290,89 @@ export async function PUT(request: NextRequest) {
 
   const body = await request.json().catch(() => ({}))
 
-  const slug = typeof body.slug === 'string' ? body.slug.trim() : ''
-  if (!knownSlugs.has(slug)) {
-    return NextResponse.json(
-      { error: `Kegiatan "${slug}" tidak dikenal — daftar hidupnya di lib/activities.ts` },
-      { status: 400 },
-    )
+  const id = typeof body.id === 'string' ? body.id.trim() : ''
+  if (!id) {
+    return NextResponse.json({ error: 'ID kegiatan tidak dikirim' }, { status: 400 })
   }
 
-  const patch: Partial<typeof activityTiles.$inferInsert> = { updatedAt: new Date() }
-  if ('image_alt' in body) patch.imageAlt = trim(body.image_alt)
-  // Defaultnya sama dengan kolomnya: foto baru langsung dipakai.
-  if ('is_active' in body) patch.isActive = body.is_active !== false
+  try {
+    const [existing] = await conn.db.select().from(activities).where(eq(activities.id, id))
+    if (!existing) {
+      return NextResponse.json({ error: 'Kegiatan tidak ditemukan' }, { status: 404 })
+    }
+
+    const patch: Partial<typeof activities.$inferInsert> = { updatedAt: new Date() }
+
+    if ('slug' in body) {
+      const slug = trim(body.slug)
+      if (!slug) {
+        return NextResponse.json({ error: 'Slug wajib diisi' }, { status: 400 })
+      }
+      const [conflict] = await conn.db
+        .select({ id: activities.id })
+        .from(activities)
+        .where(eq(activities.slug, slug))
+      if (conflict && conflict.id !== id) {
+        return NextResponse.json({ error: `Slug "${slug}" sudah digunakan` }, { status: 409 })
+      }
+      patch.slug = slug
+    }
+
+    if ('label' in body) {
+      const label = trim(body.label)
+      if (!label) {
+        return NextResponse.json({ error: 'Label wajib diisi' }, { status: 400 })
+      }
+      patch.label = label
+    }
+
+    if ('blurb' in body) patch.blurb = trim(body.blurb) ?? null
+    if ('sections' in body) patch.sections = parseSections(body.sections)
+    if ('display_order' in body) patch.displayOrder = parseOrder(body.display_order)
+    if ('is_active' in body) patch.isActive = body.is_active !== false
+
+    const [row] = await conn.db
+      .update(activities)
+      .set(patch)
+      .where(eq(activities.id, id))
+      .returning()
+
+    revalidateHome()
+    return NextResponse.json({ success: true, data: toResponse(row) })
+  } catch (e: any) {
+    console.error('[admin/activities] PUT gagal:', text(e))
+    return NextResponse.json({ error: text(e) }, { status: 500 })
+  }
+}
+
+/** DELETE ?id=<uuid> — hapus kegiatan beserta foto-nya. */
+export async function DELETE(request: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
+  const conn = connectDb()
+  if (conn.error) return conn.error
+
+  const id = request.nextUrl.searchParams.get('id')?.trim() ?? ''
+  if (!id) {
+    return NextResponse.json({ error: 'ID kegiatan tidak dikirim' }, { status: 400 })
+  }
 
   try {
     const [row] = await conn.db
-      .update(activityTiles)
-      .set(patch)
-      .where(eq(activityTiles.slug, slug))
+      .delete(activities)
+      .where(eq(activities.id, id))
       .returning()
 
     if (!row) {
-      return NextResponse.json(
-        { error: 'Belum ada foto untuk kegiatan ini — unggah file dulu' },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: 'Kegiatan tidak ditemukan' }, { status: 404 })
     }
 
+    await discardOldImage(row.imageUrl)
     revalidateHome()
-    return NextResponse.json({ success: true, data: row })
+    return NextResponse.json({ success: true })
   } catch (e: any) {
-    console.error('[admin/activities] PUT gagal:', text(e))
+    console.error('[admin/activities] DELETE gagal:', text(e))
     return NextResponse.json({ error: text(e) }, { status: 500 })
   }
 }

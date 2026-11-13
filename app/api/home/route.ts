@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server'
 import { and, asc, desc, eq, gt, isNull, lte, or } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import {
-  activityTiles,
+  activities,
   clientOrganizations,
   equipment,
   promoBanners,
 } from '@/lib/db/schema'
-import { activities as activityCatalog, fallbackActivityImage } from '@/lib/activities'
+import { fallbackActivityImage } from '@/lib/activities'
 import { getCachedHome, setCachedHome, type HomePayload } from '@/lib/home-data'
 
 /**
@@ -48,7 +48,7 @@ export async function GET() {
   // menit dan akan membuat homepage tetap kosong setelah migrasi dijalankan.
   let schemaBelumSiap = false
 
-  // ── Kegiatan: jumlah alat dari katalog, foto dari activity_tiles ──────
+  // ── Kegiatan: katalog dari DB (activities), jumlah alat dari equipment ────
   try {
     const rows = await db
       .select({ activities: equipment.activities })
@@ -61,31 +61,23 @@ export async function GET() {
         counts.set(slug, (counts.get(slug) ?? 0) + 1)
       }
     }
-    console.error('[home] debug: rows=', rows.length, 'counts=', Object.fromEntries(counts))
 
-    // Foto tile bukan turunan katalog: kalau ikut equipment.imageUrl, tile
-    // berubah setiap kali foto alat populer berganti. Kurasi fotonya hidup di
-    // tabel activity_tiles, dikelola lewat /admin/activities.
-    const tiles = await db
-      .select({
-        slug: activityTiles.slug,
-        imageUrl: activityTiles.imageUrl,
-        imageAlt: activityTiles.imageAlt,
-      })
-      .from(activityTiles)
-      .where(eq(activityTiles.isActive, true))
-    const images = new Map(tiles.map((t) => [t.slug, t]))
+    const activityRows = await db
+      .select()
+      .from(activities)
+      .where(eq(activities.isActive, true))
+      .orderBy(asc(activities.displayOrder), asc(activities.createdAt))
 
-    payload.activities = activityCatalog
+    payload.activities = activityRows
       .map((a) => {
-        const tile = images.get(a.slug)
+        const count = counts.get(a.slug) ?? 0
         return {
           slug: a.slug,
           label: a.label,
-          blurb: a.blurb,
-          count: counts.get(a.slug) ?? 0,
-          imageUrl: a.image ?? tile?.imageUrl ?? fallbackActivityImage,
-          imageAlt: tile?.imageAlt ?? null,
+          blurb: a.blurb ?? null,
+          count,
+          imageUrl: a.imageUrl ?? fallbackActivityImage,
+          imageAlt: a.imageAlt ?? null,
         }
       })
       .filter((a) => a.count > 0)
@@ -97,7 +89,7 @@ export async function GET() {
       e?.stack ?? '',
     )
     console.warn(
-      '[home] kolom equipment.activities atau tabel activity_tiles belum ada, section kegiatan disembunyikan. Jalankan migrasi 20261104000000 dan 20261106000000.',
+      '[home] tabel activities atau kolom equipment.activities belum ada, section kegiatan disembunyikan. Jalankan migrasi 20261104000000 dan 20261113000000.',
     )
   }
 
