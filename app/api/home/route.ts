@@ -53,7 +53,7 @@ export async function GET() {
     const rows = await db
       .select({ activities: equipment.activities })
       .from(equipment)
-      .where(eq(equipment.isActive, true))
+      .where(eq(equipment.isAvailable, true))
 
     const counts = new Map<string, number>()
     for (const row of rows) {
