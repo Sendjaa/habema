@@ -61,6 +61,7 @@ export async function GET() {
         counts.set(slug, (counts.get(slug) ?? 0) + 1)
       }
     }
+    console.error('[home] debug: rows=', rows.length, 'counts=', Object.fromEntries(counts))
 
     // Foto tile bukan turunan katalog: kalau ikut equipment.imageUrl, tile
     // berubah setiap kali foto alat populer berganti. Kurasi fotonya hidup di
@@ -90,9 +91,13 @@ export async function GET() {
       .filter((a) => a.count > 0)
   } catch (e: any) {
     schemaBelumSiap = true
+    console.error(
+      '[home] error query kegiatan:',
+      e?.message ?? e,
+      e?.stack ?? '',
+    )
     console.warn(
       '[home] kolom equipment.activities atau tabel activity_tiles belum ada, section kegiatan disembunyikan. Jalankan migrasi 20261104000000 dan 20261106000000.',
-      e?.message ?? e,
     )
   }
 
