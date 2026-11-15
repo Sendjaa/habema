@@ -97,13 +97,16 @@ try {
   step = 'admin generate_link'
   const link = await call('POST', '/admin/generate_link', { body: { type: 'magiclink', email } })
   assert.equal(link.status, 200, `generateLink HTTP ${link.status}`)
-  // _generateLinkResponse membaca field flat, jadi hashed_token harus di akar.
+  // _generateLinkResponse membaca field flat, jadi email_otp/hashed_token
+  // harus di akar. Sesi server-side ditukar dengan email_otp + type 'email',
+  // sama seperti GoTrue sungguhan (hashed_token + 'magiclink' ditolak).
+  assert.ok(link.body?.email_otp, 'email_otp tidak ada di akar balasan')
   assert.ok(link.body?.hashed_token, 'hashed_token tidak ada di akar balasan')
   assert.ok(link.body?.properties === undefined, 'balasan generate_link seharusnya tidak nested')
 
-  step = 'verifyOtp magiclink'
+  step = 'verifyOtp email'
   const verified = await call('POST', '/verify', {
-    body: { email, token: link.body.hashed_token, type: 'magiclink' },
+    body: { email, token: link.body.email_otp, type: 'email' },
   })
   assert.equal(verified.status, 200, `verify HTTP ${verified.status}: ${verified.raw}`)
   assert.ok(verified.body?.access_token, 'verify tidak mengembalikan sesi')

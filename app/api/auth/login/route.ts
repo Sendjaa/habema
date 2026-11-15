@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { verifyTurnstileDetailed } from '@/lib/turnstile'
 import { generateOTP, storeOTP, invalidatePreviousOTPs } from '@/lib/otp'
-import { sendOtpEmail } from '@/lib/otp-email'
+import { deliverOtpEmail } from '@/lib/otp-delivery'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { DEV_LOCAL_AUTH } from '@/lib/dev-local-auth'
 
@@ -55,9 +55,19 @@ export async function POST(req: Request) {
       await invalidatePreviousOTPs(email, 'login')
       const otp = generateOTP()
       await storeOTP(email, otp, 'login')
-      await sendOtpEmail(email, otp, 'login')
 
-      return NextResponse.json({ otpRequired: true })
+      const delivery = await deliverOtpEmail(email, otp, 'login')
+      if (!delivery.delivered && !delivery.devOtp) {
+        return NextResponse.json(
+          { error: 'Gagal mengirim kode OTP ke email. Coba lagi beberapa saat lagi.' },
+          { status: 502 },
+        )
+      }
+
+      return NextResponse.json({
+        otpRequired: true,
+        ...(delivery.devOtp ? { devOtp: delivery.devOtp } : {}),
+      })
     }
 
     return NextResponse.json({ success: true })

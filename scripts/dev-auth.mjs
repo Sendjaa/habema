@@ -360,7 +360,13 @@ export function createAuthHandler(connectionString) {
         const row = await findByEmail(body.email ?? '')
         if (!row) return fail(res, 403, 'user_not_found', 'Pengguna tidak ditemukan')
         // Token yang sah hanya yang dibuat /admin/generate_link di bawah.
-        if (body.token !== magicTokenFor(row.email)) {
+        // Meniru GoTrue: type 'email' memakai email_otp (6 karakter pertama),
+        // sedangkan type lain memakai hashed_token penuh.
+        const expectedToken =
+          body.type === 'email'
+            ? magicTokenFor(row.email).slice(0, 6)
+            : magicTokenFor(row.email)
+        if (body.token !== expectedToken) {
           return fail(res, 403, 'otp_expired', 'Token tidak sah atau kedaluwarsa')
         }
         const updated = await pool
