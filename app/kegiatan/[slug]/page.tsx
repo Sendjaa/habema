@@ -122,25 +122,122 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params
   const activity = getActivity(slug)
-  if (!activity) return { title: 'Kegiatan tidak ditemukan — Habema Outdoor' }
+  if (!activity) return { title: 'Kegiatan tidak ditemukan | Habema Outdoor' }
 
   return {
-    title: `${activity.label} — Alat Sewa & Perlengkapan | Habema Outdoor`,
+    title: `${activity.label} | Alat Sewa & Perlengkapan | Habema Outdoor`,
     description:
       `${activity.blurb}. Pilihan alat sewa dan perlengkapan untuk ${activity.label.toLowerCase()}, ` +
       'lengkap dengan paket rombongan.',
   }
 }
 
-function SectionHeading({ kicker, title, note }: { kicker: string; title: string; note: string }) {
+function SectionHeading({
+  kicker,
+  title,
+  note,
+  count,
+}: {
+  kicker: string
+  title: string
+  note: string
+  count?: number
+}) {
   return (
-    <>
-      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-orange-600">{kicker}</p>
-      <h2 className="mt-2 font-sans text-2xl md:text-4xl lg:text-6xl font-bold uppercase tracking-tight text-stone-900">
-        {title}
-      </h2>
-      <p className="mt-2 text-sm text-stone-500 max-w-2xl">{note}</p>
-    </>
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-orange-700">{kicker}</p>
+        <h2 className="mt-2 font-sans text-2xl md:text-3xl lg:text-4xl font-bold uppercase tracking-tight text-stone-900">
+          {title}
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-stone-600">{note}</p>
+      </div>
+      {count != null && (
+        <span className="inline-flex shrink-0 items-center rounded-full border border-orange-200 bg-orange-50 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-orange-800">
+          {count} pilihan
+        </span>
+      )}
+    </div>
+  )
+}
+
+type CatalogCardProps = {
+  id: string | number
+  name: string
+  brand: string | null
+  imageUrl: string | null
+  price: number
+  originalPrice?: number | null
+  discountLabel?: string
+  stockNote?: string
+  unit?: string
+}
+
+function CatalogCard({
+  id,
+  name,
+  brand,
+  imageUrl,
+  price,
+  originalPrice,
+  discountLabel,
+  stockNote,
+  unit,
+}: CatalogCardProps) {
+  return (
+    <Link
+      href={`/product/${id}`}
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition-colors hover:border-orange-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+    >
+      <div className="relative aspect-square bg-stone-100">
+        {imageUrl ? (
+          <Image
+            src={imageUrl}
+            alt={name}
+            fill
+            sizes="(max-width: 1023px) 50vw, 25vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          />
+        ) : (
+          <span className="absolute inset-0 flex items-center justify-center text-[11px] text-stone-600">
+            Tanpa foto
+          </span>
+        )}
+        {discountLabel && (
+          <span className="absolute left-3 top-3 rounded-md bg-orange-700 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+            {discountLabel}
+          </span>
+        )}
+        {stockNote && (
+          <span className="absolute right-3 top-3 rounded-md border border-orange-200 bg-orange-50 px-2 py-1 text-[10px] font-bold text-orange-800">
+            {stockNote}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col p-4">
+        {brand && (
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-600">
+            {brand}
+          </p>
+        )}
+        <h3 className="mt-1.5 line-clamp-2 text-sm font-bold leading-snug text-stone-900">
+          {name}
+        </h3>
+        <div className="mt-auto pt-4">
+          <p className="text-sm font-black text-orange-700">
+            {rupiah(price)}
+            {unit && (
+              <span className="ml-1 text-[11px] font-semibold text-stone-600">/{unit}</span>
+            )}
+          </p>
+          {originalPrice != null && originalPrice > price && (
+            <p className="mt-0.5 text-[11px] text-stone-600 line-through">
+              {rupiah(originalPrice)}
+            </p>
+          )}
+        </div>
+      </div>
+    </Link>
   )
 }
 
@@ -149,7 +246,7 @@ function SectionCta({ href, children }: { href: string; children: ReactNode }) {
     <div className="mt-6">
       <Link
         href={href}
-        className="inline-flex items-center justify-center px-6 h-12 rounded-xl font-bold text-orange-700 bg-white border border-orange-200 hover:border-orange-500 hover:bg-orange-50 transition-colors"
+                className="inline-flex h-12 items-center justify-center rounded-xl border border-orange-200 bg-white px-6 font-bold text-orange-700 transition-colors hover:border-orange-500 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
       >
         {children}
       </Link>
@@ -188,49 +285,43 @@ export default async function ActivityPage({
               kicker={order.includes('products') ? 'Sewa atau beli' : 'Peralatan sewa'}
               title={`Alat untuk ${activity.label}`}
               note="Harga sewa per malam dengan ketersediaan mengikuti stok cabang. Satu hari sewa dihitung 24 jam sejak alat diambil."
+              count={gear.length}
             />
 
             <ul className="mt-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
-              {gear.map((item) => (
-                <li key={item.id}>
-                  <Link
-                    href={`/product/${item.id}`}
-                    className="group flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition-all hover:border-orange-300 hover:shadow-md"
-                  >
-                    <div className="relative aspect-square bg-stone-100">
-                      {item.imageUrl ? (
-                        <Image
-                          src={item.imageUrl}
-                          alt={item.name ?? ''}
-                          fill
-                          sizes="(max-width: 1024px) 50vw, 25vw"
-                          className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                      ) : (
-                        <span className="absolute inset-0 flex items-center justify-center text-[11px] text-stone-500">
-                          Tanpa foto
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-1 flex-col p-3">
-                      {item.brand && (
-                        <p className="text-[9px] uppercase tracking-widest text-stone-500">
-                          {item.brand}
-                        </p>
-                      )}
-                      <h3 className="mt-1 font-sans text-xs md:text-sm font-bold text-stone-900 leading-tight line-clamp-2">
-                        {item.name}
-                      </h3>
-                      <div className="mt-auto pt-2">
-                        <p className="text-sm font-black text-orange-700">
-                          {rupiah(item.isPromo ? item.promoPricePerNight : item.pricePerNight)}
-                        </p>
-                        <p className="text-[10px] text-stone-500">/ malam</p>
-                      </div>
-                    </div>
-                  </Link>
-                </li>
-              ))}
+              {gear.map((item) => {
+                const normalPrice = Number(item.pricePerNight ?? 0)
+                const promoPrice = Number(item.promoPricePerNight ?? 0)
+                const hasPromo =
+                  item.isPromo === true && promoPrice > 0 && promoPrice < normalPrice
+                const price = hasPromo ? promoPrice : normalPrice
+                const discount = hasPromo
+                  ? Math.round(((normalPrice - promoPrice) / normalPrice) * 100)
+                  : 0
+                const stock = item.stockQuantity
+                const stockNote =
+                  stock != null && stock <= 3
+                    ? stock === 0
+                      ? 'Stok habis'
+                      : `Sisa ${stock}`
+                    : undefined
+
+                return (
+                  <li key={item.id}>
+                    <CatalogCard
+                      id={item.id}
+                      name={item.name ?? 'Alat sewa'}
+                      brand={item.brand}
+                      imageUrl={item.imageUrl}
+                      price={price}
+                      originalPrice={discount > 0 ? normalPrice : null}
+                      discountLabel={discount > 0 ? `-${discount}%` : undefined}
+                      stockNote={stockNote}
+                      unit="malam"
+                    />
+                  </li>
+                )
+              })}
             </ul>
 
             <SectionCta href={`/catalog_rental?kegiatan=${activity.slug}`}>
@@ -242,57 +333,46 @@ export default async function ActivityPage({
 
     products:
       products.length > 0 ? (
-        <section className="border-t border-orange-100 py-12 md:py-16 bg-white">
+        <section className="bg-orange-50/40 py-12 md:py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <SectionHeading
               kicker="Perlengkapan pribadi"
               title={`Perlengkapan yang biasa dibeli untuk ${activity.label.toLowerCase()}`}
               note="Perlengkapan yang umumnya dibeli sendiri karena bersifat habis pakai atau pribadi, sehingga tidak disewakan."
+              count={products.length}
             />
 
             <ul className="mt-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
-              {products.map((item) => (
-                <li key={item.id}>
-                  <Link
-                    href={`/product/${item.id}`}
-                    className="group flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition-all hover:border-orange-300 hover:shadow-md"
-                  >
-                    <div className="relative aspect-square bg-stone-100">
-                      {item.imageUrl ? (
-                        <Image
-                          src={item.imageUrl}
-                          alt={item.name}
-                          fill
-                          sizes="(max-width: 1024px) 50vw, 25vw"
-                          className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                      ) : (
-                        <span className="absolute inset-0 flex items-center justify-center text-[11px] text-stone-500">
-                          Tanpa foto
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-1 flex-col p-3">
-                      {item.brand && (
-                        <p className="text-[9px] uppercase tracking-widest text-stone-500">
-                          {item.brand}
-                        </p>
-                      )}
-                      <h3 className="mt-1 font-sans text-xs md:text-sm font-bold text-stone-900 leading-tight line-clamp-2">
-                        {item.name}
-                      </h3>
-                      <div className="mt-auto pt-2">
-                        <p className="text-sm font-black text-orange-700">{rupiah(item.price)}</p>
-                        {item.originalPrice && Number(item.originalPrice) > Number(item.price) && (
-                          <p className="text-[10px] text-stone-500 line-through">
-                            {rupiah(item.originalPrice)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                </li>
-              ))}
+              {products.map((item) => {
+                const price = Number(item.price ?? 0)
+                const originalPrice = Number(item.originalPrice ?? 0)
+                const hasDiscount = originalPrice > price
+                const discount = hasDiscount
+                  ? Math.round(((originalPrice - price) / originalPrice) * 100)
+                  : 0
+                const stock = item.stock
+                const stockNote =
+                  stock != null && stock <= 3
+                    ? stock === 0
+                      ? 'Stok habis'
+                      : `Sisa ${stock}`
+                    : undefined
+
+                return (
+                  <li key={item.id}>
+                    <CatalogCard
+                      id={item.id}
+                      name={item.name}
+                      brand={item.brand}
+                      imageUrl={item.imageUrl}
+                      price={price}
+                      originalPrice={discount > 0 ? originalPrice : null}
+                      discountLabel={discount > 0 ? `-${discount}%` : undefined}
+                      stockNote={stockNote}
+                    />
+                  </li>
+                )
+              })}
             </ul>
 
             <SectionCta href="/catalog_shop">Buka katalog toko</SectionCta>
@@ -312,6 +392,7 @@ export default async function ActivityPage({
                   ? 'Harga per orang sudah termasuk peralatan. Pilih keberangkatan; kuota dikonfirmasi oleh tim cabang.'
                   : 'Komposisi alat sudah dihitung untuk rombongan, sehingga tidak perlu menyusun satu per satu.'
               }
+              count={packageBundles.length}
             />
 
             <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -319,16 +400,16 @@ export default async function ActivityPage({
                 <li key={bundle.id}>
                   <Link
                     href={`/packages/${bundle.id}`}
-                    className="flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-5 shadow-sm transition-all hover:border-orange-300 hover:shadow-md"
+                    className="flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-5 shadow-sm transition-colors hover:border-orange-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
                   >
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs font-bold uppercase tracking-wider text-orange-700">
                         {bundle.targetAudience}
                       </span>
                       {bundle.paxMin != null && (
-                        <span className="text-[11px] text-stone-500">
+                        <span className="text-[11px] text-stone-600">
                           {bundle.paxMax != null && bundle.paxMax !== bundle.paxMin
-                            ? `${bundle.paxMin}–${bundle.paxMax} orang`
+                            ? `${bundle.paxMin}-${bundle.paxMax} orang`
                             : `${bundle.paxMin} orang`}
                         </span>
                       )}
@@ -337,7 +418,7 @@ export default async function ActivityPage({
                       {bundle.name}
                     </h3>
                     {bundle.description && (
-                      <p className="mt-2 line-clamp-2 text-sm text-stone-500">
+                      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-stone-600">
                         {bundle.description}
                       </p>
                     )}
@@ -345,7 +426,7 @@ export default async function ActivityPage({
                       <span className="text-xl font-black text-orange-700">
                         {rupiah(bundle.bundlePrice)}
                       </span>
-                      <span className="text-[11px] text-stone-500">
+                      <span className="text-[11px] text-stone-600">
                         {packagesLead ? '/ orang' : '/ paket / malam'}
                       </span>
                     </div>
@@ -376,8 +457,8 @@ export default async function ActivityPage({
 
   return (
     <div className="min-h-screen bg-white">
-      <header className="bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 md:pt-10 pb-2">
+      <header className="border-b border-orange-100 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-8 md:pt-10 md:pb-10">
           <nav
             aria-label="Breadcrumb"
             className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-widest"
@@ -388,11 +469,40 @@ export default async function ActivityPage({
             <span className="text-stone-300" aria-hidden="true">
               /
             </span>
-            <span className="text-stone-500">{activity.label}</span>
+            <span className="text-stone-600" aria-current="page">
+              {activity.label}
+            </span>
           </nav>
-          <h1 className="mt-3 font-sans text-3xl md:text-5xl lg:text-6xl font-bold uppercase tracking-tight text-stone-900 leading-[0.95]">
-            {activity.label}
-          </h1>
+
+          <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-end">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-orange-700">
+                Katalog kegiatan
+              </p>
+              <h1 className="mt-3 font-sans text-4xl font-bold uppercase leading-[0.95] tracking-tight text-stone-900 sm:text-5xl lg:text-6xl">
+                {activity.label}
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-stone-600 md:text-base">
+                {activity.blurb}.
+              </p>
+            </div>
+
+            <aside className="border-t-2 border-orange-600 pt-4 lg:border-l-2 lg:border-t-0 lg:pl-5 lg:pt-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-stone-600">
+                Sebelum berangkat
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-stone-700">
+                Ketersediaan alat mengikuti jadwal sewa di cabang. Cek stok sebelum menentukan
+                tanggal pengambilan.
+              </p>
+              <Link
+                href="/contact"
+                className="mt-3 inline-flex text-xs font-bold uppercase tracking-wider text-orange-700 underline decoration-orange-300 underline-offset-4 hover:text-orange-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+              >
+                Hubungi tim cabang
+              </Link>
+            </aside>
+          </div>
         </div>
       </header>
 
@@ -405,23 +515,23 @@ export default async function ActivityPage({
       {availableSections.length === 0 && (
         <section className="py-16">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
-            <h2 className="font-sans text-2xl md:text-4xl lg:text-6xl font-bold uppercase tracking-tight text-stone-900">
+            <h2 className="font-sans text-2xl font-bold uppercase tracking-tight text-stone-900 md:text-4xl">
               Katalog {activity.label} sedang disusun
             </h2>
-            <p className="mt-3 text-sm text-stone-500">
+            <p className="mt-3 text-sm leading-relaxed text-stone-600">
               Sampaikan kebutuhan kegiatan Anda; tim cabang akan menyiapkan daftar alat beserta
               ketersediaan stok.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Link
                 href="/catalog_rental"
-                className="inline-flex items-center justify-center px-6 h-12 rounded-xl font-bold text-white bg-orange-600 hover:bg-orange-700 transition-colors"
+                className="inline-flex h-12 items-center justify-center rounded-xl bg-orange-700 px-6 font-bold text-white transition-colors hover:bg-orange-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
               >
                 Lihat katalog alat
               </Link>
               <Link
                 href="/contact"
-                className="inline-flex items-center justify-center px-6 h-12 rounded-xl font-bold text-orange-700 bg-white border border-orange-200 hover:border-orange-500 hover:bg-orange-50 transition-colors"
+        className="inline-flex h-12 items-center justify-center rounded-xl border border-orange-200 bg-white px-6 font-bold text-orange-700 transition-colors hover:border-orange-500 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
               >
                 Tanya tim cabang
               </Link>
