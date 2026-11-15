@@ -295,7 +295,7 @@ export default function ReviewsPage() {
               <h2 className="text-lg font-bold text-slate-800">{product.name}</h2>
               <p className="text-sm text-slate-500">{product.equipment_categories?.name}</p>
               <div className="flex items-center gap-2 mt-2">
-                <div className="flex items-center text-amber-500 font-bold">
+                <div className="flex items-center text-warning font-bold">
                   <Star className="w-4 h-4 fill-current mr-1" />
                   {calculateRatingFromReviews(reviews).average.toFixed(1)}
                 </div>
@@ -318,7 +318,7 @@ export default function ReviewsPage() {
                 {[...Array(5)].map((_, i) => (
                   <Star
                     key={i}
-                    className={`w-5 h-5 ${i < Math.round(ratingStats.average) ? "fill-amber-400 text-amber-400" : "fill-slate-200 text-slate-200"}`}
+                    className={`w-5 h-5 ${i < Math.round(ratingStats.average) ? "fill-warning text-warning" : "fill-stone-200 text-stone-200"}`}
                   />
                 ))}
               </div>
@@ -334,7 +334,7 @@ export default function ReviewsPage() {
                     <span className="text-sm text-slate-600 w-8">{rating}</span>
                     <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-amber-400 rounded-full transition-all duration-500"
+                        className="h-full bg-warning rounded-full transition-all duration-500"
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
@@ -355,8 +355,8 @@ export default function ReviewsPage() {
               onClick={() => setActiveFilter(filter)}
               className={`px-4 py-1.5 rounded-full cursor-pointer transition-all ${
                 activeFilter === filter
-                  ? "bg-[#1B4332] text-white border-[#1B4332]"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-[#1B4332]"
+                  ? "bg-forest text-white border-forest"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-forest"
               }`}
             >
               {filter}
@@ -385,7 +385,7 @@ export default function ReviewsPage() {
                           {[...Array(5)].map((_, i) => (
                             <Star
                               key={i}
-                              className={`w-3 h-3 ${i < review.rating ? "fill-amber-400 text-amber-400" : "fill-slate-200 text-slate-200"}`}
+                              className={`w-3 h-3 ${i < review.rating ? "fill-warning text-warning" : "fill-stone-200 text-stone-200"}`}
                             />
                           ))}
                         </div>

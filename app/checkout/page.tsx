@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ShoppingBag, MapPin, Tag, Loader2, Check, Truck, ChevronDown } from "lucide-react";
+import { ShoppingBag, MapPin, Tag, Loader2, Check, Truck, ChevronDown, X, Phone, Mail, Home } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useCartStore } from "@/lib/store";
 import { LoginModal } from "@/components/auth/login-modal";
@@ -120,8 +120,8 @@ export default function CheckoutPage() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [shippingData, setShippingData] = useState<ShippingData | null>(null);
+  const [summaryOpen, setSummaryOpen] = useState(typeof window === "undefined" ? true : window.innerWidth > 767);
 
-  // Address cascading dropdown state
   const [provinces, setProvinces] = useState<AddressOption[]>([]);
   const [regencies, setRegencies] = useState<AddressOption[]>([]);
   const [districts, setDistricts] = useState<AddressOption[]>([]);
@@ -151,7 +151,6 @@ export default function CheckoutPage() {
     })();
   }, []);
 
-  // Load provinces on mount
   useEffect(() => {
     const loadProvinces = async () => {
       setLoadingProvinces(true);
@@ -167,7 +166,6 @@ export default function CheckoutPage() {
     loadProvinces();
   }, []);
 
-  // Load regencies when province changes
   useEffect(() => {
     if (!form.province) {
       setRegencies([]);
@@ -190,7 +188,6 @@ export default function CheckoutPage() {
     loadRegencies();
   }, [form.province]);
 
-  // Load districts when regency changes
   useEffect(() => {
     if (!form.regency) {
       setDistricts([]);
@@ -212,7 +209,6 @@ export default function CheckoutPage() {
     loadDistricts();
   }, [form.regency]);
 
-  // Load villages when district changes
   useEffect(() => {
     if (!form.district) {
       setVillages([]);
@@ -235,14 +231,14 @@ export default function CheckoutPage() {
 
   if (cart.length === 0) {
     return (
-      <div className="min-h-screen bg-[#FDFCFB] flex items-center justify-center p-4">
-        <Card className="p-12 bg-white border border-stone-200 max-w-md text-center rounded-2xl shadow-sm">
+      <div className="min-h-screen bg-cream flex items-center justify-center p-4">
+        <Card className="p-8 sm:p-12 bg-white border border-stone-200 max-w-md text-center rounded-2xl shadow-sm">
           <ShoppingBag className="w-16 h-16 mx-auto text-stone-300 mb-6" />
           <h1 className="text-2xl font-bold text-stone-800 mb-2">Keranjang Kosong</h1>
           <p className="text-stone-500 mb-6">Belum ada produk di keranjang Anda.</p>
-          <Button asChild className="bg-[#1B4332] text-white">
+          <Button asChild className="w-full" variant="default">
             <a href="/catalog_shop">
-              <ShoppingBag className="w-4 h-4 mr-2" />
+              <Home className="w-4 h-4 mr-2" />
               Belanja Sekarang
             </a>
           </Button>
@@ -273,6 +269,7 @@ export default function CheckoutPage() {
   }
 
   const total = subtotal - discountAmount;
+  const grandTotal = total + (shippingData?.shippingCost || 0);
 
   const validate = () => {
     const required = [
@@ -329,7 +326,6 @@ export default function CheckoutPage() {
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Gagal checkout");
 
-      // Mock mode (non-produksi)
       if (result.mock) {
         clearCart();
         clearClaimedDiscount();
@@ -339,7 +335,6 @@ export default function CheckoutPage() {
         return;
       }
 
-      // COD — langsung ke konfirmasi, tanpa Midtrans
       if (form.payment_method === "cod" || result.cod) {
         clearCart();
         clearClaimedDiscount();
@@ -384,7 +379,6 @@ export default function CheckoutPage() {
     }
   };
 
-  // Payment method options dengan label yang lebih lengkap
   const paymentMethods = [
     { value: "bca_va", label: "BCA Virtual Account", desc: "Transfer via ATM/Mobile/Internet Banking BCA" },
     { value: "bni_va", label: "BNI Virtual Account", desc: "Transfer via ATM/Mobile/Internet Banking BNI" },
@@ -406,90 +400,113 @@ export default function CheckoutPage() {
     { value: "cod", label: "COD (Bayar di Tempat)", desc: "Bayar tunai saat barang diterima" },
   ];
 
-  return (
-    <div className="min-h-screen bg-[#FDFCFB] py-6 md:py-12">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-sans font-bold text-stone-800 mb-8">Checkout</h1>
+  const isMobile = typeof window !== "undefined" && window.innerWidth <= 767;
 
-        <Card className="p-6 bg-white border border-stone-200 rounded-2xl shadow-sm mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <ShoppingBag className="w-5 h-5 text-[#1B4332]" />
-            <h2 className="font-bold font-sans text-stone-800">Produk ({cart.length})</h2>
-          </div>
-          <div className="space-y-3">
-            {cart.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center gap-3"
-              >
-                <a
-                  href={`/product/${item.id}`}
-                  className="shrink-0 hover:opacity-80 transition-opacity"
-                >
-                  <div className="w-16 h-16 rounded-lg bg-stone-100 overflow-hidden border border-stone-200">
-                    {item.image_url ? (
-                      <img
-                        src={item.image_url}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-stone-400">
-                        <ShoppingBag className="w-6 h-6" />
-                      </div>
-                    )}
-                  </div>
-                </a>
-                <div className="flex-1 min-w-0">
-                  <a
-                    href={`/product/${item.id}`}
-                    className="font-medium text-stone-800 hover:text-[#1B4332] transition-colors line-clamp-1 block"
-                  >
-                    {item.name}
-                  </a>
-                  <div className="text-xs text-stone-500 mt-0.5">
-                    Rp{(Number(item.price) || 0).toLocaleString("id-ID")} x{" "}
-                    <span className="font-medium text-stone-700">{item.quantity}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => updateItemQuantity(item.id, Math.max(1, item.quantity - 1))}
-                    className="w-6 h-6 rounded bg-stone-100 text-stone-600 hover:bg-stone-200 flex items-center justify-center text-sm"
-                  >
-                    -
-                  </button>
-                  <span className="w-6 text-center text-xs font-bold">
-                    {item.quantity}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
-                    className="w-6 h-6 rounded bg-stone-100 text-stone-600 hover:bg-stone-200 flex items-center justify-center text-sm"
-                  >
-                    +
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeFromCart(item.id)}
-                    className="ml-1 w-6 h-6 rounded bg-stone-100 text-stone-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
+  return (
+    <div className="min-h-screen bg-cream">
+      <header className="bg-white border-b border-stone-100 sticky top-0 z-20">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-stone-600 hover:text-forest transition-colors"
+          >
+            <Home className="w-4 h-4" />
+            <span className="text-sm font-medium">Kembali ke Beranda</span>
+          </button>
+        </div>
+      </header>
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+        <div className="flex items-center gap-2 mb-2">
+          <ShoppingBag className="w-5 h-5 text-forest" />
+          <h1 className="text-xl font-bold text-stone-800 sm:text-2xl">Checkout</h1>
+        </div>
+        <p className="text-sm text-stone-500 mb-8 sm:mb-10">
+          Lengkapi data pengiriman dan pilih metode pembayaran untuk menyelesaikan pemesanan.
+        </p>
 
         <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
+          {/* Desktop: 2-col grid | Tablet & Mobile: stacked */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+            <div className="lg:col-span-8 space-y-6">
+              {/* Produk */}
               <Card className="p-6 bg-white border border-stone-200 rounded-2xl shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
-                  <MapPin className="w-5 h-5 text-[#1B4332]" />
-                  <h2 className="font-bold font-sans text-stone-800">Alamat Pengiriman & Kontak</h2>
+                  <ShoppingBag className="w-5 h-5 text-forest" />
+                  <h2 className="font-bold text-stone-800 text-sm sm:text-base">Produk ({cart.length})</h2>
+                </div>
+                <div className="space-y-4">
+                  {cart.map((item) => (
+                    <div key={item.id} className="flex flex-col sm:flex-row items-center gap-3">
+                      <a
+                        href={`/product/${item.id}`}
+                        className="shrink-0 hover:opacity-80 transition-opacity"
+                      >
+                        <div className="w-14 h-14 sm:w-16 sm:h-14 rounded-xl bg-stone-100 overflow-hidden border border-stone-200">
+                          {item.image_url ? (
+                            <img
+                              src={item.image_url}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-stone-400">
+                              <ShoppingBag className="w-5 h-5" />
+                            </div>
+                          )}
+                        </div>
+                      </a>
+                      <div className="flex-1 min-w-0 text-center sm:text-left">
+                        <a
+                          href={`/product/${item.id}`}
+                          className="font-medium text-stone-800 hover:text-forest transition-colors line-clamp-1 block text-sm sm:text-base"
+                        >
+                          {item.name}
+                        </a>
+                        <div className="text-xs text-stone-500 mt-0.5">
+                          Rp{(Number(item.price) || 0).toLocaleString("id-ID")} x{" "}
+                          <span className="font-medium text-stone-700">{item.quantity}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => updateItemQuantity(item.id, Math.max(1, item.quantity - 1))}
+                          className="min-w-[44px] h-11 rounded-xl bg-stone-100 text-stone-600 hover:bg-stone-200 flex items-center justify-center text-lg font-medium"
+                          aria-label="Kurangi jumlah"
+                        >
+                          −
+                        </button>
+                        <span className="min-w-[44px] text-center text-base font-bold text-stone-800">
+                          {item.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
+                          className="min-w-[44px] h-11 rounded-xl bg-stone-100 text-stone-600 hover:bg-stone-200 flex items-center justify-center text-lg font-medium"
+                          aria-label="Tambah jumlah"
+                        >
+                          +
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeFromCart(item.id)}
+                          className="min-w-[44px] h-11 rounded-xl bg-stone-100 text-stone-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors"
+                          aria-label="Hapus dari keranjang"
+                        >
+                          <span aria-hidden="true">×</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Alamat & Kontak */}
+              <Card className="p-6 bg-white border border-stone-200 rounded-2xl shadow-sm">
+                <div className="flex items-center gap-2 mb-4">
+                  <MapPin className="w-5 h-5 text-forest" />
+                  <h2 className="font-bold text-stone-800 text-sm sm:text-base">Alamat Pengiriman &amp; Kontak</h2>
                 </div>
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -500,7 +517,7 @@ export default function CheckoutPage() {
                         onChange={(e) =>
                           setForm({ ...form, customer_name: e.target.value })
                         }
-                        className="h-10 border-stone-200 focus:border-[#1B4332]"
+                        className="h-10 border-stone-200 focus:border-forest"
                         required
                       />
                     </div>
@@ -509,7 +526,7 @@ export default function CheckoutPage() {
                       <Input
                         value={form.phone}
                         onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                        className="h-10 border-stone-200 focus:border-[#1B4332]"
+                        className="h-10 border-stone-200 focus:border-forest"
                         required
                       />
                     </div>
@@ -520,14 +537,13 @@ export default function CheckoutPage() {
                     <Input
                       type="email"
                       value={form.email}
-onChange={(e) => setForm({ ...form, email: e.target.value })}
-                        className="h-10 border-stone-200 focus:border-[#1B4332]"
-                        required
-                      />
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      className="h-10 border-stone-200 focus:border-forest"
+                      required
+                    />
                   </div>
 
-                  {/* Cascading Dropdown: Provinsi, Kabupaten/Kota, Kecamatan, Kelurahan/Desa */}
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-xs text-stone-500">Provinsi *</Label>
                       <Select
@@ -546,8 +562,8 @@ onChange={(e) => setForm({ ...form, email: e.target.value })}
                           }));
                         }}
                       >
-                        <SelectTrigger className="w-full h-10 border-stone-200 focus:border-[#1B4332]" disabled={loadingProvinces}>
-                          <SelectValue />
+                        <SelectTrigger className="w-full h-10 border-stone-200 focus:border-forest" disabled={loadingProvinces}>
+                          <SelectValue placeholder="Pilih provinsi" />
                         </SelectTrigger>
                         <SelectContent>
                           {provinces.map((p) => (
@@ -576,8 +592,8 @@ onChange={(e) => setForm({ ...form, email: e.target.value })}
                         }}
                         disabled={!form.province || loadingRegencies}
                       >
-                        <SelectTrigger className="w-full h-10 border-stone-200 focus:border-[#1B4332]" disabled={!form.province || loadingRegencies}>
-                          <SelectValue />
+                        <SelectTrigger className="w-full h-10 border-stone-200 focus:border-forest" disabled={!form.province || loadingRegencies}>
+                          <SelectValue placeholder="Pilih kabupaten" />
                         </SelectTrigger>
                         <SelectContent>
                           {regencies.map((r) => (
@@ -604,8 +620,8 @@ onChange={(e) => setForm({ ...form, email: e.target.value })}
                         }}
                         disabled={!form.regency || loadingDistricts}
                       >
-                        <SelectTrigger className="w-full h-10 border-stone-200 focus:border-[#1B4332]" disabled={!form.regency || loadingDistricts}>
-                          <SelectValue />
+                        <SelectTrigger className="w-full h-10 border-stone-200 focus:border-forest" disabled={!form.regency || loadingDistricts}>
+                          <SelectValue placeholder="Pilih kecamatan" />
                         </SelectTrigger>
                         <SelectContent>
                           {districts.map((d) => (
@@ -617,7 +633,6 @@ onChange={(e) => setForm({ ...form, email: e.target.value })}
                       </Select>
                     </div>
 
-                    {/* Desa / Kelurahan */}
                     <div className="space-y-1.5">
                       <Label className="text-xs text-stone-500">Desa / Kelurahan *</Label>
                       <Select
@@ -631,8 +646,8 @@ onChange={(e) => setForm({ ...form, email: e.target.value })}
                         }}
                         disabled={!form.district || loadingVillages}
                       >
-                        <SelectTrigger className="w-full h-10 border-stone-200 focus:border-[#1B4332]" disabled={!form.district || loadingVillages}>
-                          <SelectValue />
+                        <SelectTrigger className="w-full h-10 border-stone-200 focus:border-forest" disabled={!form.district || loadingVillages}>
+                          <SelectValue placeholder="Pilih desa/kelurahan" />
                         </SelectTrigger>
                         <SelectContent>
                           {villages.map((v) => (
@@ -645,23 +660,23 @@ onChange={(e) => setForm({ ...form, email: e.target.value })}
                     </div>
                   </div>
 
-                  <div className="space-y-1.5 sm:col-span-2">
+                  <div className="space-y-1.5">
                     <Label className="text-xs text-stone-500">Alamat Lengkap *</Label>
                     <Textarea
                       value={form.address}
                       onChange={(e) => setForm({ ...form, address: e.target.value })}
-                      className="border-stone-200 focus:border-[#1B4332] min-h-[80px] resize-none"
+                      className="border-stone-200 focus:border-forest min-h-[80px] resize-none"
                       required
                     />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5 sm:col-span-2">
+                    <div className="space-y-1.5">
                       <Label className="text-xs text-stone-500">Kode Pos *</Label>
                       <Input
                         value={form.postal_code}
                         onChange={(e) => setForm({ ...form, postal_code: e.target.value })}
-                        className="h-10 border-stone-200 focus-border-[#1B4332]"
+                        className="h-10 border-stone-200 focus:border-forest"
                         required
                       />
                     </div>
@@ -672,16 +687,17 @@ onChange={(e) => setForm({ ...form, email: e.target.value })}
                     <Textarea
                       value={form.note}
                       onChange={(e) => setForm({ ...form, note: e.target.value })}
-                      className="border-stone-200 focus:border-[#1B4332] min-h-[60px] resize-none"
+                      className="border-stone-200 focus:border-forest min-h-[60px] resize-none"
                     />
                   </div>
                 </div>
               </Card>
 
+              {/* Pengiriman & Pembayaran */}
               <Card className="p-6 bg-white border border-stone-200 rounded-2xl shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
-                  <Truck className="w-5 h-5 text-[#1B4332]" />
-                  <h2 className="font-bold font-sans text-stone-800">Metode Pengiriman & Pembayaran</h2>
+                  <Truck className="w-5 h-5 text-forest" />
+                  <h2 className="font-bold text-stone-800 text-sm sm:text-base">Metode Pengiriman &amp; Pembayaran</h2>
                 </div>
                 <ShippingSelector
                   originId={31555}
@@ -696,14 +712,14 @@ onChange={(e) => setForm({ ...form, email: e.target.value })}
                     value={form.payment_method}
                     onValueChange={(value) => setForm({ ...form, payment_method: value })}
                   >
-                    <SelectTrigger className="w-full h-10 border-stone-200 focus:border-[#1B4332]">
+                    <SelectTrigger className="w-full h-10 border-stone-200 focus:border-forest">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {paymentMethods.map((pm) => (
                         <SelectItem key={pm.value} value={pm.value}>
                           <div className="flex flex-col">
-                            <span className="font-medium">{pm.label}</span>
+                            <span className="font-medium text-sm">{pm.label}</span>
                             <span className="text-[10px] text-stone-500">{pm.desc}</span>
                           </div>
                         </SelectItem>
@@ -712,80 +728,129 @@ onChange={(e) => setForm({ ...form, email: e.target.value })}
                   </Select>
                 </div>
               </Card>
-
-              
             </div>
 
-            <div className="lg:col-span-1">
-              <Card className="p-6 bg-white border-2 border-gold rounded-2xl shadow-xl sticky top-8 md:top-24">
-                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-stone-100">
-                  <Tag className="w-5 h-5 text-[#1B4332]" />
-                  <h3 className="font-bold  font-sans text-stone-800">Ringkasan Pesanan</h3>
-                </div>
-
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-stone-500">Subtotal</span>
-                    <span className="font-medium">
-                      Rp{subtotal.toLocaleString("id-ID")}
-                    </span>
-                  </div>
-
-                  {claimedDiscount && discountAmount > 0 && (
-                    <div className="flex justify-between text-emerald-700">
-                      <span>Diskon {claimedDiscount.code}</span>
-                      <span>-Rp{discountAmount.toLocaleString("id-ID")}</span>
-                    </div>
-                  )}
-
-                  {shippingData?.shippingCost && shippingData.shippingCost > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-stone-500">
-                        Ongkir ({shippingData.courierCode?.toUpperCase()} {shippingData.courierService})
-                      </span>
-                      <span className="font-medium">
-                        Rp{shippingData.shippingCost.toLocaleString("id-ID")}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="border-t border-stone-200 pt-3 flex justify-between text-base">
-                    <span className="text-stone-500">Total</span>
-                    <span className="text-2xl font-black text-[#FF6B35]">
-                      Rp{(total + (shippingData?.shippingCost || 0)).toLocaleString("id-ID")}
-                    </span>
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-[#1B4332] hover:bg-[#143326] font-bold h-12 rounded-xl shadow-lg transition-all mt-5"
+            <div className="lg:col-span-4">
+              {/* Ringkasan Pesanan */}
+              <Card
+                className={`p-6 bg-white border-2 border-stone-200 rounded-2xl shadow-sm transition-all duration-200 ${
+                  summaryOpen || isMobile ? "" : "border-transparent bg-stone-50"
+                }`}
+              >
+                <div
+                  className="flex items-center justify-between mb-4 cursor-pointer hover:text-forest transition-colors"
+                  onClick={() => setSummaryOpen((prev) => !prev)}
                 >
-                  {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    "Bayar Sekarang"
+                  <div className="flex items-center gap-2">
+                    <Tag className="w-5 h-5 text-forest" />
+                    <h3 className="font-bold text-stone-800 text-sm sm:text-base">Ringkasan Pesanan</h3>
+                  </div>
+                  {!isMobile && (
+                    <ChevronDown
+                      className={`w-4 h-4 text-stone-400 transition-transform duration-200 ${summaryOpen ? "" : "rotate-180"}`}
+                    />
                   )}
-                </Button>
+                </div>
 
-                {claimedDiscount && (
+                {summaryOpen || isMobile ? (
+                  <>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-stone-500">Subtotal</span>
+                        <span className="font-medium">
+                          Rp{subtotal.toLocaleString("id-ID")}
+                        </span>
+                      </div>
+
+                      {claimedDiscount && discountAmount > 0 && (
+                        <div className="flex justify-between text-emerald-700">
+                          <span>Diskon {claimedDiscount.code}</span>
+                          <span>-Rp{discountAmount.toLocaleString("id-ID")}</span>
+                        </div>
+                      )}
+
+                      {shippingData?.shippingCost && shippingData.shippingCost > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-stone-500">
+                            Ongkir ({shippingData.courierCode?.toUpperCase()} {shippingData.courierService})
+                          </span>
+                          <span className="font-medium">
+                            Rp{shippingData.shippingCost.toLocaleString("id-ID")}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="border-t border-stone-200 pt-3 flex justify-between text-base">
+                        <span className="text-stone-500">Total</span>
+                        <span className="text-2xl font-black text-gold">
+                          Rp{grandTotal.toLocaleString("id-ID")}
+                        </span>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-forest hover:bg-forest-dark font-bold h-12 rounded-xl shadow-sm transition-all mt-6"
+                    >
+                      {loading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        "Bayar Sekarang"
+                      )}
+                    </Button>
+
+                    {claimedDiscount && (
+                      <button
+                        type="button"
+                        onClick={() => clearClaimedDiscount()}
+                        className="mt-3 text-[11px] text-stone-400 hover:text-stone-700 underline w-full text-left"
+                      >
+                        Hapus voucher
+                      </button>
+                    )}
+
+                    <div className="mt-4 pt-3 border-t border-stone-100 flex items-start gap-2">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-stone-500 leading-relaxed">
+                        Anda akan diarahkan ke halaman pembayaran yang aman untuk menyelesaikan transaksi.
+                      </p>
+                    </div>
+                  </>
+                ) : (
                   <button
-                    type="button"
-                    onClick={() => clearClaimedDiscount()}
-                    className="mt-3 text-[11px] text-stone-400 hover:text-stone-700 underline"
+                    onClick={() => setSummaryOpen(true)}
+                    className="w-full py-3 text-sm font-medium text-stone-600 hover:text-forest transition-colors"
                   >
-                    Hapus voucher
+                    Tampilkan ringkasan
                   </button>
                 )}
-
-                <div className="mt-4 pt-3 border-t border-stone-100 flex items-start gap-2">
-                  <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <p className="text-[11px] text-stone-500 leading-relaxed">
-                    Anda akan diarahkan ke halaman pembayaran yang aman untuk menyelesaikan transaksi.
-                  </p>
-                </div>
               </Card>
+
+              {/* Mobile sticky payment button */}
+              {isMobile && summaryOpen && (
+                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 p-4 sm:px-6 lg:px-8 z-30 shadow-lg">
+                  <div className="max-w-5xl mx-auto">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-stone-500">Total</span>
+                      <span className="text-lg font-black text-gold">
+                        Rp{grandTotal.toLocaleString("id-ID")}
+                      </span>
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-forest hover:bg-forest-dark font-bold h-12 rounded-xl shadow-lg transition-all"
+                    >
+                      {loading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        "Bayar Sekarang"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </form>
