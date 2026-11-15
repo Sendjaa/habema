@@ -69,7 +69,7 @@
   --sidebar-ring: #0f766e;
 
   /* Di-set ulang oleh next/font di <html>; ini fallback bila font gagal dimuat. */
-  --font-display: 'Fraunces', Georgia, serif;
+  --font-display: 'sans';
   --font-body: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
 }
 

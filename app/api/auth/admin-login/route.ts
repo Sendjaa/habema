@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { verifyTurnstile } from '@/lib/turnstile'
 import { generateOTP, storeOTP, invalidatePreviousOTPs } from '@/lib/otp'
-import { sendOtpEmail } from '@/lib/otp-email'
+import { deliverOtpEmail } from '@/lib/otp-delivery'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { hasAdminDeviceTrust } from '@/lib/admin-trust'
 import { DEV_LOCAL_AUTH } from '@/lib/dev-local-auth'
@@ -82,13 +82,21 @@ export async function POST(req: Request) {
     await invalidatePreviousOTPs(email, 'login')
     const otp = generateOTP()
     await storeOTP(email, otp, 'login')
-    await sendOtpEmail(email, otp, 'login')
+
+    const delivery = await deliverOtpEmail(email, otp, 'login')
+    if (!delivery.delivered && !delivery.devOtp) {
+      return NextResponse.json(
+        { error: 'Gagal mengirim kode OTP ke email. Coba lagi beberapa saat lagi.' },
+        { status: 502 },
+      )
+    }
 
     // Di dev kodenya tidak lewat email, dan terminal dev server belum tentu
     // terlihat oleh yang menguji — jadi kodenya ikut dikembalikan.
+    const devOtp = delivery.devOtp ?? (DEV_LOCAL_AUTH ? otp : undefined)
     return NextResponse.json({
       otpRequired: true,
-      ...(DEV_LOCAL_AUTH ? { devOtp: otp } : {}),
+      ...(devOtp ? { devOtp } : {}),
     })
   } catch (error) {
     console.error('[auth/admin-login] POST gagal:', error instanceof Error ? error.message : error)

@@ -37,13 +37,6 @@ import { ProductReviewsSection } from "@/components/product/ProductReviewsSectio
 import { useRouter } from "next/navigation";
 import { useCartStore, type ClaimedDiscount } from "@/lib/store";
 import { toast } from "sonner";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
 
 function formatWeight(kg: number): string {
   const whole = Math.floor(kg);
@@ -377,12 +370,13 @@ export default function ProductDetailPage({
           return;
         }
 
-        setIsShop(data.type !== "rental");
+        const nextIsShop = data.type !== "rental";
+        setIsShop(nextIsShop);
         setProduct(data);
 
         // Cek eligibility ulasan
         try {
-          const param = isShop ? `shopProductId=${id}` : `equipmentId=${id}`;
+          const param = nextIsShop ? `shopProductId=${id}` : `equipmentId=${id}`;
           const eligRes = await fetch(`/api/reviews?${param}`, { credentials: "include" });
           if (eligRes.ok) {
             const eligData = await eligRes.json();
@@ -499,7 +493,7 @@ export default function ProductDetailPage({
         .limit(4)
         .then(({ data }) => setRelatedProducts(data || []));
     }
-  }, [product]);
+  }, [product, isShop]);
 
   useEffect(() => {
     if (!product) return;
@@ -609,12 +603,26 @@ export default function ProductDetailPage({
       brand: product.brand,
     });
     toast.success(`${product.name} masuk keranjang!`, {
-      style: { background: "#1B4332", color: "#fff", borderRadius: "12px" },
+      style: { background: "#0f766e", color: "#fff", borderRadius: "12px" },
     });
+    setShowCart(true);
   };
 
   const handleShopBuyNow = () => {
-    // Tidak auto-simpan ke keranjang — langsung ke halaman checkout
+    // Simpan dulu ke keranjang, baru ke halaman checkout
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: shopPrice,
+      image_url: product.image_url,
+      quantity: Math.max(1, Number(quantity)),
+      category: product.category || "Produk",
+      description: product.description,
+      brand: product.brand,
+    });
+    toast.success(`${product.name} masuk keranjang!`, {
+      style: { background: "#0f766e", color: "#fff", borderRadius: "12px" },
+    });
     router.push("/checkout");
   };
 
@@ -622,29 +630,19 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
 
   if (isShop)
     return (
-      <div className="min-h-screen bg-white pb-16 md:pb-16">
-        <nav className="bg-white py-3 px-4 md:px-6 lg:px-12">
-          <div className="max-w-7xl mx-auto flex items-center gap-2 text-[10px] md:text-xs font-medium text-slate-500 capitalize">
-            <Link
-              href="/catalog_shop"
-              className="hover:text-[#1B4332] transition-colors"
-            >
-              Katalog
-            </Link>
-            <ChevronRight className="w-3 h-3 text-slate-300" />
-            <span className="text-slate-400">{product.category || "Beli"}</span>
-            <ChevronRight className="w-3 h-3 text-slate-300" />
-            <span className="text-[#1B4332] truncate font-bold">
-              {product.name}
-            </span>
-          </div>
-        </nav>
+      <div className="min-h-screen bg-white pb-40 md:pb-16">
+        <ProductTopBar
+          onBack={() => router.back()}
+          catalogHref="/catalog_shop"
+          category={product.category || "Beli"}
+          name={product.name}
+        />
 
         <div className="max-w-7xl mx-auto md:px-4 pt-4 md:pt-8 lg:pt-12">
           <div className="flex flex-col lg:grid lg:grid-cols-3 lg:gap-6">
             {/* Image gallery */}
             <div className="px-4 md:px-0">
-              <div className="bg-white md:rounded-xl overflow-hidden sticky md:top-24 shadow-sm border border-slate-100">
+              <div className="bg-white md:rounded-xl overflow-hidden sticky md:top-24 shadow-sm border border-stone-100">
                 <div className="relative aspect-square">
                   {shopImages.length > 0 ? (
                     <Image
@@ -669,7 +667,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                         onClick={() => setSelectedImage(i)}
                         className={`w-20 h-20 border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${
                           selectedImage === i
-                            ? "border-[#1B4332] opacity-100"
+                            ? "border-forest opacity-100"
                             : "border-transparent opacity-50 hover:opacity-100"
                         }`}
                       >
@@ -689,59 +687,61 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
 
             {/* Info column */}
             <div className="px-4 md:px-0 space-y-4">
-              <div className="bg-white p-6 rounded-xl shadow-sm space-y-3 border border-slate-100">
+              <div className="bg-white p-6 rounded-xl shadow-sm space-y-3 border border-stone-200">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-xl font-sans font-bold text-slate-800 capitalize leading-tight">
+                  <h1 className="text-2xl md:text-3xl font-black text-stone-900 capitalize leading-tight">
                     {product.name}
                   </h1>
-                  <span className="text-[#FF6B35] font-bold text-2xl">
-                    Rp{shopPrice.toLocaleString("id-ID")}
-                  </span>
-                  {/* <span className="text-slate-400 text-sm">/ unit</span> */}
                   {shopDiscount && (
-                    <Badge className="bg-gold text-[#FF6B35] rounded-full text-xs font-bold px-2 py-1 bg-amber-400/10">
+                    <Badge className="bg-gold text-white rounded-full text-xs font-bold px-2.5 py-1">
                       -{shopDiscount}%
                     </Badge>
                   )}
                 </div>
-                {shopOriginalPrice > shopPrice && (
-                  <p className="text-slate-400 line-through text-sm">
-                    Rp{shopOriginalPrice.toLocaleString("id-ID")}
-                  </p>
-                )}
+                <div className="flex items-baseline gap-2.5 flex-wrap">
+                  <span className="text-2xl md:text-3xl font-black text-forest">
+                    Rp{shopPrice.toLocaleString("id-ID")}
+                  </span>
+                  {shopOriginalPrice > shopPrice && (
+                    <span className="text-sm text-stone-400 line-through">
+                      Rp{shopOriginalPrice.toLocaleString("id-ID")}
+                    </span>
+                  )}
+                </div>
                 <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-sm">
                   {ratingStats.total > 0 ? (
-                    <span className="inline-flex items-center gap-1 font-semibold text-amber-600">
-                      <Star className="w-4 h-4 fill-current" />
+                    <span className="inline-flex items-center gap-1 font-semibold text-stone-700">
+                      <Star className="w-4 h-4 fill-warning" />
                       {ratingStats.average.toFixed(1)}
                     </span>
                   ) : (
-                    <span className="text-slate-500">Belum ada ulasan</span>
+                    <span className="text-stone-500">Belum ada ulasan</span>
                   )}
-                  <span className="text-slate-300">|</span>
-                  <span className="text-slate-500">
-                    Terjual {Number(product.sold_count || 0)}x
-                  </span>
+                  {Number(product.sold_count) > 0 && (
+                    <>
+                      <span className="text-stone-300">|</span>
+                      <span className="text-stone-500">
+                        Terjual {Number(product.sold_count)}x
+                      </span>
+                    </>
+                  )}
                   {ratingStats.total > 0 && (
                     <>
-                      <span className="text-slate-300">|</span>
-                      <span className="text-slate-500">
+                      <span className="text-stone-300">|</span>
+                      <span className="text-stone-500">
                         {ratingStats.total} Ulasan
                       </span>
                     </>
                   )}
                   {product.rating_label && (
-                    <>
-                      <span className="text-slate-300">|</span>
-                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        {product.rating_label}
-                      </span>
-                    </>
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-forest-tint text-forest-dark border border-forest-tint">
+                      {product.rating_label}
+                    </span>
                   )}
                   {product.brand && (
                     <>
-                      <span className="text-slate-300">|</span>
-                      <span className="text-slate-500 capitalize">
+                      <span className="text-stone-300">|</span>
+                      <span className="text-stone-500 capitalize">
                         {product.brand}
                       </span>
                     </>
@@ -752,11 +752,11 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
               {shopVouchers.length > 0 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-emerald-800">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-forest-dark">
                       <Tag className="w-3.5 h-3.5" />
                       Voucher Toko
                     </span>
-                    <span className="text-[10px] text-emerald-600 font-semibold uppercase tracking-wide">
+                    <span className="text-[10px] text-stone-500 font-semibold uppercase tracking-wide">
                       {shopVouchers.filter((v) => claimedDiscount?.code !== v.code).length} tersedia
                     </span>
                   </div>
@@ -773,29 +773,29 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                           key={voucher.id}
                           className={`relative overflow-hidden rounded-xl border-2 transition-all ${
                             isClaimed
-                              ? "border-emerald-300 bg-emerald-50"
-                              : "border-dashed border-emerald-400 bg-white hover:border-emerald-500 hover:shadow-md"
+                              ? "border-forest bg-forest-soft"
+                              : "border-dashed border-forest/50 bg-white hover:border-forest hover:shadow-md"
                           } flex flex-col gap-3`}
                         >
                           <div className="p-4 space-y-3">
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
-                                    {voucher.code}
-                                  </p>
-                                  {getVoucherTypeLabel(voucher.voucher_type) && (
-                                    <Badge className="bg-emerald-100 text-emerald-700 text-[9px]">
-                                      {getVoucherTypeLabel(voucher.voucher_type)}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-[10px] font-semibold text-slate-700 mt-1 line-clamp-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="text-xs font-bold text-forest-dark uppercase tracking-wide">
+                                      {voucher.code}
+                                    </p>
+                                    {voucher.voucher_type && voucher.voucher_type !== "all" && (
+                                      <Badge className="bg-forest-tint text-forest-dark text-[9px]">
+                                        {voucher.voucher_type === "rental" ? "Khusus rental" : voucher.voucher_type === "shop" ? "Khusus belanja" : voucher.voucher_type === "opentrip" ? "Khusus open trip" : null}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                <p className="text-[10px] font-semibold text-stone-600 mt-1 line-clamp-2">
                                   {voucher.description || "Voucher belanja"}
                                 </p>
                               </div>
                               {isClaimed ? (
-                                <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 text-white">
+                                <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-forest text-white">
                                   <Check className="w-4 h-4" />
                                 </div>
                               ) : (
@@ -803,48 +803,48 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                                   type="button"
                                   onClick={() => handleClaimVoucher(voucher)}
                                   disabled={claimingVoucher}
-                                  className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-[#1B4332] text-white hover:bg-[#143326] transition-colors disabled:opacity-60"
+                                  className="shrink-0 min-w-[44px] h-11 px-4 rounded-full bg-forest text-white hover:bg-forest-dark transition-colors disabled:opacity-60"
                                 >
                                   {claimingVoucher ? (
                                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                   ) : (
-                                    <span className="text-[10px] font-bold">Klaim</span>
+                                    <span className="text-xs font-bold">Klaim</span>
                                   )}
                                 </button>
                               )}
                             </div>
 
-                            <div className="pt-2 border-t border-dashed border-emerald-200">
-                              <p className="text-xs font-bold text-[#FF6B35]">
+                            <div className="pt-2 border-t border-dashed border-forest/30">
+                              <p className="text-sm font-black text-forest">
                                 {discountText}
                               </p>
                               {voucher.min_purchase > 0 && (
-                                <p className="text-[10px] text-slate-500 mt-1">
+                                <p className="text-[10px] text-stone-500 mt-1">
                                   Min. belanja Rp
                                   {Number(voucher.min_purchase).toLocaleString("id-ID")}
                                 </p>
                               )}
                               {voucher.max_discount > 0 && (
-                                <p className="text-[10px] text-slate-500 mt-0.5">
+                                <p className="text-[10px] text-stone-500 mt-0.5">
                                   Max. potongan Rp
                                   {Number(voucher.max_discount).toLocaleString("id-ID")}
                                 </p>
                               )}
                               {voucher.voucher_type && voucher.voucher_type !== 'all' && (
-                                <p className="text-[10px] text-emerald-600 mt-1 font-medium">
+                                <p className="text-[10px] text-forest mt-1 font-medium">
                                   {voucher.voucher_type === 'rental' ? 'Khusus rental' : voucher.voucher_type === 'shop' ? 'Khusus belanja' : voucher.voucher_type === 'opentrip' ? 'Khusus open trip' : ''}
                                 </p>
                               )}
                               {voucher.conditions && Object.keys(voucher.conditions).length > 0 && (
                                 <div className="space-y-0.5 mt-1">
                                   {voucher.conditions.first_time_only && (
-                                    <p className="text-[10px] text-amber-600 font-medium">• Khusus pembeli pertama</p>
+                                    <p className="text-[10px] text-warning font-medium">• Khusus pembeli pertama</p>
                                   )}
                                   {voucher.conditions.must_invite_friends && (
-                                    <p className="text-[10px] text-amber-600 font-medium">• Wajib undang {voucher.conditions.min_friends || 'teman'}</p>
+                                    <p className="text-[10px] text-warning font-medium">• Wajib undang {voucher.conditions.min_friends || 'teman'}</p>
                                   )}
                                   {voucher.conditions.requires_identity_verified && (
-                                    <p className="text-[10px] text-amber-600 font-medium">• Wajib verifikasi KTP</p>
+                                    <p className="text-[10px] text-warning font-medium">• Wajib verifikasi KTP</p>
                                   )}
                                 </div>
                               )}
@@ -852,7 +852,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
 
                             {isClaimed && (
                               <div className="pt-2 flex items-center justify-between">
-                                <p className="text-[10px] text-emerald-700 font-medium">
+                                <p className="text-[10px] text-forest-dark font-medium">
                                   Sudah diklaim
                                 </p>
                                 <button
@@ -861,7 +861,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                                     setClaimedDiscount(null);
                                     toast.info("Voucher dibatalkan");
                                   }}
-                                  className="text-[10px] text-red-600 hover:text-red-700 font-medium underline"
+                                  className="text-[10px] text-error hover:text-red-700 font-medium underline"
                                 >
                                   Batal
                                 </button>
@@ -879,64 +879,48 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
             {/* Purchase card */}
             <div className="px-4 md:px-0">
               <Card className="p-5 sticky top-24 rounded-xl shadow-md border-none">
-                <h3 className="font-bolder mb-1 text-slate-800 text-sm">
+                <h3 className="font-bold mb-3 text-stone-800 text-sm">
                   Atur Jumlah
                 </h3>
 
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-4 mb-4 bg-slate-50 p-2 rounded-lg border border-slate-100 w-30">
+                <div className="mb-4">
+                  <div className="inline-flex items-center gap-1 bg-stone-100 p-1.5 rounded-lg border border-stone-200">
                     <Button
                       variant="ghost"
-                      size="sm"
-                      className="hover:bg-emerald-50/hover:text-[#1B4332]"
+                      className="h-11 min-w-11 px-0 hover:bg-forest-tint hover:text-forest"
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      aria-label="Kurangi jumlah"
                     >
-                      -
+                      <span className="text-base font-black" aria-hidden="true">-</span>
                     </Button>
-                    <span className="flex-1 text-center font-bold text-sm">
+                    <span className="w-12 text-center font-bold text-base text-foreground">
                       {quantity}
                     </span>
                     <Button
                       variant="ghost"
-                      size="sm"
-                      className="hover:bg-emerald-50/hover:text-[#1B4332]"
+                      className="h-11 min-w-11 px-0 hover:bg-forest-tint hover:text-forest"
                       onClick={() => setQuantity(quantity + 1)}
+                      aria-label="Tambah jumlah"
                     >
-                      +
+                      <span className="text-base font-black" aria-hidden="true">+</span>
                     </Button>
                   </div>
-                  <div className="flex items-center gap-4 text-xs mb-3 py-0 rounded-lg ">
-                    {/* <CheckCircle className="w-4 h-4" /> */}
-                    {/* <span className="text-slate-300">|</span> */}
-                    {shopStock > 0 ? (
-                      <span className="text-slate-500">
-                        {" "}
-                        Tersedia {shopStock}{" "}
-                      </span>
-                    ) : (
-                      "Stok Habis"
-                    )}
-                  </div>
+                  {shopStock > 0 ? (
+                    <Badge className="mt-2 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">
+                      Tersedia {shopStock}
+                    </Badge>
+                  ) : (
+                    <Badge className="mt-2 bg-red-100 text-red-700 rounded-full text-xs font-bold">
+                      Stok Habis
+                    </Badge>
+                  )}
                 </div>
 
-                {/* <div
-                  className={`flex items-center gap-2 text-sm font-bold mb-4 px-3 py-2 rounded-lg ${
-                    shopStock > 0
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-red-50 text-red-700"
-                  }`}
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  {shopStock > 0
-                    ? `Stok Tersedia (${shopStock})`
-                    : "Stok Habis"}
-                </div> */}
-
-                <div className="flex justify-between mb-6">
-                  <span className="text-sm text-slate-500 font-medium">
+                <div className="flex justify-between items-baseline mb-5">
+                  <span className="text-sm text-stone-500 font-medium">
                     Subtotal
                   </span>
-                  <span className="font-bold text-lg text-[#FF6B35]">
+                  <span className="text-xl font-black text-forest">
                     Rp{(shopPrice * quantity).toLocaleString("id-ID")}
                   </span>
                 </div>
@@ -946,23 +930,23 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                     onClick={handleShopAddToCart}
                     variant="outline"
                     disabled={shopStock <= 0}
-                    className="w-full font-bold py-6 rounded-xl text-[#1B4332] border-[#1B4332] hover:bg-emerald-50 hover:text-[#1B4332] transition-all"
+                    className="w-full font-bold h-11 rounded-xl border-forest text-forest hover:bg-forest-tint hover:text-forest"
                   >
                     Masuk Keranjang
                   </Button>
                   <Button
                     onClick={handleShopBuyNow}
                     disabled={shopStock <= 0}
-                    className="w-full bg-[#1B4332] hover:bg-[#143326] font-bold py-6 rounded-xl shadow-lg transition-all"
+                    className="w-full bg-forest hover:bg-forest-dark font-bold h-11 rounded-xl shadow-sm"
                   >
                     Beli Sekarang
                   </Button>
                 </div>
 
-                <div className="mt-6 pt-4 border-t flex items-start gap-3">
-                  <ShieldCheck className="w-5 h-5 text-[#1B4332] shrink-0" />
-                  <p className="text-[11px] text-slate-500 leading-relaxed">
-                    Produk original berkualitas. Pembayaran aman.
+                <div className="mt-5 pt-4 border-t flex items-start gap-2.5">
+                  <ShieldCheck className="w-4 h-4 text-forest shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-stone-500 leading-relaxed">
+                    Produk original. Pembayaran aman via Midtrans.
                   </p>
                 </div>
               </Card>
@@ -971,10 +955,9 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
 
           {/* Detail Produk */}
           <div className="mt-6 px-4 md:px-0">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2 sticky top-0">
-                <span className="w-1 h-4 rounded-full bg-[#1B4332]" />
-                <h2 className="font-bold text-slate-800 text-sm uppercase tracking-wide">
+            <div className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-stone-100 flex items-center">
+                <h2 className="font-bold text-stone-800 text-sm uppercase tracking-wide">
                   Detail Produk
                 </h2>
               </div>
@@ -986,41 +969,41 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                 />
 
                 <div className="flex flex-wrap gap-2 pt-4">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-stone-100 text-stone-700">
                     {product.category || "Produk"}
                   </span>
                   {product.brand && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-stone-100 text-stone-700">
                       {product.brand}
                     </span>
                   )}
                   {product.material && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-stone-100 text-stone-700">
                       {product.material}
                     </span>
                   )}
                   {product.weight_kg != null && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-stone-100 text-stone-700">
                       {formatWeight(product.weight_kg)}
                     </span>
                   )}
                   {product.dimensions && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-stone-100 text-stone-700">
                       {product.dimensions}
                     </span>
                   )}
                 </div>
 
                 {shopSpecs.length > 0 && (
-                  <div className="pt-4 mt-4 border-t border-slate-100">
+                  <div className="pt-4 mt-4 border-t border-stone-100">
                     <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                       {shopSpecs.map(([key, value]) => (
                         <div key={key} className="flex items-center gap-2 text-sm">
-                          <span className="text-slate-400 capitalize shrink-0">
+                          <span className="text-stone-400 capitalize shrink-0">
                             {String(key).replace(/_/g, " ")}
                           </span>
-                          <span className="text-slate-300">-</span>
-                          <span className="font-medium text-slate-800 truncate">
+                          <span className="text-stone-300">-</span>
+                          <span className="font-medium text-stone-800 truncate">
                             {String(value)}
                           </span>
                         </div>
@@ -1055,70 +1038,64 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
             />
 
           {/* Produk-produk yang lainnya di bawah ulasan */}
-          <div className="mt-16 px-4 md:px-0">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="p-1.5 bg-emerald-100 rounded-md">
-                <TrendingUp className="w-4 h-4 text-[#1B4332]" />
+          {relatedProducts.length > 0 && (
+            <div className="mt-16 px-4 md:px-0">
+              <div className="flex items-center gap-2 mb-6">
+                <h2 className="text-lg font-bold text-stone-800">
+                  Pilihan Serupa di {product.category || product.equipment_categories?.name || "Toko"}
+                </h2>
               </div>
-              <h2 className="text-lg font-bold text-slate-800">
-                Pilihan Serupa di {product.equipment_categories?.name}
-              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                {relatedProducts.map((item) => (
+                  <ProductCard key={item.id} item={item} />
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-              {relatedProducts.map((item) => (
-                <ProductCard key={item.id} item={item} />
-              ))}
-            </div>
-          </div>
+          )}
 
-          <div className="mt-20 px-4 md:px-0">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="p-1.5 bg-orange-100 rounded-md">
-                <Flame className="w-4 h-4 text-[#FF6B35]" />
+          {popularProducts.length > 0 && (
+            <div className="mt-20 px-4 md:px-0">
+              <div className="flex items-center gap-2 mb-6">
+                <h2 className="text-lg font-bold text-stone-800">
+                  Sering Disewa Bareng
+                </h2>
               </div>
-              <h2 className="text-lg font-bold text-slate-800">
-                Sering Disewa Bareng
-              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                {popularProducts.map((item) => (
+                  <ProductCard key={item.id} item={item} />
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-              {popularProducts.length > 0
-                ? popularProducts.map((item) => (
-                    <ProductCard key={item.id} item={item} />
-                  ))
-                : [...Array(4)].map((_, i) => (
-                    <Skeleton key={i} className="aspect-[3/4] rounded-xl" />
-                  ))}
-            </div>
-          </div>
+          )}
 
           {/* Mobile fixed bottom bar for shop products */}
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-stone-200">
             <div className="px-4 py-3 flex flex-col gap-3">
               <div className="flex items-center justify-between bg-stone-50 p-3 rounded-xl border border-stone-100">
-                <div className="flex items-center gap-3 border rounded-lg p-1 bg-white">
+                <div className="flex items-center gap-1 border rounded-lg p-1 bg-white">
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="w-8 h-8 text-[#1B4332] font-black"
+                    className="w-11 h-11 min-w-11 px-0 text-forest font-black hover:bg-forest-tint"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    aria-label="Kurangi jumlah"
                   >
-                    -
+                    <span className="text-base" aria-hidden="true">-</span>
                   </Button>
-                  <span className="text-xs font-bold w-8 text-center text-slate-700">
+                  <span className="text-sm font-bold w-10 text-center text-stone-800">
                     {quantity}
                   </span>
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="w-8 h-8 text-[#1B4332] font-black"
+                    className="w-11 h-11 min-w-11 px-0 text-forest font-black hover:bg-forest-tint"
                     onClick={() => setQuantity(quantity + 1)}
+                    aria-label="Tambah jumlah"
                   >
-                    +
+                    <span className="text-base" aria-hidden="true">+</span>
                   </Button>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-slate-400">Subtotal</p>
-                  <p className="font-bold text-lg text-[#FF6B35]">
+                  <p className="text-xs text-stone-400">Subtotal</p>
+                  <p className="font-black text-lg text-forest">
                     Rp{(shopPrice * quantity).toLocaleString("id-ID")}
                   </p>
                 </div>
@@ -1128,14 +1105,14 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                   onClick={handleShopAddToCart}
                   disabled={shopStock <= 0}
                   variant="outline"
-                  className="flex-1 font-bold py-3 rounded-xl text-[#1B4332] border-[#1B4332] hover:bg-emerald-50 text-[12px]"
+                  className="flex-1 font-bold h-11 rounded-xl text-forest border-forest hover:bg-forest-tint text-[12px]"
                 >
                   Masuk Keranjang
                 </Button>
                 <Button
                   onClick={handleShopBuyNow}
                   disabled={shopStock <= 0}
-                  className="flex-1 bg-[#1B4332] hover:bg-[#143326] font-bold py-3 rounded-xl shadow-lg text-[12px] text-white"
+                  className="flex-1 bg-forest hover:bg-forest-dark font-bold h-11 rounded-xl shadow-sm text-[12px] text-white"
                 >
                   Beli Sekarang
                 </Button>
@@ -1166,7 +1143,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
 
     toast.success(`${product.name} masuk keranjang!`, {
       style: {
-        background: "#1B4332",
+background: "#0f766e",
         color: "#fff",
         borderRadius: "12px",
       },
@@ -1203,74 +1180,16 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
   );
 
   return (
-    <div className="min-h-screen bg-white pb-16 md:pb-16">
-      <nav className="bg-white hidden border-b border-slate-200 py-3 px-4 md:px-6">
-        <div className="max-w-7xl mx-auto flex items-center gap-2 text-[10px] md:text-xs font-medium text-slate-500 capitalize">
-          <Link
-            href="/catalog"
-            className="hover:text-[#1B4332] transition-colors"
-          >
-            Katalog
-          </Link>
-          <ChevronRight className="w-3 h-3 text-slate-300" />
-          <span className="text-slate-400">
-            {product.equipment_categories?.name}
-          </span>
-          <ChevronRight className="w-3 h-3 text-slate-300" />
-          <span className="text-[#1B4332] truncate font-bold">
-            {product.name}
-          </span>
-        </div>
-      </nav>
-
-      {/* Top nav: tombol kembali + breadcrumb. Bilahnya tetap full-bleed,
-          tapi isinya duduk di kontainer yang sama dengan konten di bawahnya
-          (`max-w-7xl mx-auto px-4`, sama seperti `md:px-4` pada blok produk).
-          Sebelumnya `ps-55` — 220px tetap, yang cuma kebetulan benar di satu
-          lebar layar dan meleset di semua yang lain. */}
-      <div className="hidden md:block bg-white top-0 md:z-0 shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-2 flex items-center gap-2">
-          <button
-            onClick={() => router.back()}
-            className="group flex items-center justify-center w-10 h-5 shrink-0"
-            aria-label="Kembali"
-          >
-            <ArrowLeft className="w-4 h-4 text-gray-900 group-hover:text-forest transition-colors" />
-          </button>
-
-          <Breadcrumb>
-            <BreadcrumbList className="text-[10px] md:text-xs font-bold tracking-[0.1em] text-gray-900">
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  href="/"
-                  className="hover:text-[#FF6B35] text-gray-900 transition-colors"
-                >
-                  Beranda /
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              {/* <BreadcrumbSeparator className="text-white/40" /> */}
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  href="/catalog_rental"
-                  className="hover:text-[#FF6B35] text-gray-900 transition-colors"
-                >
-                  Rental /
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbItem>
-                <BreadcrumbLink>
-                  <BreadcrumbPage className="text-[#FF6B35] font-extrabold">
-                    {product.name}
-                  </BreadcrumbPage>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
-      </div>
+    <div className="min-h-screen bg-white pb-28 md:pb-16">
+      <ProductTopBar
+        onBack={() => router.back()}
+        catalogHref="/catalog_rental"
+        category={product.equipment_categories?.name || "Rental"}
+        name={product.name}
+      />
 
       {/* MOBILE BOTTOM NAVIGATION */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-1">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[1]">
         {/* OVERLAY GELAP (Klik luar untuk menutup) */}
         {showSelection && (
           <div
@@ -1280,17 +1199,17 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
         )}
 
         {/* PANEL SELEKSI & TOMBOL */}
-        <div className="relative bg-white border-t shadow-[0_-10px_15px_rgba(0,0,0,0.1)]">
+        <div className="relative bg-white border-t shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
           {showSelection && (
-            <div className="p-4 border-b bg-slate-50/50 animate-in slide-in-from-bottom duration-300">
+            <div className="p-4 border-b bg-stone-50/50 animate-in slide-in-from-bottom duration-300">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-slate-800">
+                <h3 className="text-sm font-bold text-stone-800">
                   Atur Durasi Sewa
                 </h3>
               </div>
 
               {/* INFO PRODUK DENGAN FOTO */}
-              <div className="flex gap-4 items-center bg-white p-3 rounded-xl border border-slate-100 shadow-sm mb-3">
+              <div className="flex gap-4 items-center bg-white p-3 rounded-xl border border-stone-100 shadow-sm mb-3">
                 <div className="relative w-16 h-16 rounded-lg overflow-hidden border shrink-0">
                   <Image
                     loader={unsplashLoader}
@@ -1305,47 +1224,51 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                   />
                 </div>
                 <div className="flex-1 overflow-hidden">
-                  <h4 className="text-xs font-bold text-slate-800 truncate capitalize">
+                  <h4 className="text-xs font-bold text-stone-800 truncate capitalize">
                     {product.name}
                   </h4>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[10px] text-stone-400">
                     Rp{pricePerNight.toLocaleString("id-ID")} / hari
                   </p>
                 </div>
               </div>
 
               {/* INPUT DURASI & TOTAL */}
-              <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+              <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-stone-100 shadow-sm">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">
+                  <span className="text-[10px] font-bold text-stone-400 uppercase">
                     Total Biaya
                   </span>
-                  <span className="text-lg font-extrabold text-[#FF6B35]">
+                  <span className="text-lg font-extrabold text-forest">
                     Rp{(pricePerNight * quantity).toLocaleString("id-ID")}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-3 border rounded-lg p-1 bg-slate-50">
+                <div className="flex items-center gap-1 border rounded-lg p-1 bg-stone-50">
                   <button
-                    className="text-[#1B4332] font-black px-3 py-1"
+                    type="button"
+                    className="w-11 h-11 min-w-11 flex items-center justify-center text-forest font-black hover:bg-forest-tint rounded-lg"
+                    aria-label="Kurangi durasi"
                     onClick={(e) => {
                       e.stopPropagation(); // Mencegah klik tembus ke overlay
                       setQuantity(Math.max(1, quantity - 1));
                     }}
                   >
-                    -
+                    <span aria-hidden="true">-</span>
                   </button>
-                  <span className="text-xs font-bold w-12 text-center text-slate-700">
+                  <span className="text-xs font-bold w-12 text-center text-stone-800">
                     {quantity} Hari
                   </span>
                   <button
-                    className="text-[#1B4332] font-black px-3 py-1"
+                    type="button"
+                    className="w-11 h-11 min-w-11 flex items-center justify-center text-forest font-black hover:bg-forest-tint rounded-lg"
+                    aria-label="Tambah durasi"
                     onClick={(e) => {
                       e.stopPropagation(); // Mencegah klik tembus ke overlay
                       setQuantity(quantity + 1);
                     }}
                   >
-                    +
+                    <span aria-hidden="true">+</span>
                   </button>
                 </div>
               </div>
@@ -1357,7 +1280,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
             <Button
               asChild
               variant="outline"
-              className="flex-1 border-slate-200 text-slate-600 font-bold h-12 rounded-lg"
+              className="flex-1 border-stone-200 text-stone-600 font-bold h-12 rounded-lg"
             >
               <a
                 href={`https://wa.me/${branchPhone}?text=${encodeURIComponent(
@@ -1373,14 +1296,14 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
             {!showSelection ? (
               <Button
                 onClick={() => setShowSelection(true)}
-                className="flex-1 bg-[#1B4332] hover:bg-[#143326] font-bold h-12 rounded-lg text-white"
+                className="flex-1 bg-forest hover:bg-forest-dark font-bold h-12 rounded-xl text-white"
               >
                 Sewa Sekarang
               </Button>
             ) : (
               <Button
                 onClick={handleDirectBooking}
-                className="flex-1 bg-[#1B4332] hover:bg-[#143326] font-bold h-12 rounded-lg text-white shadow-lg"
+                className="flex-1 bg-forest hover:bg-forest-dark font-bold h-12 rounded-xl text-white shadow-sm"
               >
                 Konfirmasi Sewa
               </Button>
@@ -1389,7 +1312,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
         </div>
 
         {/* ketika click keranjang ada pop up dimasukkan ke keranjang! */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-1">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-[1]">
           {/* OVERLAY GELAP */}
           {showCart && (
             <div
@@ -1400,17 +1323,17 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
 
           {/* PANEL CART */}
           <div
-            className={`relative bg-white border-t rounded-t-2xl shadow-[0_-10px_15px_rgba(0,0,0,0.1)] transition-all duration-300 transform ${showCart ? "translate-y-0" : "translate-y-full"}`}
+            className={`relative bg-white border-t rounded-t-2xl shadow-[0_-8px_24px_rgba(15,23,42,0.08)] transition-all duration-300 transform ${showCart ? "translate-y-0" : "translate-y-full"}`}
           >
             {showCart && (
               <div className="p-6 space-y-6 animate-in slide-in-from-bottom duration-300">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-slate-800">
+                  <h3 className="text-sm font-bold text-stone-800">
                     Produk Ditambahkan ke Keranjang!
                   </h3>
                   <button
                     onClick={() => setShowCart(false)}
-                    className="p-1 bg-slate-100 rounded-full text-slate-400"
+                    className="p-1 bg-stone-100 rounded-full text-stone-400"
                   >
                     <X className="w-5 h-5 rotate-90" />
                   </button>
@@ -1418,7 +1341,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
 
                 <Button
                   asChild
-                  className="w-full bg-[#1B4332] hover:bg-[#143326] font-bold h-12 rounded-lg text-white shadow-lg"
+                  className="w-full bg-forest hover:bg-forest-dark font-bold h-12 rounded-lg text-white shadow-lg"
                 >
                   <Link href="/cart">Lihat Keranjang</Link>
                 </Button>
@@ -1429,8 +1352,8 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
       </div>
 
         <div className="max-w-7xl mx-auto md:px-4 pt-4 md:pt-8 lg:pt-12">
-        <div className="flex flex-col lg:grid lg:grid-cols-3 lg:gap-6">
-          <div className="bg-white md:rounded-xl overflow-hidden sticky md:top-24 shadow-sm border border-slate-100">
+        <div className="flex flex-col lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
+          <div className="bg-white md:rounded-xl overflow-hidden sticky md:top-24 shadow-sm border border-stone-100">
               <div className="relative aspect-square">
                 {allImages.length > 0 ? (
                   <Image
@@ -1455,7 +1378,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                       onClick={() => setSelectedImage(i)}
                       className={`w-20 h-20 border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${
                         selectedImage === i
-                          ? "border-[#1B4332] opacity-100"
+                          ? "border-forest opacity-100"
                           : "border-transparent opacity-50 hover:opacity-100"
                       }`}
                     >
@@ -1471,36 +1394,35 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                 </div>
               )}
             </div>
-          </div>
 
-          <div className="px-4 md:px-0 space-y-4">
-            <div className="bg-white p-6 rounded-xl shadow-sm space-y-3 border border-slate-100">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-[#FF6B35] font-bold text-2xl">
-                    Rp{pricePerNight.toLocaleString("id-ID")}
-                  </span>
-                  <span className="text-slate-400 text-sm">/ hari</span>
-                </div>
-              </div>
-              <h1 className="text-xl font-bold text-slate-800 capitalize leading-tight">
+          <div className="lg:col-span-1 px-4 md:px-0 space-y-4">
+            <div className="bg-white p-6 rounded-xl shadow-sm space-y-3 border border-stone-200">
+              <h1 className="text-2xl md:text-3xl font-black text-stone-900 capitalize leading-tight">
                 {product.name}
               </h1>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl md:text-3xl font-black text-forest">
+                  Rp{pricePerNight.toLocaleString("id-ID")}
+                </span>
+                <span className="text-sm text-stone-500">/ hari</span>
+              </div>
               <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-sm">
                 {ratingStats.total > 0 ? (
                   <>
-                    <span className="inline-flex items-center gap-1 font-semibold text-amber-600">
-                      <Star className="w-4 h-4 fill-current" />
+                    <span className="inline-flex items-center gap-1 font-semibold text-stone-700">
+                      <Star className="w-4 h-4 fill-warning" />
                       {ratingStats.average.toFixed(1)}
                     </span>
-                    <span className="text-slate-300">|</span>
-                    <span className="text-slate-500">
+                    <span className="text-stone-300">|</span>
+                    <span className="text-stone-500">
                       {ratingStats.total} Review
                     </span>
                   </>
                 ) : (
-                  <span className="text-slate-500">
-                    Tersewa {product.rental_count || "50"}+ kali
+                  <span className="text-stone-500">
+                    {product.rental_count
+                      ? `Tersewa ${product.rental_count}+ kali`
+                      : "Belum ada ulasan"}
                   </span>
                 )}
               </div>
@@ -1513,7 +1435,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                   className={`flex flex-1 items-center justify-center gap-2 rounded-lg border py-2.5 text-xs font-bold transition-colors ${
                     isWishlisted
                       ? "border-red-200 bg-red-50 text-red-600"
-                      : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                      : "border-stone-200 text-stone-600 hover:bg-stone-50"
                   }`}
                 >
                   <Heart
@@ -1524,7 +1446,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                 <button
                   type="button"
                   onClick={() => setShowShare(true)}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 py-2.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-stone-200 py-2.5 text-xs font-bold text-stone-600 transition-colors hover:bg-stone-50"
                 >
                   <Share2 className="w-4 h-4" />
                   Bagikan
@@ -1532,7 +1454,7 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
               </div>
             </div>
 
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-100">
                 <h2 className="font-bold mb-3 text-sm uppercase tracking-wide">
                   Detail & Spesifikasi
                 </h2>
@@ -1543,27 +1465,20 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                 />
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-400">Kategori</span>
-                  <span className="text-slate-300">-</span>
-                  <span className="font-medium text-slate-800">
+                  <span className="text-stone-400">Kategori</span>
+                  <span className="text-stone-300">-</span>
+                  <span className="font-medium text-stone-800">
                     {product.equipment_categories?.name}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-400">Kondisi</span>
-                  <span className="text-slate-300">-</span>
-                  <span className="font-medium text-slate-800">
-                    Sangat Layak (QC Passed)
                   </span>
                 </div>
                 {product.specs &&
                   Object.entries(product.specs).map(([key, value]) => (
                     <div key={key} className="flex items-center gap-2">
-                      <span className="text-slate-400 capitalize">
+                      <span className="text-stone-400 capitalize">
                         {key.replace(/_/g, " ")}
                       </span>
-                      <span className="text-slate-300">-</span>
-                      <span className="font-medium text-slate-800">
+                      <span className="text-stone-300">-</span>
+                      <span className="font-medium text-stone-800">
                         {String(value)}
                       </span>
                     </div>
@@ -1574,37 +1489,39 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
 
           <div className="hidden lg:block">
             <Card className="p-5 sticky top-24 rounded-xl shadow-md border-none">
-              <h3 className="font-bold mb-4 text-slate-800 text-sm">
+              <h3 className="font-bold mb-4 text-stone-800 text-sm">
                 Atur Durasi Sewa
               </h3>
 
-              <div className="flex items-center gap-4 mb-6 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="hover:bg-white"
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                >
-                  -
-                </Button>
-                <span className="flex-1 text-center font-bold text-sm">
-                  {quantity} Hari
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="hover:bg-white"
-                  onClick={() => setQuantity(quantity + 1)}
-                >
-                  +
-                </Button>
+              <div className="mb-6">
+                <div className="inline-flex items-center gap-1 bg-stone-100 p-1.5 rounded-lg border border-stone-200">
+                  <Button
+                    variant="ghost"
+                    className="h-11 min-w-11 px-0 hover:bg-forest-tint hover:text-forest"
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    aria-label="Kurangi durasi"
+                  >
+                    <span className="text-base font-black" aria-hidden="true">-</span>
+                  </Button>
+                  <span className="flex-1 min-w-16 text-center font-bold text-base">
+                    {quantity} Hari
+                  </span>
+                  <Button
+                    variant="ghost"
+                    className="h-11 min-w-11 px-0 hover:bg-forest-tint hover:text-forest"
+                    onClick={() => setQuantity(quantity + 1)}
+                    aria-label="Tambah durasi"
+                  >
+                    <span className="text-base font-black" aria-hidden="true">+</span>
+                  </Button>
+                </div>
               </div>
 
-              <div className="flex justify-between mb-6">
-                <span className="text-sm text-slate-500 font-medium">
+              <div className="flex justify-between items-baseline mb-6">
+                <span className="text-sm text-stone-500 font-medium">
                   Subtotal
                 </span>
-                <span className="font-bold text-lg text-[#FF6B35]">
+                <span className="text-xl font-black text-forest">
                   Rp{(pricePerNight * quantity).toLocaleString("id-ID")}
                 </span>
               </div>
@@ -1613,13 +1530,13 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                 <Button
                   onClick={handleAddToCart}
                   variant="outline"
-                  className="w-full font-bold py-6 rounded-xl text-[#1B4332] border-[#1B4332] hover:bg-emerald-50 hover:text-[#1B4332] transition-all"
+                  className="w-full font-bold h-11 rounded-xl border-forest text-forest hover:bg-forest-tint hover:text-forest"
                 >
                   Masuk Keranjang
                 </Button>
                 <Button
                   onClick={handleDirectBooking}
-                  className="w-full bg-[#1B4332] hover:bg-[#143326] font-bold py-6 rounded-xl shadow-lg transition-all"
+                  className="w-full bg-forest hover:bg-forest-dark font-bold h-11 rounded-xl shadow-sm"
                 >
                   Sewa Langsung
                 </Button>
@@ -1633,9 +1550,9 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                   aria-pressed={isWishlisted}
                 >
                   <Heart
-                    className={`w-5 h-5 transition-colors ${isWishlisted ? "fill-red-500 text-red-500" : "text-slate-400 group-hover:text-slate-600"}`}
+                    className={`w-5 h-5 transition-colors ${isWishlisted ? "fill-red-500 text-red-500" : "text-stone-400 group-hover:text-stone-600"}`}
                   />
-                  <span className="text-[10px] font-bold text-slate-500">
+                  <span className="text-[10px] font-bold text-stone-500">
                     Wishlist
                   </span>
                 </button>
@@ -1644,8 +1561,8 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                   onClick={() => setShowShare(true)}
                   type="button"
                 >
-                  <Share2 className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
-                  <span className="text-[10px] font-bold text-slate-500">
+                  <Share2 className="w-5 h-5 text-stone-400 group-hover:text-stone-600 transition-colors" />
+                  <span className="text-[10px] font-bold text-stone-500">
                     Bagikan
                   </span>
                 </button>
@@ -1679,9 +1596,9 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
         <div className="mt-16 px-4 md:px-0">
           <div className="flex items-center gap-2 mb-6">
             <div className="p-1.5 bg-emerald-100 rounded-md">
-              <TrendingUp className="w-4 h-4 text-[#1B4332]" />
+              <TrendingUp className="w-4 h-4 text-forest" />
             </div>
-            <h2 className="text-lg font-bold text-slate-800">
+            <h2 className="text-lg font-bold text-stone-800">
               Pilihan Serupa di {product.equipment_categories?.name}
             </h2>
           </div>
@@ -1693,21 +1610,18 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
         </div>
 
         <div className="mt-20 px-4 md:px-0">
-          <div className="flex items-center gap-2 mb-6">
-            <div className="p-1.5 bg-orange-100 rounded-md">
-              <Flame className="w-4 h-4 text-[#FF6B35]" />
+            <div className="flex items-center gap-2 mb-6">
+              <h2 className="text-lg font-bold text-stone-800">
+                Sering Disewa Bareng
+              </h2>
             </div>
-            <h2 className="text-lg font-bold text-slate-800">
-              Sering Disewa Bareng
-            </h2>
-          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             {popularProducts.length > 0
               ? popularProducts.map((item) => (
                   <ProductCard key={item.id} item={item} />
                 ))
               : [...Array(4)].map((_, i) => (
-                  <Skeleton key={i} className="aspect-[3/4] rounded-xl" />
+                  <Skeleton key={i} className="aspect-3/4 rounded-xl" />
                 ))}
           </div>
         </div>
@@ -1726,16 +1640,16 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
               <div className="p-6 space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <h3 className="text-lg font-bold text-slate-800">
+                    <h3 className="text-lg font-bold text-stone-800">
                       Bagikan Produk
                     </h3>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-stone-500">
                       Share ke teman dan keluargamu!
                     </p>
                   </div>
                   <button
                     onClick={() => setShowShare(false)}
-                    className="p-2 bg-slate-100 rounded-full text-slate-400 hover:bg-slate-200 transition-colors"
+                    className="p-2 bg-stone-100 rounded-full text-stone-400 hover:bg-stone-200 transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -1765,13 +1679,6 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                     productName={product?.name || "Produk"}
                   />
                   <ShareOption
-                    icon="Messenger"
-                    label="Messenger"
-                    color="bg-blue-500"
-                    productUrl={product?.id ? `/product/${product.id}` : ""}
-                    productName={product?.name || "Produk"}
-                  />
-                  <ShareOption
                     icon="Telegram"
                     label="Telegram"
                     color="bg-sky-500"
@@ -1788,14 +1695,14 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                   <ShareOption
                     icon="Copy"
                     label="Salin Link"
-                    color="bg-slate-500"
+                    color="bg-stone-500"
                     productUrl={product?.id ? `/product/${product.id}` : ""}
                     productName={product?.name || "Produk"}
                   />
                   <ShareOption
                     icon="More"
                     label="Lainnya"
-                    color="bg-slate-800"
+                    color="bg-stone-800"
                     productUrl={product?.id ? `/product/${product.id}` : ""}
                     productName={product?.name || "Produk"}
                   />
@@ -1806,20 +1713,20 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
 
           {/* PANEL SHARE - Mobile Bottom */}
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-[70]">
-            <div className="relative bg-white border-t rounded-t-2xl shadow-[0_-10px_15px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom duration-300">
+            <div className="relative bg-white border-t rounded-t-2xl shadow-[0_-8px_24px_rgba(15,23,42,0.08)] animate-in slide-in-from-bottom duration-300">
               <div className="p-6 space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <h3 className="text-sm font-bold text-slate-800">
+                    <h3 className="text-sm font-bold text-stone-800">
                       Bagikan Produk
                     </h3>
-                    <p className="text-[10px] text-slate-500 font-medium">
+                    <p className="text-[10px] text-stone-500 font-medium">
                       Share ke teman dan keluargamu!
                     </p>
                   </div>
                   <button
                     onClick={() => setShowShare(false)}
-                    className="p-1 bg-slate-100 rounded-full text-slate-400"
+                    className="p-1 bg-stone-100 rounded-full text-stone-400"
                   >
                     <X className="w-5 h-5 rotate-90" />
                   </button>
@@ -1849,13 +1756,6 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                     productName={product?.name || "Produk"}
                   />
                   <ShareOption
-                    icon="Messenger"
-                    label="Messenger"
-                    color="bg-blue-500"
-                    productUrl={product?.id ? `/product/${product.id}` : ""}
-                    productName={product?.name || "Produk"}
-                  />
-                  <ShareOption
                     icon="Telegram"
                     label="Telegram"
                     color="bg-sky-500"
@@ -1872,14 +1772,14 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
                   <ShareOption
                     icon="Copy"
                     label="Salin Link"
-                    color="bg-slate-500"
+                    color="bg-stone-500"
                     productUrl={product?.id ? `/product/${product.id}` : ""}
                     productName={product?.name || "Produk"}
                   />
                   <ShareOption
                     icon="More"
                     label="Lainnya"
-                    color="bg-slate-800"
+                    color="bg-stone-800"
                     productUrl={product?.id ? `/product/${product.id}` : ""}
                     productName={product?.name || "Produk"}
                   />
@@ -1890,9 +1790,45 @@ const filteredReviews = getFilteredReviews(reviews, activeFilter);
         </>
       )}
 
+        </div>
+
       <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} />
 
     </div>
+  );
+}function ProductTopBar({
+  onBack,
+  catalogHref,
+  category,
+  name,
+}: {
+  onBack: () => void;
+  catalogHref: string;
+  category: string;
+  name: string;
+}) {
+  return (
+    <nav className="sticky top-16 md:top-20 z-40 bg-white border-b border-stone-200">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-12 py-3 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onBack}
+          className="group flex items-center justify-center w-9 h-9 shrink-0 rounded-lg hover:bg-stone-100 transition-colors"
+          aria-label="Kembali"
+        >
+          <ArrowLeft className="w-4 h-4 text-stone-800 group-hover:text-forest transition-colors" />
+        </button>
+        <div className="flex items-center gap-1.5 text-[10px] md:text-xs font-medium text-stone-500 capitalize truncate">
+          <Link href={catalogHref} className="hover:text-forest transition-colors truncate">
+            Katalog
+          </Link>
+          <ChevronRight className="w-3 h-3 text-stone-300 shrink-0" />
+          <span className="text-stone-400 truncate">{category}</span>
+          <ChevronRight className="w-3 h-3 text-stone-300 shrink-0" />
+          <span className="text-forest font-bold truncate">{name}</span>
+        </div>
+      </div>
+    </nav>
   );
 }
 
@@ -1950,12 +1886,6 @@ function ShareOption({
         break;
 
       case "Messenger":
-        window.open(
-          `https://www.facebook.com/dialog/send?link=${encodeURIComponent(fullUrl)}&app_id=YOUR_APP_ID`,
-          "_blank",
-        );
-        break;
-
       case "Telegram":
         window.open(
           `https://t.me/share/url?url=${encodeURIComponent(fullUrl)}&text=${encodeURIComponent(shareText)}`,
@@ -2045,7 +1975,7 @@ function ShareOption({
       >
         {getIcon()}
       </div>
-      <span className="text-[10px] font-bold text-slate-600">{label}</span>
+      <span className="text-[10px] font-bold text-stone-600">{label}</span>
     </button>
   );
 }
@@ -2053,7 +1983,7 @@ function ShareOption({
 // Function to calculate rating from reviews (excluding replies)
 const calculateRatingFromReviews = (reviews: any[]) => {
   if (!reviews || reviews.length === 0) {
-    return { average: 4.9, count: 0 };
+    return { average: 0, count: 0 };
   }
 
   // Only count reviews that are not replies (exclude @mention replies)
@@ -2113,12 +2043,12 @@ function ProductCard({ item }: { item: any }) {
   // Calculate rating from reviews if available
   const rating = item.reviews
     ? calculateRatingFromReviews(item.reviews)
-    : { average: item.average_rating || 4.9, count: 0 };
+    : { average: Number(item.average_rating) || 0, count: 0 };
 
   return (
     <Link href={`/product/${item.id}`} className="group">
       <Card className="h-full border-none shadow-sm hover:shadow-md transition-all rounded-xl overflow-hidden bg-white">
-        <div className="relative aspect-square overflow-hidden bg-slate-50">
+        <div className="relative aspect-square overflow-hidden bg-stone-50">
           {imageSrc ? (
             <Image
               src={imageSrc}
@@ -2128,30 +2058,37 @@ function ProductCard({ item }: { item: any }) {
               className="object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 text-slate-400">
+            <div className="w-full h-full flex flex-col items-center justify-center bg-stone-100 text-stone-400">
               <span className="text-2xl mb-1">🏕️</span>
               <span className="text-[10px] font-medium">No Image</span>
             </div>
           )}
         </div>
         <div className="p-3 space-y-2">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+          <p className="text-[10px] font-bold text-stone-400 uppercase tracking-tighter">
             {item.equipment_categories?.name || "Outdoor"}
           </p>
-          <h3 className="text-sm font-medium text-slate-800 line-clamp-2 min-h-[40px] leading-snug">
+          <h3 className="text-sm font-medium text-stone-800 line-clamp-2 min-h-10 leading-snug">
             {item.name}
           </h3>
-          <p className="text-[#FF6B35] font-bold text-base">
+          <p className="text-forest font-black text-lg">
             Rp{Number(item.price_per_night || 0).toLocaleString("id-ID")}
           </p>
-          <div className="flex items-center gap-1 pt-1">
-            <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-            <span className="text-[10px] text-slate-400 font-medium">
-              {rating.average.toFixed(1)} |{" "}
-              {rating.count > 0
-                ? `${rating.count} Review`
-                : `${item.rental_count || "50"}+ Tersewa`}
-            </span>
+          <div className="flex items-center gap-2 pt-1">
+            {(rating.count > 0 || rating.average > 0) && (
+              <>
+                <Star className="w-3 h-3 fill-warning" />
+                <span className="text-[10px] text-stone-600 font-medium">
+                  {rating.average.toFixed(1)}
+                  {rating.count > 0 ? ` | ${rating.count} Review` : ""}
+                </span>
+              </>
+            )}
+            {item.rental_count ? (
+              <span className="text-[10px] text-stone-600 font-medium">
+                {item.rental_count}+ Tersewa
+              </span>
+            ) : null}
           </div>
         </div>
       </Card>
@@ -2161,6 +2098,7 @@ function ProductCard({ item }: { item: any }) {
 
 /**
  * Description with hide/show toggle. Truncates to 3 lines by default.
+ * Konten dari Quill editor tersimpan sebagai HTML; konten lama sebagai teks/Markdown.
  */
 function DescriptionContent({
   text,
@@ -2171,16 +2109,53 @@ function DescriptionContent({
   isExpanded: boolean;
   onToggle: () => void;
 }) {
+  const plain = text
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const isHtml = /^\s*(<([a-z][\w-]*)\b[^>]*>|<!--)/i.test(text);
+
+  if (isHtml) {
+    return (
+      <div className="space-y-3">
+        <div
+          className={`rte-content ql-editor text-sm leading-relaxed text-stone-600 mb-2 ${
+            isExpanded ? "" : "max-h-24 overflow-hidden"
+          }`}
+          dangerouslySetInnerHTML={{ __html: text }}
+        />
+        {plain.length > 120 && (
+          <button
+            type="button"
+            onClick={onToggle}
+            className="text-xs font-bold text-forest hover:text-forest-dark underline underline-offset-4 transition-colors flex items-center gap-1"
+          >
+            {isExpanded ? (
+              <>
+                Tampilkan lebih sedikit <X className="w-3 h-3" />
+              </>
+            ) : (
+              <>
+                Lihat semua <ChevronRight className="w-3 h-3" />
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
-      <p className={`text-sm text-slate-600 leading-relaxed mb-2 ${isExpanded ? "line-clamp-none max-h-none" : "line-clamp-3"}`}>
+      <p className={`text-sm text-stone-600 leading-relaxed mb-2 ${isExpanded ? "line-clamp-none max-h-none" : "line-clamp-3"}`}>
         {text}
       </p>
       {text.length > 120 && (
         <button
           type="button"
           onClick={onToggle}
-          className="text-xs font-bold text-[#1B4332] hover:text-[#143326] underline underline-offset-4 transition-colors flex items-center gap-1"
+          className="text-xs font-bold text-forest hover:text-forest-dark underline underline-offset-4 transition-colors flex items-center gap-1"
         >
           {isExpanded ? (
             <>

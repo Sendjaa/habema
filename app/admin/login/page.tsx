@@ -121,8 +121,11 @@ export default function AdminLogin() {
       setOtpStep(true);
       setOtpError(null);
       setTurnstileToken("");
-      setDevOtp(typeof data.devOtp === 'string' ? data.devOtp : null);
-      toast.success("Kode OTP telah dikirim ke email admin");
+      const code = typeof data.devOtp === 'string' ? data.devOtp : null;
+      setDevOtp(code);
+      toast.success(code
+        ? "Email OTP gagal terkirim — kode ditampilkan di halaman ini (dev)"
+        : "Kode OTP telah dikirim ke email admin");
     } catch (error: any) {
       toast.error(error.message || "Gagal memproses login");
     } finally {
@@ -237,8 +240,11 @@ export default function AdminLogin() {
       if (!res.ok) {
         throw new Error(data.error || "Gagal mengirim ulang OTP");
       }
-      toast.success("Kode OTP telah dikirim ulang");
-      setDevOtp(typeof data.devOtp === 'string' ? data.devOtp : null);
+      const code = typeof data.devOtp === 'string' ? data.devOtp : null;
+      toast.success(code
+        ? "Email OTP gagal terkirim — kode ditampilkan di halaman ini (dev)"
+        : "Kode OTP telah dikirim ulang");
+      setDevOtp(code);
     } catch (err: any) {
       setOtpError(err.message || "Gagal mengirim ulang");
     }

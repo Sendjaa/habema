@@ -119,6 +119,8 @@ export function ShippingSelector({
     }
   }, [method, selectedShipping, selectedDestination])
 
+  const cleanSep = (s: string) => (s ? s.replace(/—/g, ', ') : s)
+
   const formatCost = (cost: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(cost)
 
@@ -131,12 +133,12 @@ export function ShippingSelector({
           onClick={() => setMethod('pickup')}
           className={`p-4 rounded-xl border-2 text-left transition-all ${
             method === 'pickup'
-              ? 'border-emerald-600 bg-emerald-50/60'
+              ? 'border-forest bg-forest-tint/60'
               : 'border-stone-200 bg-white hover:border-stone-300'
           }`}
         >
           <div className="flex items-center gap-3">
-            <Store className={`w-5 h-5 ${method === 'pickup' ? 'text-emerald-600' : 'text-stone-400'}`} />
+            <Store className={`w-5 h-5 ${method === 'pickup' ? 'text-forest' : 'text-stone-400'}`} />
             <div>
               <p className="text-sm font-bold text-slate-800">Ambil ke Store</p>
               <p className="text-[10px] text-stone-500">Ambil langsung di store</p>
@@ -149,12 +151,12 @@ export function ShippingSelector({
           onClick={() => setMethod('shipping')}
           className={`p-4 rounded-xl border-2 text-left transition-all ${
             method === 'shipping'
-              ? 'border-emerald-600 bg-emerald-50/60'
+              ? 'border-forest bg-forest-tint/60'
               : 'border-stone-200 bg-white hover:border-stone-300'
           }`}
         >
           <div className="flex items-center gap-3">
-            <Truck className={`w-5 h-5 ${method === 'shipping' ? 'text-emerald-600' : 'text-stone-400'}`} />
+            <Truck className={`w-5 h-5 ${method === 'shipping' ? 'text-forest' : 'text-stone-400'}`} />
             <div>
               <p className="text-sm font-bold text-slate-800">Pilih Metode Pengiriman</p>
               <p className="text-[10px] text-stone-500">via ekspedisi (JNE, J&T, dll)</p>
@@ -179,7 +181,7 @@ export function ShippingSelector({
                   onChange={(e) => setDestinationQuery(e.target.value)}
                   onFocus={() => setDestinationsOpen(true)}
                   placeholder="Kota / kabupaten (mis. Bandung)"
-                  className="w-full h-10 pl-9 pr-4 rounded-xl border border-stone-200 focus:border-[#1B4332] focus:ring-1 focus:ring-[#1B4332] text-sm outline-none"
+                  className="w-full h-10 pl-9 pr-4 rounded-xl border border-stone-200 focus:border-forest focus:ring-1 focus:ring-forest text-sm outline-none"
                 />
                 {searchDestinationsError && (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-red-600">{searchDestinationsError}</span>
@@ -192,10 +194,10 @@ export function ShippingSelector({
                       key={dest.id}
                       type="button"
                       onClick={() => selectDestination(dest)}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-emerald-50 transition-colors"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-forest-tint transition-colors"
                     >
                       <div className="font-medium text-slate-800">{dest.label}</div>
-                      <div className="text-[10px] text-stone-500">{dest.city_name}, {dest.province_name}</div>
+                      <div className="text-[10px] text-stone-500">{cleanSep(dest.city_name)}, {dest.province_name}</div>
                     </button>
                   ))}
                 </div>
@@ -204,7 +206,7 @@ export function ShippingSelector({
                 <div className="py-2 text-center text-xs text-stone-400">Tujuan tidak ditemukan</div>
               )}
               {selectedDestination && (
-                <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50/60 rounded-xl px-3 py-2 border border-emerald-100">
+                <div className="flex items-center gap-2 text-xs text-forest bg-forest-tint/60 rounded-xl px-3 py-2 border border-forest-tint">
                   <span className="font-semibold">Tujuan:</span> {selectedDestination.label}
                 </div>
               )}
@@ -226,22 +228,22 @@ export function ShippingSelector({
                       className={`w-full p-3 rounded-xl border-2 text-left transition-all ${
                         selectedShipping?.courierCode === opt.courierCode &&
                         selectedShipping?.service === opt.service
-                          ? 'border-emerald-600 bg-emerald-50/60'
-                          : 'border-stone-200 bg-white hover:border-stone-300'
+? 'border-forest bg-forest-tint/60'
+              : 'border-stone-200 bg-white hover:border-stone-300'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <Package className={`w-4 h-4 ${
-                            selectedShipping?.courierCode === opt.courierCode ? 'text-emerald-600' : 'text-stone-400'
+                            selectedShipping?.courierCode === opt.courierCode ? 'text-forest' : 'text-stone-400'
                           }`} />
                           <div>
                             <p className="text-sm font-bold text-slate-800">{opt.courierName}</p>
-                            <p className="text-[10px] text-stone-500">{opt.service} — {opt.description}</p>
+                            <p className="text-[10px] text-stone-500">{cleanSep(opt.service)}, {opt.description}</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-bold text-emerald-700">{formatCost(opt.cost)}</p>
+                          <p className="text-sm font-bold text-forest">{formatCost(opt.cost)}</p>
                           <p className="text-[10px] text-stone-500">{opt.etd}</p>
                         </div>
                       </div>

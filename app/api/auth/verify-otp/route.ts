@@ -53,6 +53,7 @@ export async function POST(req: Request) {
       });
 
       if (signInError) {
+        console.error('[auth/verify-otp] signInWithPassword gagal:', signInError.message);
         return NextResponse.json({ error: 'Gagal membuat sesi. Silakan login ulang.' }, { status: 500 });
       }
       sessionData = signInData;
@@ -66,19 +67,24 @@ export async function POST(req: Request) {
         email: normalizedEmail,
       });
 
-      const token = linkData?.properties?.hashed_token;
+      // GoTrue hanya menerima email_otp (bukan hashed_token) dengan type
+      // 'email' untuk menukar magic link menjadi sesi di server. hashed_token
+      // + 'magiclink' selalu ditolak dengan otp_expired.
+      const token = linkData?.properties?.email_otp;
 
       if (linkError || !token) {
+        console.error('[auth/verify-otp] generateLink gagal:', linkError?.message ?? 'email_otp kosong');
         return NextResponse.json({ error: 'Gagal membuat sesi. Silakan login ulang.' }, { status: 500 });
       }
 
       const { data, error: verifyError } = await supabaseAdmin.auth.verifyOtp({
         email: normalizedEmail,
         token,
-        type: 'magiclink',
+        type: 'email',
       });
 
       if (verifyError || !data?.session) {
+        console.error('[auth/verify-otp] verifyOtp gagal:', verifyError?.message ?? 'session kosong');
         return NextResponse.json({ error: 'Gagal membuat sesi. Silakan login ulang.' }, { status: 500 });
       }
       sessionData = data;

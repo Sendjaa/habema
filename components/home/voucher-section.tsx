@@ -145,7 +145,7 @@ export function VoucherSection() {
 
   return (
     <section className="py-8 md:py-12 lg:py-16">
-      <div className="max-w-7xl mx-auto px-4 md:px-6">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
         <div className="space-y-6 flex flex-col">
           <div>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold font-sans text-stone-900 tracking-tighter leading-[0.9]">
