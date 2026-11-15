@@ -6,13 +6,13 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { and, arrayContains, asc, desc, eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { activityTiles, bundles, equipment, shopProducts } from '@/lib/db/schema'
+import { bundles, equipment, shopProducts } from '@/lib/db/schema'
 import {
   defaultActivitySections,
-  fallbackActivityImage,
   getActivity,
   type ActivitySection,
 } from '@/lib/activities'
+import { ActivitySectionTabs } from '@/components/kegiatan/activity-section-tabs'
 
 /**
  * Halaman kegiatan — satu tempat untuk "saya mau <kegiatan>, butuh apa saja?".
@@ -44,12 +44,7 @@ async function load(slug: string) {
 
   const db = getDb()
 
-  const [tileRows, gearRows, productRows, bundleRows] = await Promise.all([
-    db
-      .select({ imageUrl: activityTiles.imageUrl, imageAlt: activityTiles.imageAlt })
-      .from(activityTiles)
-      .where(and(eq(activityTiles.slug, slug), eq(activityTiles.isActive, true)))
-      .limit(1),
+  const [gearRows, productRows, bundleRows] = await Promise.all([
     db
       .select({
         id: equipment.id,
@@ -110,12 +105,8 @@ async function load(slug: string) {
       .limit(3),
   ])
 
-  const tile = tileRows[0]
-
   return {
     activity,
-    heroImage: tile?.imageUrl || activity.image || fallbackActivityImage,
-    heroAlt: tile?.imageAlt ?? null,
     gear: gearRows.filter((g) => g.id && g.name),
     products: productRows.filter((p) => p.name),
     packageBundles: bundleRows.filter((b) => b.id && b.name),
@@ -144,11 +135,11 @@ export async function generateMetadata({
 function SectionHeading({ kicker, title, note }: { kicker: string; title: string; note: string }) {
   return (
     <>
-      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-gold">{kicker}</p>
+      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-orange-600">{kicker}</p>
       <h2 className="mt-2 font-sans text-2xl md:text-4xl lg:text-6xl font-bold uppercase tracking-tight text-stone-900">
         {title}
       </h2>
-      <p className="mt-2 text-sm text-muted-foreground max-w-2xl">{note}</p>
+      <p className="mt-2 text-sm text-stone-500 max-w-2xl">{note}</p>
     </>
   )
 }
@@ -158,7 +149,7 @@ function SectionCta({ href, children }: { href: string; children: ReactNode }) {
     <div className="mt-6">
       <Link
         href={href}
-        className="inline-flex items-center justify-center px-6 h-12 rounded-xl font-bold text-forest bg-card border border-border hover:border-forest transition-colors"
+        className="inline-flex items-center justify-center px-6 h-12 rounded-xl font-bold text-orange-700 bg-white border border-orange-200 hover:border-orange-500 hover:bg-orange-50 transition-colors"
       >
         {children}
       </Link>
@@ -182,7 +173,7 @@ export default async function ActivityPage({
 
   if (!data) notFound()
 
-  const { activity, heroImage, heroAlt, gear, products, packageBundles } = data
+  const { activity, gear, products, packageBundles } = data
   const order = activity.sections ?? defaultActivitySections
   // Kegiatan yang katalognya keberangkatan memakai istilah "jadwal", bukan
   // "paket rombongan", dan menghitung harganya per orang.
@@ -204,7 +195,7 @@ export default async function ActivityPage({
                 <li key={item.id}>
                   <Link
                     href={`/product/${item.id}`}
-                    className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:shadow-md"
+                    className="group flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition-all hover:border-orange-300 hover:shadow-md"
                   >
                     <div className="relative aspect-square bg-stone-100">
                       {item.imageUrl ? (
@@ -216,14 +207,14 @@ export default async function ActivityPage({
                           className="object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       ) : (
-                        <span className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground">
+                        <span className="absolute inset-0 flex items-center justify-center text-[11px] text-stone-500">
                           Tanpa foto
                         </span>
                       )}
                     </div>
                     <div className="flex flex-1 flex-col p-3">
                       {item.brand && (
-                        <p className="text-[9px] uppercase tracking-widest text-muted-foreground">
+                        <p className="text-[9px] uppercase tracking-widest text-stone-500">
                           {item.brand}
                         </p>
                       )}
@@ -231,10 +222,10 @@ export default async function ActivityPage({
                         {item.name}
                       </h3>
                       <div className="mt-auto pt-2">
-                        <p className="text-sm font-black text-forest">
+                        <p className="text-sm font-black text-orange-700">
                           {rupiah(item.isPromo ? item.promoPricePerNight : item.pricePerNight)}
                         </p>
-                        <p className="text-[10px] text-muted-foreground">/ malam</p>
+                        <p className="text-[10px] text-stone-500">/ malam</p>
                       </div>
                     </div>
                   </Link>
@@ -251,7 +242,7 @@ export default async function ActivityPage({
 
     products:
       products.length > 0 ? (
-        <section className="border-t border-border py-12 md:py-16 bg-cream-dark">
+        <section className="border-t border-orange-100 py-12 md:py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <SectionHeading
               kicker="Perlengkapan pribadi"
@@ -264,7 +255,7 @@ export default async function ActivityPage({
                 <li key={item.id}>
                   <Link
                     href={`/product/${item.id}`}
-                    className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:shadow-md"
+                    className="group flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition-all hover:border-orange-300 hover:shadow-md"
                   >
                     <div className="relative aspect-square bg-stone-100">
                       {item.imageUrl ? (
@@ -276,14 +267,14 @@ export default async function ActivityPage({
                           className="object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       ) : (
-                        <span className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground">
+                        <span className="absolute inset-0 flex items-center justify-center text-[11px] text-stone-500">
                           Tanpa foto
                         </span>
                       )}
                     </div>
                     <div className="flex flex-1 flex-col p-3">
                       {item.brand && (
-                        <p className="text-[9px] uppercase tracking-widest text-muted-foreground">
+                        <p className="text-[9px] uppercase tracking-widest text-stone-500">
                           {item.brand}
                         </p>
                       )}
@@ -291,9 +282,9 @@ export default async function ActivityPage({
                         {item.name}
                       </h3>
                       <div className="mt-auto pt-2">
-                        <p className="text-sm font-black text-forest">{rupiah(item.price)}</p>
+                        <p className="text-sm font-black text-orange-700">{rupiah(item.price)}</p>
                         {item.originalPrice && Number(item.originalPrice) > Number(item.price) && (
-                          <p className="text-[10px] text-muted-foreground line-through">
+                          <p className="text-[10px] text-stone-500 line-through">
                             {rupiah(item.originalPrice)}
                           </p>
                         )}
@@ -328,14 +319,14 @@ export default async function ActivityPage({
                 <li key={bundle.id}>
                   <Link
                     href={`/packages/${bundle.id}`}
-                    className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-all hover:shadow-md"
+                    className="flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-5 shadow-sm transition-all hover:border-orange-300 hover:shadow-md"
                   >
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-bold uppercase tracking-wider text-forest">
+                      <span className="text-xs font-bold uppercase tracking-wider text-orange-700">
                         {bundle.targetAudience}
                       </span>
                       {bundle.paxMin != null && (
-                        <span className="text-[11px] text-muted-foreground">
+                        <span className="text-[11px] text-stone-500">
                           {bundle.paxMax != null && bundle.paxMax !== bundle.paxMin
                             ? `${bundle.paxMin}–${bundle.paxMax} orang`
                             : `${bundle.paxMin} orang`}
@@ -346,15 +337,15 @@ export default async function ActivityPage({
                       {bundle.name}
                     </h3>
                     {bundle.description && (
-                      <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+                      <p className="mt-2 line-clamp-2 text-sm text-stone-500">
                         {bundle.description}
                       </p>
                     )}
                     <div className="mt-4 flex items-baseline gap-2">
-                      <span className="text-xl font-black text-forest">
+                      <span className="text-xl font-black text-orange-700">
                         {rupiah(bundle.bundlePrice)}
                       </span>
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="text-[11px] text-stone-500">
                         {packagesLead ? '/ orang' : '/ paket / malam'}
                       </span>
                     </div>
@@ -371,72 +362,66 @@ export default async function ActivityPage({
       ) : null,
   }
 
-  const rendered = order
-    .map((key) => sections[key])
-    .filter((node): node is ReactNode => node !== null)
+  const sectionMeta: Record<ActivitySection, { label: string; count: number }> = {
+    gear: { label: 'Alat Sewa', count: gear.length },
+    products: { label: 'Perlengkapan', count: products.length },
+    packages: { label: packagesLead ? 'Jadwal' : 'Paket', count: packageBundles.length },
+  }
+
+  const availableSections = order.flatMap((key) => {
+    const node = sections[key]
+    if (!node) return []
+    return [{ key, ...sectionMeta[key], node }]
+  })
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Foto kurasi dari activity_tiles (/admin/activities). URL-nya diisi
-          admin dari host mana pun, jadi tidak lewat next/image yang
-          domainnya dibatasi remotePatterns. */}
-      <section className="relative min-h-[340px] md:min-h-[440px] overflow-hidden bg-forest-dark">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={heroImage}
-          alt={heroAlt ?? activity.label}
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-linear-to-t from-forest/95 via-forest/60 to-forest-dark/30" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 flex flex-col justify-end min-h-[340px] md:min-h-[440px]">
-          <Link
-            href="/"
-            className="text-[11px] font-bold uppercase tracking-widest text-white/70 hover:text-white"
+    <div className="min-h-screen bg-white">
+      <header className="bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 md:pt-10 pb-2">
+          <nav
+            aria-label="Breadcrumb"
+            className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-widest"
           >
-            ← Semua kegiatan
-          </Link>
-          <h1 className="mt-3 font-sans text-2xl md:text-4xl lg:text-6xl font-bold uppercase tracking-tight text-white leading-[0.95]">
+            <Link href="/" className="text-orange-700 hover:text-orange-800">
+              Aktivitas
+            </Link>
+            <span className="text-stone-300" aria-hidden="true">
+              /
+            </span>
+            <span className="text-stone-500">{activity.label}</span>
+          </nav>
+          <h1 className="mt-3 font-sans text-3xl md:text-5xl lg:text-6xl font-bold uppercase tracking-tight text-stone-900 leading-[0.95]">
             {activity.label}
           </h1>
-          <p className="mt-3 text-sm md:text-base text-white/85 max-w-2xl">{activity.blurb}</p>
-          <p className="mt-4 text-[11px] uppercase tracking-wider text-gold font-bold">
-            {order
-              .map((key) =>
-                key === 'gear'
-                  ? `${gear.length} alat sewa`
-                  : key === 'products'
-                    ? `${products.length} produk toko`
-                    : `${packageBundles.length} paket`,
-              )
-              .join(' · ')}
-          </p>
         </div>
-      </section>
+      </header>
 
-      {rendered.map((node, i) => (
-        <Fragment key={order[i]}>{node}</Fragment>
-      ))}
+      {availableSections.length > 1 ? (
+        <ActivitySectionTabs sections={availableSections} />
+      ) : (
+        availableSections.map(({ key, node }) => <Fragment key={key}>{node}</Fragment>)
+      )}
 
-      {rendered.length === 0 && (
+      {availableSections.length === 0 && (
         <section className="py-16">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
             <h2 className="font-sans text-2xl md:text-4xl lg:text-6xl font-bold uppercase tracking-tight text-stone-900">
               Katalog {activity.label} sedang disusun
             </h2>
-            <p className="mt-3 text-sm text-muted-foreground">
+            <p className="mt-3 text-sm text-stone-500">
               Sampaikan kebutuhan kegiatan Anda; tim cabang akan menyiapkan daftar alat beserta
               ketersediaan stok.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Link
                 href="/catalog_rental"
-                className="inline-flex items-center justify-center px-6 h-12 rounded-xl font-bold text-white bg-forest hover:bg-forest-dark transition-colors"
+                className="inline-flex items-center justify-center px-6 h-12 rounded-xl font-bold text-white bg-orange-600 hover:bg-orange-700 transition-colors"
               >
                 Lihat katalog alat
               </Link>
               <Link
                 href="/contact"
-                className="inline-flex items-center justify-center px-6 h-12 rounded-xl font-bold text-forest bg-card border border-border hover:border-forest transition-colors"
+                className="inline-flex items-center justify-center px-6 h-12 rounded-xl font-bold text-orange-700 bg-white border border-orange-200 hover:border-orange-500 hover:bg-orange-50 transition-colors"
               >
                 Tanya tim cabang
               </Link>
