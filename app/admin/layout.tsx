@@ -1,94 +1,91 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { NotificationsPanel } from "@/components/admin/notifications-panel";
-import {
-  LayoutDashboard,
-  Package,
-  ShoppingCart,
-  Users,
-  Tag,
-  Percent,
-  TrendingUp,
-  LogOut,
-  Menu,
-  X,
-  Mountain,
-  Store,
-  MapPin,
-  Layers,
-  Building2,
-  Compass,
-  GalleryHorizontal,
-  Image,
-  Ticket,
-  Box,
-  Megaphone,
-  Settings,
-  BarChart2,
-  ImageIcon,
-} from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Users, Tag, Percent, TrendingUp, LogOut, Menu, X, Mountain, Store, MapPin, Layers, Building2, Compass, GalleryHorizontal, Image, Ticket, Box, Megaphone, Settings, BarChart2, ImageIcon } from "lucide-react";
 
 type NavSection = {
   title: string;
-  items: { href: string; label: string; icon: React.ComponentType<{ className?: string }> }[];
+  items: { href: string; label: string; icon: React.ComponentType<{ className?: string }>; role?: 'super_admin' | 'branch_admin' }[];
 };
-
-const NAV_SECTIONS: NavSection[] = [
-  {
-    title: "Ringkasan",
-    items: [
-      { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/admin/analisis", label: "Analisis", icon: BarChart2 },
-    ],
-  },
-  {
-    title: "Data Master",
-    items: [
-      { href: "/admin/equipment", label: "Produk Rental", icon: Package },
-      { href: "/admin/branches", label: "Cabang", icon: MapPin },
-      { href: "/admin/bundles", label: "Bundles / Paket", icon: Layers },
-      { href: "/admin/organizations", label: "Instansi / Klien", icon: Building2 },
-    ],
-  },
-  {
-    title: "Konten & Tampilan",
-    items: [
-      { href: "/admin/shop-hero", label: "Hero Toko", icon: Image },
-      { href: "/admin/promo-banners", label: "Banner Promo", icon: GalleryHorizontal },
-      { href: "/admin/activities", label: "Foto Kegiatan", icon: Compass },
-      { href: "/admin/catalog-shop", label: "Katalog Toko", icon: Store },
-    ],
-  },
-  {
-    title: "Transaksi",
-    items: [
-      { href: "/admin/bookings", label: "Booking Rental", icon: Ticket },
-      { href: "/admin/orders-shop", label: "Order Toko", icon: ShoppingCart },
-    ],
-  },
-  {
-    title: "Promosi & Penjualan",
-    items: [
-      { href: "/admin/products-promo", label: "Promo Produk", icon: Percent },
-      { href: "/admin/discounts", label: "Kode Diskon / Voucher", icon: Tag },
-    ],
-  },
-  {
-    title: "Pengguna & Hak Akses",
-    items: [
-      { href: "/admin/users", label: "Pengguna Admin", icon: Users },
-    ],
-  },
-];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [adminSession, setAdminSession] = useState<{ role?: string; branchName?: string } | null>(null);
+
+  const NAV_SECTIONS: NavSection[] = [
+    {
+      title: "Ringkasan",
+      items: [
+        { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/admin/analisis", label: "Analisis", icon: BarChart2 },
+      ],
+    },
+    {
+      title: "Data Master",
+      items: [
+        { href: "/admin/equipment", label: "Produk Rental", icon: Package },
+        { href: "/admin/branches", label: "Cabang", icon: MapPin },
+        { href: "/admin/bundles", label: "Bundles / Paket", icon: Layers },
+        { href: "/admin/organizations", label: "Instansi / Klien", icon: Building2 },
+      ],
+    },
+    {
+      title: "Konten & Tampilan",
+      items: [
+        { href: "/admin/shop-hero", label: "Hero Toko", icon: Image },
+        { href: "/admin/promo-banners", label: "Banner Promo", icon: GalleryHorizontal },
+        { href: "/admin/activities", label: "Foto Kegiatan", icon: Compass },
+        { href: "/admin/catalog-shop", label: "Katalog Toko", icon: Store },
+      ],
+    },
+    {
+      title: "Transaksi",
+      items: [
+        { href: "/admin/bookings", label: "Booking Rental", icon: Ticket },
+        { href: "/admin/orders-shop", label: "Order Toko", icon: ShoppingCart },
+      ],
+    },
+    {
+      title: "Promosi & Penjualan",
+      items: [
+        { href: "/admin/products-promo", label: "Promo Produk", icon: Percent },
+        { href: "/admin/discounts", label: "Kode Diskon / Voucher", icon: Tag },
+      ],
+    },
+    {
+      title: "Pengguna & Hak Akses",
+      items: [
+        { href: "/admin/users", label: "Pengguna Admin", icon: Users },
+      ],
+    },
+  ];
+
+  useEffect(() => {
+    const loadAdminSession = async () => {
+      try {
+        const supabase = await createServerSupabaseClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        const { data: profile } = await supabaseAdmin
+          .from('users')
+          .select('role, branch_id')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        if (profile) {
+          setAdminSession({ role: profile.role, branchId: profile.branch_id });
+        }
+      } catch {}
+    };
+    loadAdminSession();
+  }, []);
 
   const isActive = (href: string) => {
     if (href === "/admin") return pathname === "/admin";
@@ -100,6 +97,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     router.replace("/admin/login");
   };
+
+  const isBranchAdmin = adminSession?.role === 'branch_admin';
 
   if (pathname === "/admin/login") {
     return <div className="min-h-screen bg-[#F1EFE8] font-body">{children}</div>;
@@ -141,6 +140,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Admin info for branch admin */}
+        {isBranchAdmin && adminSession?.role && (
+          <div className="px-4 py-3 border-b border-stone-100 bg-stone-50">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
+              Cabang: {adminSession.role}
+            </p>
+          </div>
+        )}
 
         {/* Nav sections */}
         <nav className="flex-1 px-2 py-3 space-y-4 overflow-y-auto">

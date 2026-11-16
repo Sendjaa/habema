@@ -48,7 +48,7 @@ type Package = {
 };
 
 /* ─── CARD ───────────────────────────────────────── */
-function FeaturedBundlesCard({ pkg, index, branchPhone }: { pkg: Package; index: number; branchPhone: string }) {
+export function FeaturedBundlesCard({ pkg, index, branchPhone }: { pkg: Package; index: number; branchPhone: string }) {
   const { ref, visible } = useInView();
 
   return (
