@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
-import { DEV_LOCAL_AUTH } from "@/lib/dev-local-auth";
+import { createServerSupabaseClient } from '@/lib/supabaseServer'
+import { getAdminSession, requireAdmin, requireSuperAdmin, scopeToBranch } from '@/lib/admin-rbac';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { DEV_LOCAL_AUTH } from '@/lib/dev-local-auth';
 import { Turnstile } from "@marsidev/react-turnstile";
 import OtpVerifyStep from "@/components/auth/otp-verify-step";
 import { Button } from "@/components/ui/button";

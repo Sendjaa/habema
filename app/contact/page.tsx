@@ -1,203 +1,273 @@
-import { Metadata } from 'next'
-import { MapPin, Phone, Mail, Clock, MessageSquare, Send } from 'lucide-react'
-import ContactForm from '@/components/contact/contact-form'
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { createServerSupabaseClient } from '@/lib/supabaseServer'
+import ContactForm, { type ContactBranch } from '@/components/contact/contact-form'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Hubungi HABEMA - Kontak Kami',
-  description: 'Hubungi tim HABEMA untuk pertanyaan, bantuan, atau informasi tentang penyewaan peralatan outdoor. Kami siap membantu petualangan Anda.',
+  title: 'Hubungi Habema',
+  description:
+    'Hubungi tim Habema lewat WhatsApp atau telepon, dan temukan lokasi Habema di Bandung Raya.',
 }
 
-export default function ContactPage() {
+const INSTAGRAM_URL =
+  'https://www.instagram.com/habemaoutdoor?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw=='
+
+function waNumber(phone: string): string {
+  const digits = phone.replace(/[^0-9]/g, '')
+  if (digits.startsWith('0')) return `62${digits.slice(1)}`
+  if (digits.startsWith('62')) return digits
+  return `62${digits}`
+}
+
+function waHref(phone: string): string {
+  return `https://wa.me/${waNumber(phone)}`
+}
+
+function phoneHref(phone: string): string {
+  return `tel:+${waNumber(phone)}`
+}
+
+function branchOrder(name: string): number {
+  const match = name.match(/\(cabang\s*(\d+)\)/i)
+  return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER
+}
+
+function displayBranchName(name: string): string {
+  return name.replace(/\s*\(cabang\s*\d+\)\s*$/i, '').trim()
+}
+
+async function loadBranches(): Promise<ContactBranch[]> {
+  try {
+    const supabase = await createServerSupabaseClient()
+    const { data, error } = await supabase
+      .from('branches')
+      .select('id, name, address, city, phone, operational_hours, map_url')
+      .eq('is_active', true)
+      .order('created_at', { ascending: true })
+
+    if (error) throw new Error(error.message)
+
+    return (data ?? []).map((branch) => ({
+      id: branch.id,
+      name: branch.name,
+      address: branch.address,
+      city: branch.city,
+      phone: branch.phone,
+      operationalHours: branch.operational_hours,
+      mapUrl: branch.map_url,
+    }))
+  } catch (error) {
+    console.error(
+      '[contact] gagal memuat lokasi:',
+      error instanceof Error ? error.message : error,
+    )
+    return []
+  }
+}
+
+function BranchAddress({ branch }: { branch: ContactBranch }) {
+  const address = [branch.address, branch.city].filter(Boolean).join(', ')
+  return <>{address || 'Alamat belum tersedia'}</>
+}
+
+export default async function ContactPage() {
+  const branches = (await loadBranches()).sort(
+    (a, b) => branchOrder(a.name) - branchOrder(b.name),
+  )
+  const directBranch = branches.find((branch) => branch.phone) ?? null
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#F2EDE4] to-white">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-[#1B4332] text-white py-20">
-        <div className="absolute inset-0 bg-black/20"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              Hubungi <span className="text-emerald-400">HABEMA</span>
+    <div className="min-h-screen bg-white">
+      <section className="border-b border-stone-200 bg-stone-50">
+        <div className="mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 md:pb-12 md:pt-10 lg:px-8">
+          <nav
+            aria-label="Breadcrumb"
+            className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-widest"
+          >
+            <Link href="/" className="text-forest hover:text-forest-dark">
+              Beranda
+            </Link>
+            <span className="text-stone-300" aria-hidden="true">
+              /
+            </span>
+            <span className="text-stone-600" aria-current="page">
+              Hubungi Kami
+            </span>
+          </nav>
+
+          <div className="mt-6 max-w-3xl">
+            <p className="text-xs font-bold uppercase tracking-wider text-forest">Kontak</p>
+            <h1 className="mt-3 font-sans text-4xl font-black uppercase leading-[0.95] tracking-tight text-stone-900 sm:text-5xl">
+              Hubungi Habema
             </h1>
-            <p className="text-xl md:text-2xl text-emerald-100 max-w-3xl mx-auto">
-              Kami siap membantu Anda menjawab pertanyaan dan memenuhi kebutuhan peralatan outdoor
+            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-stone-600 md:text-base">
+              Tanyakan stok, jadwal pengambilan, atau kebutuhan peralatan untuk kegiatan Anda.
+              Pilih lokasi terdekat agar tim bisa menjawab sesuai ketersediaan setempat.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Contact Info Section */}
-      <section className="py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-8 mb-16">
-            <div className="text-center group">
-              <div className="bg-emerald-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-emerald-200 transition-colors">
-                <MapPin className="w-8 h-8 text-emerald-600" />
-              </div>
-              <h3 className="text-xl font-bold text-stone-900 mb-3">Alamat</h3>
-              <p className="text-gray-600">
-                <a href="https://maps.app.goo.gl/" target="_blank" rel="noopener noreferrer">
-                  Jl. Cihanjuang No.71, Cihanjuang Rahayu, Kec. Parongpong, Kab. Bandung Barat, Jawa Barat 40559
-                </a>
-              </p>
-            </div>
-
-            <div className="text-center group">
-              <div className="bg-emerald-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-emerald-200 transition-colors">
-                <Phone className="w-8 h-8 text-emerald-600" />
-              </div>
-              <h3 className="text-xl font-bold text-stone-900 mb-3">Telepon</h3>
-              <p className="text-gray-600">
-                +62 812 3456 7890<br />
-                +62 22 1234 5678
-              </p>
-            </div>
-
-            <div className="text-center group">
-              <div className="bg-emerald-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-emerald-200 transition-colors">
-                <Mail className="w-8 h-8 text-emerald-600" />
-              </div>
-              <h3 className="text-xl font-bold text-stone-900 mb-3">Email</h3>
-              <p className="text-gray-600">
-                info@habema-outdoor.com<br />
-                support@habema-outdoor.com
-              </p>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-12">
-            {/* Contact Form */}
-            <div>
-              <h2 className="text-3xl font-bold text-stone-900 mb-8">
-                Kirim Pesan
-              </h2>
-              <ContactForm />
-            </div>
-
-            {/* Operating Hours & Info */}
-            <div>
-              <h2 className="text-3xl font-bold text-stone-900 mb-8">
-                Jam Operasional
-              </h2>
-              
-              <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center pb-3 border-b">
-                    <span className="font-semibold text-gray-700">Senin - Jumat</span>
-                    <span className="text-emerald-600 font-bold">08:00 - 20:00</span>
-                  </div>
-                  <div className="flex justify-between items-center pb-3 border-b">
-                    <span className="font-semibold text-gray-700">Sabtu</span>
-                    <span className="text-emerald-600 font-bold">08:00 - 18:00</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-gray-700">Minggu</span>
-                    <span className="text-emerald-600 font-bold">09:00 - 16:00</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-emerald-50 rounded-xl p-8">
-                <h3 className="text-xl font-bold text-stone-900 mb-4 flex items-center gap-2">
-                  <MessageSquare className="w-6 h-6" />
-                  Quick Response
-                </h3>
-                <p className="text-gray-700 mb-4">
-                  Kami berkomitmen untuk merespons setiap pertanyaan Anda dalam waktu maksimal 2 jam 
-                  selama jam operasional. Untuk keadaan darurat, silakan hubungi nomor telepon kami.
-                </p>
-                <div className="bg-white rounded-lg p-4">
-                  <p className="text-sm text-gray-600 mb-2">
-                    <strong>Emergency Support:</strong>
-                  </p>
-                  <p className="text-emerald-600 font-bold">
-                    +62 812 3456 7890 (24/7 untuk penyewa aktif)
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Map Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-stone-900 mb-4">
-              Lokasi Kami
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Kunjungi basecamp kami untuk melihat langsung koleksi peralatan outdoor terlengkap
-            </p>
-          </div>
-
-          <div className="bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-2xl p-8 aspect-video flex items-center justify-center">
-            <div className="text-center">
-              <MapPin className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-stone-900 mb-2">Basecamp Habema</h3>
-              <p className="text-gray-700 mb-4">
-                Jl. Outdoor Adventure No. 123, Bandung
-              </p>
-              <a 
-                href="https://maps.google.com/?q=Basecamp+Habema+Bandung"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 transition-colors"
+      <section className="py-10 md:py-14">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:px-8">
+          <div>
+            {branches.length > 0 ? (
+              <ContactForm branches={branches} />
+            ) : (
+              <div
+                role="alert"
+                className="rounded-2xl border border-stone-200 bg-stone-50 p-6"
               >
-                <MapPin className="w-5 h-5" />
-                Buka di Google Maps
-              </a>
-            </div>
+                <h2 className="text-lg font-bold text-stone-900">Data lokasi belum tersedia</h2>
+                <p className="mt-2 text-sm leading-relaxed text-stone-600">
+                  Halaman ini belum bisa memuat nomor dan alamat lokasi. Muat ulang halaman
+                  beberapa saat lagi, atau hubungi kami lewat Instagram.
+                </p>
+                <a
+                  href={INSTAGRAM_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 inline-flex h-11 items-center justify-center rounded-xl bg-forest px-5 text-sm font-bold text-white transition-colors hover:bg-forest-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest/30 focus-visible:ring-offset-2"
+                >
+                  Buka Instagram Habema
+                </a>
+              </div>
+            )}
           </div>
-        </div>
-      </section>
 
-      {/* FAQ Section */}
-      <section className="py-20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-stone-900 mb-4">
-              Pertanyaan yang Sering Diajukan
-            </h2>
-            <p className="text-xl text-gray-600">
-              Jawaban untuk pertanyaan umum tentang layanan kami
+          <aside className="rounded-2xl border border-stone-200 bg-stone-50 p-5 md:p-6 lg:sticky lg:top-24">
+            <h2 className="text-lg font-bold text-stone-900">Kanal langsung</h2>
+            <p className="mt-1 text-sm leading-relaxed text-stone-600">
+              Gunakan jalur di bawah ini jika Anda ingin bicara langsung dengan tim.
             </p>
-          </div>
 
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-bold text-stone-900 mb-3">
-                Bagaimana cara menyewa peralatan?
-              </h3>
-              <p className="text-gray-600">
-                Anda dapat menyewa melalui website kami, datang langsung ke basecamp, atau menghubungi 
-                kami via telepon/WhatsApp. Pilih peralatan yang Anda butuhkan, tentukan durasi sewa, 
-                dan lakukan pembayaran.
-              </p>
-            </div>
+            <ul className="mt-5 space-y-4">
+              {directBranch?.phone && (
+                <li>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-stone-600">
+                    WhatsApp
+                  </p>
+                  <a
+                    href={waHref(directBranch.phone)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex text-sm font-bold text-forest underline decoration-forest/30 underline-offset-4 hover:text-forest-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest/30 focus-visible:ring-offset-2"
+                  >
+                    {directBranch.phone}
+                  </a>
+                  <p className="mt-1 text-xs text-stone-600">
+                    {displayBranchName(directBranch.name)}
+                  </p>
+                </li>
+              )}
 
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-bold text-stone-900 mb-3">
-                Apakah peralatan sudah termasuk asuransi?
-              </h3>
-              <p className="text-gray-600">
-                Ya, semua peralatan kami sudah dilindungi asuransi. Namun, penyewa tetap bertanggung 
-                jawab atas kerusakan akibat kelalaian atau penggunaan yang tidak sesuai.
-              </p>
-            </div>
+              {directBranch?.phone && (
+                <li>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-stone-600">
+                    Telepon
+                  </p>
+                  <a
+                    href={phoneHref(directBranch.phone)}
+                    className="mt-1 inline-flex text-sm font-bold text-forest underline decoration-forest/30 underline-offset-4 hover:text-forest-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest/30 focus-visible:ring-offset-2"
+                  >
+                    {directBranch.phone}
+                  </a>
+                </li>
+              )}
 
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-bold text-stone-900 mb-3">
-                Berapa lama proses peminjaman?
-              </h3>
-              <p className="text-gray-600">
-                Proses peminjaman biasanya memakan waktu 15-30 menit. Kami akan melakukan pengecekan 
-                peralatan bersama Anda dan memberikan pengarahan singkat tentang penggunaannya.
-              </p>
-            </div>
-          </div>
+              <li>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-stone-600">
+                  Instagram
+                </p>
+                <a
+                  href={INSTAGRAM_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-flex text-sm font-bold text-forest underline decoration-forest/30 underline-offset-4 hover:text-forest-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest/30 focus-visible:ring-offset-2"
+                >
+                  @habemaoutdoor
+                </a>
+              </li>
+            </ul>
+
+            {branches.length > 0 && (
+              <a
+                href="#lokasi"
+                className="mt-6 inline-flex h-11 items-center justify-center rounded-xl border border-stone-300 bg-white px-5 text-xs font-bold uppercase tracking-wider text-stone-700 transition-colors hover:border-forest hover:text-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest/30 focus-visible:ring-offset-2"
+              >
+                Lihat alamat
+              </a>
+            )}
+          </aside>
         </div>
       </section>
+
+      {branches.length > 0 && (
+        <section id="lokasi" className="scroll-mt-24 border-t border-stone-200 bg-stone-50 py-10 md:py-14">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-forest">Alamat</p>
+                <h2 className="mt-2 font-sans text-2xl font-black uppercase tracking-tight text-stone-900 md:text-3xl">
+                  Lokasi Habema
+                </h2>
+              </div>
+              <p className="text-sm text-stone-600">{branches.length} lokasi aktif</p>
+            </div>
+
+            <ul className="mt-8 divide-y divide-stone-200 border-y border-stone-200">
+              {branches.map((branch) => (
+                <li
+                  key={branch.id}
+                  className="grid gap-4 py-6 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] md:items-start md:gap-8"
+                >
+                  <div>
+                    <h3 className="text-base font-bold text-stone-900">
+                      {displayBranchName(branch.name)}
+                    </h3>
+                    <p className="mt-1 max-w-xl text-sm leading-relaxed text-stone-600">
+                      <BranchAddress branch={branch} />
+                    </p>
+                  </div>
+
+                  <div className="text-sm">
+                    {branch.phone ? (
+                      <a
+                        href={phoneHref(branch.phone)}
+                        className="font-bold text-forest underline decoration-forest/30 underline-offset-4 hover:text-forest-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest/30 focus-visible:ring-offset-2"
+                      >
+                        {branch.phone}
+                      </a>
+                    ) : (
+                      <p className="text-stone-600">Nomor telepon belum tersedia</p>
+                    )}
+                    {branch.operationalHours && (
+                      <p className="mt-1 text-stone-600">{branch.operationalHours}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    {branch.mapUrl ? (
+                      <a
+                        href={branch.mapUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex h-11 items-center justify-center rounded-xl border border-stone-300 bg-white px-4 text-xs font-bold uppercase tracking-wider text-stone-700 transition-colors hover:border-forest hover:text-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest/30 focus-visible:ring-offset-2"
+                      >
+                        Buka peta
+                      </a>
+                    ) : (
+                      <span className="text-xs text-stone-500">Peta belum tersedia</span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
     </div>
   )
 }
