@@ -58,9 +58,20 @@ function AuthPageContent() {
       window.history.replaceState({}, document.title, window.location.pathname)
     }
   }, [resetToken, isPasswordReset])
+
+  // Ambil email yang disimpan saat meminta link reset, agar verifyOtp
+  // (token_type: recovery) bisa memverifikasi kode saat halaman dibuka
+  // lewat link email ?code=...&type=recovery.
+  useEffect(() => {
+    if (isPasswordReset && resetToken && typeof window !== 'undefined') {
+      const stored = localStorage.getItem('habema-reset-email')
+      if (stored) setResetEmail(stored)
+    }
+  }, [isPasswordReset, resetToken])
   
   const [mode, setMode] = useState<Mode>(initialMode)
   const [email, setEmail] = useState('')
+  const [resetEmail, setResetEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [firstName, setFirstName] = useState('')
@@ -319,9 +330,13 @@ function AuthPageContent() {
       
       if (error) throw error
 
-      setMessage({ 
-        type: 'success', 
-        text: 'Link reset password telah dikirim ke email mu. Cek folder spam jika tidak ditemukan.' 
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('habema-reset-email', email.trim())
+      }
+
+      setMessage({
+        type: 'success',
+        text: 'Link reset password telah dikirim ke email mu. Cek folder spam jika tidak ditemukan.'
       })
       setEmail('')
       
@@ -355,18 +370,36 @@ function AuthPageContent() {
 
     setLoading(true)
     try {
+      if (!resetToken || !resetEmail) {
+        setMessage({ type: 'error', text: 'Email atau token tidak ditemukan. Minta link reset ulang.' })
+        return
+      }
+
+      // Verifikasi token recovery dari link email untuk membuat sesi,
+      // baru kemudian ganti password dengan updateUser.
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        type: 'recovery',
+        token: resetToken,
+        email: resetEmail,
+      })
+
+      if (verifyError) throw verifyError
+
       const { error } = await supabase.auth.updateUser({ password })
-      
+
       if (error) throw error
 
-      setMessage({ 
-        type: 'success', 
-        text: 'Password berhasil direset! Silakan login dengan password baru.' 
+      setMessage({
+        type: 'success',
+        text: 'Password berhasil direset! Silakan login dengan password baru.'
       })
-      
+
       setPassword('')
       setConfirmPassword('')
-      
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('habema-reset-email')
+      }
+
       setTimeout(() => {
         setMode('login')
         router.replace('/auth')
