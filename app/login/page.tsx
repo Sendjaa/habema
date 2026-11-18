@@ -418,7 +418,7 @@ function AuthPageContent() {
 
       setTimeout(() => {
         setMode('login')
-        router.replace('/auth')
+        router.replace('/login')
       }, 2000)
     } catch (err: any) {
       setMessage({ 
