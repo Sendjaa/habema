@@ -178,6 +178,21 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Interactive elements */
+  a[href],
+  button,
+  summary,
+  [role="button"],
+  [role="switch"],
+  [role="tab"] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  a[aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-body);
