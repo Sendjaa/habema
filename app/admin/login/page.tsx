@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from '@/lib/supabaseClient';
+import { getAdminSession, requireAdmin, requireSuperAdmin, scopeToBranch } from '@/lib/admin-rbac';
 import { createServerSupabaseClient } from '@/lib/supabaseServer'
 import { getAdminSession, requireAdmin, requireSuperAdmin, scopeToBranch } from '@/lib/admin-rbac';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -267,6 +269,11 @@ export default function AdminLogin() {
     setIsLoading(true);
 
     try {
+      if (typeof supabase === 'undefined' || supabase === null) {
+        toast.error("Client Supabase tidak tersedia. Periksa konfigurasi environment.");
+        return;
+      }
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/admin/login`,
       });
