@@ -320,6 +320,14 @@ function AuthPageContent() {
 
     setLoading(true)
     try {
+      if (typeof supabase === 'undefined' || supabase === null) {
+        setMessage({
+          type: 'error',
+          text: 'Client Supabase tidak tersedia. Periksa konfigurasi environment.'
+        })
+        return
+      }
+
       // Supabase akan mengirim: ?code=TOKEN&type=recovery
       const { error } = await supabase.auth.resetPasswordForEmail(
         email.trim(),
@@ -372,6 +380,14 @@ function AuthPageContent() {
     try {
       if (!resetToken || !resetEmail) {
         setMessage({ type: 'error', text: 'Email atau token tidak ditemukan. Minta link reset ulang.' })
+        return
+      }
+
+      if (typeof supabase === 'undefined' || supabase === null) {
+        setMessage({
+          type: 'error',
+          text: 'Client Supabase tidak tersedia. Periksa konfigurasi environment.'
+        })
         return
       }
 
