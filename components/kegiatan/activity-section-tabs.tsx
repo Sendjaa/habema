@@ -18,6 +18,8 @@ const tabClass = (active: boolean) =>
     active
       ? 'border-orange-600 bg-orange-600 text-white'
       : 'border-stone-200 bg-white text-stone-600 hover:border-orange-300 hover:text-orange-700',
+      ? 'border-orange-700 bg-orange-700 text-white'
+      : 'border-stone-200 bg-white text-stone-600 hover:border-orange-400 hover:text-orange-700',
   ].join(' ')
 
 export function ActivitySectionTabs({ sections }: { sections: SectionItem[] }) {
@@ -70,6 +72,7 @@ export function ActivitySectionTabs({ sections }: { sections: SectionItem[] }) {
                     <span
                       className={`text-[10px] font-semibold ${
                         isActive ? 'text-white/80' : 'text-stone-400'
+                        isActive ? 'text-orange-100' : 'text-stone-600'
                       }`}
                     >
                       {tab.count}
@@ -88,6 +91,7 @@ export function ActivitySectionTabs({ sections }: { sections: SectionItem[] }) {
         aria-labelledby={`activity-tab-${active}`}
         tabIndex={0}
         className="focus-visible:outline-none"
+        className="divide-y divide-orange-100 focus-visible:outline-none"
       >
         {activeSections.map(({ key, node }) => (
           <Fragment key={key}>{node}</Fragment>
