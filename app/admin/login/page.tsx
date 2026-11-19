@@ -3,9 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from '@/lib/supabaseClient';
-import { getAdminSession, requireAdmin, requireSuperAdmin, scopeToBranch } from '@/lib/admin-rbac';
 import { createServerSupabaseClient } from '@/lib/supabaseServer'
-import { getAdminSession, requireAdmin, requireSuperAdmin, scopeToBranch } from '@/lib/admin-rbac';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { DEV_LOCAL_AUTH } from '@/lib/dev-local-auth';
 import { Turnstile } from "@marsidev/react-turnstile";
@@ -15,9 +13,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, Shield } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
+import Image from "next/image";
+import {
+  GENERIC_LOGIN_ERROR,
+  isPasswordTooLong,
+  isPasswordTooShort,
+  isValidEmail,
+} from "@/lib/auth-validation";
 
-// Dukung banyak admin: pisahkan email dengan koma, mis. "a@x.com, b@x.com"
 const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "")
   .split(",")
   .map((e) => e.trim().toLowerCase())
@@ -38,14 +42,16 @@ export default function AdminLogin() {
   const [otpStep, setOtpStep] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
   const [otpLoading, setOtpLoading] = useState(false);
-  // Hanya terisi di dev lokal: kodenya tidak dikirim ke email, dan terminal
-  // dev server belum tentu terlihat. Server yang memutuskan, bukan halaman ini.
   const [devOtp, setDevOtp] = useState<string | null>(null);
 
   // Check if already logged in
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        if (!supabase) {
+          return;
+        }
+
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
@@ -72,29 +78,33 @@ export default function AdminLogin() {
     setIsLoading(true);
 
     try {
-      // Validate admin email
-      if (!isAdminEmail(email)) {
-        toast.error("Email tidak diizinkan untuk akses admin");
+      if (!supabase) {
+        throw new Error(GENERIC_LOGIN_ERROR);
+      }
+
+      if (!isValidEmail(email)) {
+        toast.error(GENERIC_LOGIN_ERROR);
         setIsLoading(false);
         return;
       }
 
-      // Widget tidak dirender di dev lokal (tidak akan pernah selesai di
-      // sana), jadi syaratnya juga tidak boleh berlaku di sana.
+      if (isPasswordTooShort(password)) {
+        toast.error(GENERIC_LOGIN_ERROR);
+        setIsLoading(false);
+        return;
+      }
+      if (isPasswordTooLong(password)) {
+        toast.error(GENERIC_LOGIN_ERROR);
+        setIsLoading(false);
+        return;
+      }
+
       if (!DEV_LOCAL_AUTH && !turnstileToken) {
         toast.error("Harap selesaikan verifikasi keamanan (Turnstile)!");
         setIsLoading(false);
         return;
       }
 
-      if (password && password.length < 6) {
-        toast.error("Password minimal 6 karakter");
-        setIsLoading(false);
-        return;
-      }
-
-      // Satu permintaan memutuskan semuanya: perangkat ini sudah pernah
-      // menyelesaikan OTP, atau kode baru perlu dikirim.
       const res = await fetch("/api/auth/admin-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,7 +114,7 @@ export default function AdminLogin() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Gagal memproses login");
+        throw new Error(GENERIC_LOGIN_ERROR);
       }
 
       if (data.success && data.session) {
@@ -128,10 +138,10 @@ export default function AdminLogin() {
       const code = typeof data.devOtp === 'string' ? data.devOtp : null;
       setDevOtp(code);
       toast.success(code
-        ? "Email OTP gagal terkirim — kode ditampilkan di halaman ini (dev)"
+        ? "Email OTP gagal terkirim, kode ditampilkan di halaman ini (dev)"
         : "Kode OTP telah dikirim ke email admin");
     } catch (error: any) {
-      toast.error(error.message || "Gagal memproses login");
+      toast.error(GENERIC_LOGIN_ERROR);
     } finally {
       setIsLoading(false);
     }
@@ -141,6 +151,10 @@ export default function AdminLogin() {
     setOtpLoading(true);
     setOtpError(null);
     try {
+      if (!supabase) {
+        throw new Error("Verifikasi gagal");
+      }
+
       const res = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -150,11 +164,9 @@ export default function AdminLogin() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Kode OTP salah");
+        throw new Error("Verifikasi gagal");
       }
 
-      // OTP verified - build a session. Untuk user yang di-invite tanpa password
-      // (passwordless), pakai session dari server; selain itu login dengan password.
       let sessionUser: any = null;
 
       if (data.passwordless && data.session) {
@@ -164,7 +176,7 @@ export default function AdminLogin() {
         });
 
         if (sessionError) {
-          throw new Error(sessionError.message);
+          throw new Error("Verifikasi gagal");
         }
         sessionUser = sessionData.user;
       } else {
@@ -174,7 +186,7 @@ export default function AdminLogin() {
         });
 
         if (signInError) {
-          throw new Error(signInError.message);
+          throw new Error("Verifikasi gagal");
         }
         sessionUser = signInData.user;
       }
@@ -199,7 +211,7 @@ export default function AdminLogin() {
             .single();
 
           if (createError) {
-            toast.error("Gagal membuat profil admin: " + createError.message);
+            toast.error("Terjadi kesalahan. Silakan coba lagi.");
             await supabase.auth.signOut();
             return;
           }
@@ -209,14 +221,14 @@ export default function AdminLogin() {
           return;
         }
 
-        if (profileError && profileError.code !== 'PGRST116') {
-          toast.error("Gagal verifikasi akses: " + profileError.message);
-          await supabase.auth.signOut();
-          return;
-        }
+          if (profileError && profileError.code !== 'PGRST116') {
+            toast.error("Terjadi kesalahan. Silakan coba lagi.");
+            await supabase.auth.signOut();
+            return;
+          }
 
         if (!profile?.is_vendor) {
-          toast.error("Akses ditolak. Hanya admin yang bisa masuk.");
+          toast.error("Kredensial tidak valid");
           await supabase.auth.signOut();
           return;
         }
@@ -225,7 +237,7 @@ export default function AdminLogin() {
         router.push("/admin");
       }
     } catch (err: any) {
-      setOtpError(err.message || "Verifikasi gagal");
+      setOtpError("Verifikasi gagal");
     } finally {
       setOtpLoading(false);
     }
@@ -242,15 +254,15 @@ export default function AdminLogin() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Gagal mengirim ulang OTP");
+        throw new Error("Gagal mengirim ulang kode. Coba lagi.");
       }
       const code = typeof data.devOtp === 'string' ? data.devOtp : null;
       toast.success(code
-        ? "Email OTP gagal terkirim — kode ditampilkan di halaman ini (dev)"
+        ? "Email OTP gagal terkirim, kode ditampilkan di halaman ini (dev)"
         : "Kode OTP telah dikirim ulang");
       setDevOtp(code);
     } catch (err: any) {
-      setOtpError(err.message || "Gagal mengirim ulang");
+      setOtpError("Gagal mengirim ulang kode. Coba lagi.");
     }
   }, [email, password]);
 
@@ -262,29 +274,27 @@ export default function AdminLogin() {
 
   const handleResetPassword = async () => {
     if (!isAdminEmail(email)) {
-      toast.error("Email tidak diizinkan untuk akses admin");
+      toast.error(GENERIC_LOGIN_ERROR);
       return;
     }
 
     setIsLoading(true);
 
     try {
-      if (typeof supabase === 'undefined' || supabase === null) {
-        toast.error("Client Supabase tidak tersedia. Periksa konfigurasi environment.");
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      if (!res.ok) {
+        toast.error("Terjadi kesalahan. Silakan coba lagi.");
         return;
       }
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth`,
-      });
-
-      if (error) {
-        toast.error("Gagal mengirim reset password: " + error.message);
-      } else {
-        toast.success("Link reset password telah dikirim ke email Anda!");
-      }
-    } catch (error: any) {
-      toast.error(error.message || "Gagal mengirim reset password");
+      toast.success("Jika email tersebut terdaftar, link reset password telah dikirim.");
+    } catch {
+      toast.error("Terjadi kesalahan. Silakan coba lagi.");
     } finally {
       setIsLoading(false);
     }
@@ -292,11 +302,11 @@ export default function AdminLogin() {
 
   if (otpStep) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
         <Card className="w-full max-w-md p-8 shadow-xl">
-          <div className="text-center mb-8">
-            <div className="mx-auto w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mb-4">
-              <Shield className="w-8 h-8 text-white" />
+        <div className="text-center mb-8">
+          <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4">
+            <Image src="/images/logo_habema_orange.svg" alt="Habema Logo" width={32} height={32} />
             </div>
             <h1 className="text-2xl font-bold text-slate-900">Verifikasi OTP</h1>
             <p className="text-slate-600 mt-2">Masukkan kode OTP yang dikirim ke email admin</p>
@@ -317,11 +327,11 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md p-8 shadow-xl">
         <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mb-4">
-            <Shield className="w-8 h-8 text-white" />
+          <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4">
+            <Image src="/images/logo_habema_orange.svg" alt="Habema Logo" width={50} height={50} />
           </div>
           <h1 className="text-2xl font-bold text-slate-900">Admin Login</h1>
           <p className="text-slate-600 mt-2">Masuk ke dashboard admin</p>
@@ -353,7 +363,7 @@ export default function AdminLogin() {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Masukkan password (kosongkan jika akun di-invite tanpa password)"
+                placeholder="Masukkan password"
                 className="w-full pr-10"
               />
               <button
@@ -364,9 +374,6 @@ export default function AdminLogin() {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <p className="text-xs text-slate-400">
-              Akun yang dibuat via Supabase Invite (tanpa password) cukup biarkan kosong, lalu gunakan kode OTP.
-            </p>
           </div>
 
           {/* Turnstile */}

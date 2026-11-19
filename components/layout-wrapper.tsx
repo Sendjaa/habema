@@ -75,11 +75,13 @@ export function LayoutWrapper({
     return <div className="min-h-screen">{children}</div>
   }
 
-  // Don't show header and footer on admin pages (except login)
-  if (isAdminPage && !isLoginPage) {
+  // Admin routes (including login) never show the public header/footer
+  if (isAdminPage) {
     return (
       <div className="min-h-screen">
-        {isAdmin === null ? (
+        {isLoginPage ? (
+          children
+        ) : isAdmin === null ? (
           <div className="min-h-screen flex items-center justify-center bg-gray-50">
             <Loader2 className="w-8 h-8 animate-spin text-gray-600" />
           </div>
