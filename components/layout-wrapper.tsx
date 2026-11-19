@@ -30,7 +30,17 @@ export function LayoutWrapper({
   useEffect(() => {
     const checkAdmin = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const client = supabase;
+        if (!client) {
+          if (!isLoginPage) {
+            router.push("/admin/login");
+          } else {
+            setIsAdmin(false);
+          }
+          return;
+        }
+
+        const { data: { session } } = await client.auth.getSession();
 
         if (!session) {
           if (!isLoginPage) {
@@ -41,14 +51,14 @@ export function LayoutWrapper({
           return;
         }
 
-        const { data: profile, error } = await supabase
+        const { data: profile, error } = await client
           .from('users')
           .select('is_vendor')
           .eq('id', session.user.id)
           .single();
 
         if (error || !profile?.is_vendor) {
-          await supabase.auth.signOut();
+          await client.auth.signOut();
           if (!isLoginPage) {
             router.push("/admin/login");
           } else {
