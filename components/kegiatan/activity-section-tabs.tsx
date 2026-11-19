@@ -16,6 +16,8 @@ const tabClass = (active: boolean) =>
   [
     'inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2',
     active
+      ? 'border-orange-600 bg-orange-600 text-white'
+      : 'border-stone-200 bg-white text-stone-600 hover:border-orange-300 hover:text-orange-700',
       ? 'border-orange-700 bg-orange-700 text-white'
       : 'border-stone-200 bg-white text-stone-600 hover:border-orange-400 hover:text-orange-700',
   ].join(' ')
@@ -69,6 +71,7 @@ export function ActivitySectionTabs({ sections }: { sections: SectionItem[] }) {
                   {tab.count != null && (
                     <span
                       className={`text-[10px] font-semibold ${
+                        isActive ? 'text-white/80' : 'text-stone-400'
                         isActive ? 'text-orange-100' : 'text-stone-600'
                       }`}
                     >
@@ -87,6 +90,7 @@ export function ActivitySectionTabs({ sections }: { sections: SectionItem[] }) {
         role="tabpanel"
         aria-labelledby={`activity-tab-${active}`}
         tabIndex={0}
+        className="focus-visible:outline-none"
         className="divide-y divide-orange-100 focus-visible:outline-none"
       >
         {activeSections.map(({ key, node }) => (
