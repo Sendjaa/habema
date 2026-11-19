@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      activities: {
+        Row: {
+          blurb: string | null
+          created_at: string
+          display_order: number
+          id: string
+          image_alt: string | null
+          image_url: string | null
+          is_active: boolean
+          label: string
+          sections: string[]
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          blurb?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_alt?: string | null
+          image_url?: string | null
+          is_active?: boolean
+          label: string
+          sections?: string[]
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          blurb?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_alt?: string | null
+          image_url?: string | null
+          is_active?: boolean
+          label?: string
+          sections?: string[]
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      activity_tiles: {
+        Row: {
+          created_at: string
+          id: string
+          image_alt: string | null
+          image_url: string
+          is_active: boolean
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_alt?: string | null
+          image_url: string
+          is_active?: boolean
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_alt?: string | null
+          image_url?: string
+          is_active?: boolean
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       addresses: {
         Row: {
           address: string | null
@@ -57,6 +129,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      admin_device_trust: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          last_used_at: string | null
+          token_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          last_used_at?: string | null
+          token_hash: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          last_used_at?: string | null
+          token_hash?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       booking_additional_options: {
         Row: {
@@ -558,6 +660,45 @@ export type Database = {
         }
         Relationships: []
       }
+      client_organizations: {
+        Row: {
+          consent_note: string | null
+          created_at: string
+          display_order: number
+          documentation_slug: string | null
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+          sector: string | null
+          updated_at: string
+        }
+        Insert: {
+          consent_note?: string | null
+          created_at?: string
+          display_order?: number
+          documentation_slug?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+          sector?: string | null
+          updated_at?: string
+        }
+        Update: {
+          consent_note?: string | null
+          created_at?: string
+          display_order?: number
+          documentation_slug?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+          sector?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       delivery_requests: {
         Row: {
           booking_id: string
@@ -662,6 +803,7 @@ export type Database = {
         Row: {
           applies_to: string
           code: string
+          conditions: Json | null
           created_at: string
           description: string | null
           discount_type: string
@@ -676,10 +818,12 @@ export type Database = {
           updated_at: string
           usage_count: number
           usage_limit: number | null
+          voucher_type: string
         }
         Insert: {
           applies_to?: string
           code: string
+          conditions?: Json | null
           created_at?: string
           description?: string | null
           discount_type?: string
@@ -694,10 +838,12 @@ export type Database = {
           updated_at?: string
           usage_count?: number
           usage_limit?: number | null
+          voucher_type?: string
         }
         Update: {
           applies_to?: string
           code?: string
+          conditions?: Json | null
           created_at?: string
           description?: string | null
           discount_type?: string
@@ -712,12 +858,13 @@ export type Database = {
           updated_at?: string
           usage_count?: number
           usage_limit?: number | null
+          voucher_type?: string
         }
         Relationships: []
       }
       equipment: {
         Row: {
-          activities: string[] | null
+          activities: string[]
           average_rating: number | null
           brand: string | null
           capacity: string | null
@@ -750,7 +897,7 @@ export type Database = {
           weight_kg: number | null
         }
         Insert: {
-          activities?: string[] | null
+          activities?: string[]
           average_rating?: number | null
           brand?: string | null
           capacity?: string | null
@@ -783,7 +930,7 @@ export type Database = {
           weight_kg?: number | null
         }
         Update: {
-          activities?: string[] | null
+          activities?: string[]
           average_rating?: number | null
           brand?: string | null
           capacity?: string | null
@@ -971,6 +1118,7 @@ export type Database = {
           expires_at: string
           id: string
           otp: string
+          otp_hash: string | null
           type: string
           verified: boolean | null
         }
@@ -981,6 +1129,7 @@ export type Database = {
           expires_at: string
           id?: string
           otp: string
+          otp_hash?: string | null
           type: string
           verified?: boolean | null
         }
@@ -991,8 +1140,48 @@ export type Database = {
           expires_at?: string
           id?: string
           otp?: string
+          otp_hash?: string | null
           type?: string
           verified?: boolean | null
+        }
+        Relationships: []
+      }
+      promo_banners: {
+        Row: {
+          created_at: string
+          display_order: number
+          ends_at: string | null
+          id: string
+          image_url: string
+          is_active: boolean
+          link_url: string | null
+          starts_at: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          ends_at?: string | null
+          id?: string
+          image_url: string
+          is_active?: boolean
+          link_url?: string | null
+          starts_at?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          ends_at?: string | null
+          id?: string
+          image_url?: string
+          is_active?: boolean
+          link_url?: string | null
+          starts_at?: string | null
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1122,6 +1311,57 @@ export type Database = {
           },
         ]
       }
+      shop_hero: {
+        Row: {
+          created_at: string
+          cta_href: string
+          cta_label: string
+          description: string
+          heading: string
+          id: string
+          is_active: boolean
+          kicker: string
+          media: Json
+          note: string
+          secondary_cta_href: string
+          secondary_cta_label: string
+          stats: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          cta_href?: string
+          cta_label?: string
+          description: string
+          heading: string
+          id?: string
+          is_active?: boolean
+          kicker?: string
+          media?: Json
+          note?: string
+          secondary_cta_href?: string
+          secondary_cta_label?: string
+          stats?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          cta_href?: string
+          cta_label?: string
+          description?: string
+          heading?: string
+          id?: string
+          is_active?: boolean
+          kicker?: string
+          media?: Json
+          note?: string
+          secondary_cta_href?: string
+          secondary_cta_label?: string
+          stats?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       shop_order_items: {
         Row: {
           id: string
@@ -1240,12 +1480,14 @@ export type Database = {
       }
       shop_products: {
         Row: {
+          activities: string[]
           brand: string | null
           category: string | null
           created_at: string
           description: string | null
           dimensions: string | null
           gallery_urls: Json
+          has_variants: boolean
           id: string
           image_url: string | null
           is_available: boolean
@@ -1256,20 +1498,24 @@ export type Database = {
           original_price: number | null
           price: number
           rating: number
+          rating_label: string | null
           review_count: number
           sold_count: number
           specifications: Json
           stock: number
           updated_at: string
+          variants: Json
           weight_kg: number | null
         }
         Insert: {
+          activities?: string[]
           brand?: string | null
           category?: string | null
           created_at?: string
           description?: string | null
           dimensions?: string | null
           gallery_urls?: Json
+          has_variants?: boolean
           id?: string
           image_url?: string | null
           is_available?: boolean
@@ -1280,20 +1526,24 @@ export type Database = {
           original_price?: number | null
           price?: number
           rating?: number
+          rating_label?: string | null
           review_count?: number
           sold_count?: number
           specifications?: Json
           stock?: number
           updated_at?: string
+          variants?: Json
           weight_kg?: number | null
         }
         Update: {
+          activities?: string[]
           brand?: string | null
           category?: string | null
           created_at?: string
           description?: string | null
           dimensions?: string | null
           gallery_urls?: Json
+          has_variants?: boolean
           id?: string
           image_url?: string | null
           is_available?: boolean
@@ -1304,11 +1554,13 @@ export type Database = {
           original_price?: number | null
           price?: number
           rating?: number
+          rating_label?: string | null
           review_count?: number
           sold_count?: number
           specifications?: Json
           stock?: number
           updated_at?: string
+          variants?: Json
           weight_kg?: number | null
         }
         Relationships: []
@@ -1408,6 +1660,7 @@ export type Database = {
       users: {
         Row: {
           address: string | null
+          branch_id: string | null
           city: string | null
           created_at: string | null
           email: string
@@ -1418,12 +1671,14 @@ export type Database = {
           phone: string | null
           postal_code: string | null
           profile_image_url: string | null
+          role: string
           updated_at: string | null
           vendor_description: string | null
           vendor_name: string | null
         }
         Insert: {
           address?: string | null
+          branch_id?: string | null
           city?: string | null
           created_at?: string | null
           email: string
@@ -1434,12 +1689,14 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           profile_image_url?: string | null
+          role?: string
           updated_at?: string | null
           vendor_description?: string | null
           vendor_name?: string | null
         }
         Update: {
           address?: string | null
+          branch_id?: string | null
           city?: string | null
           created_at?: string | null
           email?: string
@@ -1450,18 +1707,29 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           profile_image_url?: string | null
+          role?: string
           updated_at?: string | null
           vendor_description?: string | null
           vendor_name?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "users_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_branch_id: { Args: never; Returns: string }
+      is_admin: { Args: never; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
@@ -1480,12 +1748,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1509,11 +1777,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1534,11 +1802,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1559,11 +1827,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1576,11 +1844,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

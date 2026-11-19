@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import { verifyOTP } from '@/lib/otp';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { issueAdminDeviceTrust } from '@/lib/admin-trust';
+import {
+  GENERIC_LOGIN_ERROR,
+  isValidEmail,
+  isValidOtp,
+} from '@/lib/auth-validation';
 
 export async function POST(req: Request) {
   try {
@@ -9,7 +14,7 @@ export async function POST(req: Request) {
     const { email, otp, type, password } = body;
 
     if (!email || !otp || !type) {
-      return NextResponse.json({ error: 'Email, kode OTP, dan tipe wajib diisi' }, { status: 400 });
+      return NextResponse.json({ error: GENERIC_LOGIN_ERROR }, { status: 400 });
     }
 
     if (type !== 'register' && type !== 'login') {
@@ -18,9 +23,15 @@ export async function POST(req: Request) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
+    // Validasi format email dan OTP — pesan selalu generik supaya rute ini
+    // tidak membocorkan apakah email terdaftar atau OTP mana yang salah.
+    if (!isValidEmail(normalizedEmail) || !isValidOtp(otp)) {
+      return NextResponse.json({ error: GENERIC_LOGIN_ERROR }, { status: 400 });
+    }
+
     const result = await verifyOTP(normalizedEmail, otp, type);
     if (!result.valid) {
-      return NextResponse.json({ error: result.message }, { status: 400 });
+      return NextResponse.json({ error: GENERIC_LOGIN_ERROR }, { status: 400 });
     }
 
     let sessionData: any = null;
@@ -54,7 +65,7 @@ export async function POST(req: Request) {
 
       if (signInError) {
         console.error('[auth/verify-otp] signInWithPassword gagal:', signInError.message);
-        return NextResponse.json({ error: 'Gagal membuat sesi. Silakan login ulang.' }, { status: 500 });
+        return NextResponse.json({ error: 'Terjadi kesalahan. Silakan login ulang.' }, { status: 500 });
       }
       sessionData = signInData;
     } else {
@@ -74,7 +85,7 @@ export async function POST(req: Request) {
 
       if (linkError || !token) {
         console.error('[auth/verify-otp] generateLink gagal:', linkError?.message ?? 'email_otp kosong');
-        return NextResponse.json({ error: 'Gagal membuat sesi. Silakan login ulang.' }, { status: 500 });
+        return NextResponse.json({ error: 'Terjadi kesalahan. Silakan login ulang.' }, { status: 500 });
       }
 
       const { data, error: verifyError } = await supabaseAdmin.auth.verifyOtp({
@@ -85,7 +96,7 @@ export async function POST(req: Request) {
 
       if (verifyError || !data?.session) {
         console.error('[auth/verify-otp] verifyOtp gagal:', verifyError?.message ?? 'session kosong');
-        return NextResponse.json({ error: 'Gagal membuat sesi. Silakan login ulang.' }, { status: 500 });
+        return NextResponse.json({ error: 'Terjadi kesalahan. Silakan login ulang.' }, { status: 500 });
       }
       sessionData = data;
     }
@@ -132,6 +143,6 @@ export async function POST(req: Request) {
     });
   } catch (error: any) {
     console.error('verify-otp error:', error);
-    return NextResponse.json({ error: error.message || 'Terjadi kesalahan' }, { status: 500 });
+    return NextResponse.json({ error: 'Terjadi kesalahan' }, { status: 500 });
   }
 }

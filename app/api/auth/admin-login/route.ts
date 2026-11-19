@@ -3,8 +3,13 @@ import { verifyTurnstile } from '@/lib/turnstile'
 import { generateOTP, storeOTP, invalidatePreviousOTPs } from '@/lib/otp'
 import { deliverOtpEmail } from '@/lib/otp-delivery'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import { hasAdminDeviceTrust } from '@/lib/admin-trust'
 import { DEV_LOCAL_AUTH } from '@/lib/dev-local-auth'
+import {
+  GENERIC_LOGIN_ERROR,
+  isPasswordTooLong,
+  isPasswordTooShort,
+  isValidEmail,
+} from '@/lib/auth-validation'
 
 /**
  * Login admin — satu rute untuk semua keputusan, supaya token Turnstile hanya
@@ -34,8 +39,9 @@ export async function POST(req: Request) {
   const password = typeof body.password === 'string' ? body.password : ''
   const turnstileToken = typeof body.turnstileToken === 'string' ? body.turnstileToken : ''
 
-  if (!email) {
-    return NextResponse.json({ error: 'Email wajib diisi' }, { status: 400 })
+  // Validasi email — selalu pesan generik untuk mencegah enumeration.
+  if (!isValidEmail(email)) {
+    return NextResponse.json({ error: GENERIC_LOGIN_ERROR }, { status: 401 })
   }
 
   // Cloudflare tidak menyelesaikan challenge di localhost, jadi di dev
@@ -44,12 +50,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Verifikasi keamanan belum selesai. Silakan coba lagi.' }, { status: 400 })
   }
 
+  // Validasi panjang password (boleh kosong untuk akun tanpa password).
+  if (isPasswordTooShort(password) || isPasswordTooLong(password)) {
+    return NextResponse.json({ error: GENERIC_LOGIN_ERROR }, { status: 401 })
+  }
+
   try {
+    // Password selalu cek terlebih dahulu: kalau ada dan cocok, baru lanjut ke OTP.
+    // Tanpa password dan tidak ada device trust, langsung ke OTP.
     if (password) {
       const { data, error } = await supabaseAdmin.auth.signInWithPassword({ email, password })
 
       if (error || !data?.user) {
-        return NextResponse.json({ error: 'Email atau password salah' }, { status: 401 })
+        return NextResponse.json({ error: GENERIC_LOGIN_ERROR }, { status: 401 })
       }
 
       const { data: profile, error: profileError } = await supabaseAdmin
@@ -64,21 +77,12 @@ export async function POST(req: Request) {
       }
 
       if (!profile?.is_vendor) {
-        return NextResponse.json({ error: 'Akses ditolak. Hanya admin yang bisa masuk.' }, { status: 403 })
-      }
-
-      if (await hasAdminDeviceTrust(data.user.id, email)) {
-        return NextResponse.json({
-          success: true,
-          session: {
-            access_token: data.session!.access_token,
-            refresh_token: data.session!.refresh_token,
-            expires_in: data.session!.expires_in,
-          },
-        })
+        return NextResponse.json({ error: GENERIC_LOGIN_ERROR }, { status: 401 })
       }
     }
 
+    // MFA/2FA ketat: perangkat terpercaya tidak dibypass — OTP email selalu
+    // diminta sebagai lapis kedua, untuk setiap login dari perangkat baru.
     await invalidatePreviousOTPs(email, 'login')
     const otp = generateOTP()
     await storeOTP(email, otp, 'login')
