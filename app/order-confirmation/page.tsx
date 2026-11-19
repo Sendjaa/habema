@@ -254,7 +254,7 @@ export default function OrderConfirmationPage() {
 
       ctx.fillStyle = '#b45309'
       ctx.font = 'bold 13px Arial'
-      ctx.fillText('BIYA PERPANJANGAN SEWA (EXTEND CHARGE)', M + 24, y + 28)
+      ctx.fillText('BIAYA PERPANJANGAN SEWA (EXTEND CHARGE)', M + 24, y + 28)
       ctx.fillStyle = '#78350f'
       ctx.font = '12px Arial'
       wrapText(extendText, M + 24, y + 50, CW - 48, 18)
@@ -271,7 +271,7 @@ export default function OrderConfirmationPage() {
       ctx.fillStyle = '#64748b'
       ctx.font = '12px Arial'
       ctx.fillText('Hubungi kami: WhatsApp +6283898749357', W / 2, canvas.height - 66)
-      ctx.fillText('https.habema.biz.id', W / 2, canvas.height - 46)
+      ctx.fillText('https://habema.biz.id', W / 2, canvas.height - 46)
       ctx.textAlign = 'left'
 
       canvas.toBlob((blob) => {

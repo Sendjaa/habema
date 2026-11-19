@@ -37,3 +37,6 @@ tools/
 # sini karena gateway tidak melayani Storage). Di production file-nya ada di
 # bucket Supabase, jadi isi folder ini tidak pernah dibutuhkan repo.
 public/uploads/
+
+.vercel
+.env*
