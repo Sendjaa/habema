@@ -2,7 +2,8 @@
 CREATE TABLE IF NOT EXISTS otp_codes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   email TEXT NOT NULL,
-  otp TEXT NOT NULL,
+  otp TEXT,               -- disimpan untuk backward compat (data lama). Baru gunakan otp_hash.
+  otp_hash TEXT,          -- SHA-256 dari OTP. Digunakan untuk verify baru.
   type TEXT NOT NULL CHECK (type IN ('register', 'login')),
   expires_at TIMESTAMPTZ NOT NULL,
   attempts INTEGER DEFAULT 0,
