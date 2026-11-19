@@ -21,19 +21,35 @@ function hashOtp(otp: string): string {
 
 export async function storeOTP(email: string, otp: string, type: 'register' | 'login'): Promise<void> {
   const otpHash = hashOtp(otp);
-  const { error } = await supabaseAdmin
-    .from('otp_codes')
-    .insert({
-      email: email.toLowerCase(),
-      otp,
-      otp_hash: otpHash,
-      type,
-      expires_at: getExpiryDate().toISOString(),
-      verified: false,
-      attempts: 0,
-    });
+  const base = {
+    email: email.toLowerCase(),
+    otp,
+    type,
+    expires_at: getExpiryDate().toISOString(),
+    verified: false,
+    attempts: 0,
+  };
 
-  if (error) throw new Error(`Failed to store OTP: ${error.message}`);
+  let { error } = await supabaseAdmin
+    .from('otp_codes')
+    .insert({ ...base, otp_hash: otpHash });
+
+  // Database yang belum menjalankan migrasi otp_hash tidak boleh membuat
+  // seluruh login gagal. Simpan OTP plaintext seperti skema lama; verifyOTP
+  // sudah punya fallback pembandingan plaintext untuk baris tanpa hash.
+  if (error && (error.code === 'PGRST204' || error.message.includes('otp_hash'))) {
+    console.warn(
+      '[otp] kolom otp_hash tidak ada di database, OTP disimpan tanpa hash:',
+      error.message,
+    );
+    ({ error } = await supabaseAdmin.from('otp_codes').insert(base));
+  }
+
+  if (error) {
+    throw new Error(
+      `Failed to store OTP: ${error.code ? error.code + ' ' : ''}${error.message}`,
+    );
+  }
 }
 
 export async function verifyOTP(
@@ -103,10 +119,14 @@ export async function verifyOTP(
 }
 
 export async function invalidatePreviousOTPs(email: string, type: 'register' | 'login'): Promise<void> {
-  await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from('otp_codes')
     .update({ verified: true })
     .eq('email', email.toLowerCase())
     .eq('type', type)
     .eq('verified', false);
+
+  if (error) {
+    console.error('[otp] gagal membatalkan OTP lama:', error.code ?? '', error.message);
+  }
 }

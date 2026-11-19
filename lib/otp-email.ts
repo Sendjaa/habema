@@ -30,7 +30,7 @@ export async function sendOtpEmail(
   try {
     const resendClient = getResend()
     const { error } = await resendClient.emails.send({
-      from: process.env.OTP_EMAIL_FROM || 'Habema <noreply@habema.com>',
+      from: process.env.OTP_EMAIL_FROM || 'Habema <noreply@habema.biz.id>',
       to: email,
       subject: type === 'register' ? 'Kode Verifikasi Email - Habema' : 'Kode Login - Habema',
       html: `
