@@ -4,11 +4,20 @@ import type { Database } from "@/types/supabase";
 // Singleton pattern for admin Supabase client with different storage key
 let supabaseAdminInstance: ReturnType<typeof createClient<Database>> | null = null;
 
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!serviceRoleKey) {
+  console.error(
+    '[supabaseAdmin] SUPABASE_SERVICE_ROLE_KEY belum diset di environment ini. ' +
+      'Semua request server ke Supabase akan gagal dengan "Invalid API key".',
+  )
+}
+
 export function getSupabaseAdmin() {
   if (!supabaseAdminInstance) {
     supabaseAdminInstance = createClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY || 'dummy-key',
+      serviceRoleKey || 'dummy-key',
       {
         auth: {
           autoRefreshToken: false,

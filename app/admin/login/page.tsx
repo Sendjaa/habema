@@ -3,9 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from '@/lib/supabaseClient';
-import { getAdminSession, requireAdmin, requireSuperAdmin, scopeToBranch } from '@/lib/admin-rbac';
-import { createServerSupabaseClient } from '@/lib/supabaseServer'
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { DEV_LOCAL_AUTH } from '@/lib/dev-local-auth';
 import { Turnstile } from "@marsidev/react-turnstile";
 import OtpVerifyStep from "@/components/auth/otp-verify-step";
@@ -115,7 +112,16 @@ export default function AdminLogin() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(GENERIC_LOGIN_ERROR);
+        if (res.status >= 500) {
+          toast.error(
+            typeof data?.error === "string"
+              ? data.error
+              : "Layanan login sedang bermasalah. Silakan coba lagi.",
+          );
+        } else {
+          toast.error(GENERIC_LOGIN_ERROR);
+        }
+        return;
       }
 
       if (data.success && data.session) {
@@ -141,7 +147,7 @@ export default function AdminLogin() {
       toast.success(code
         ? "Email OTP gagal terkirim, kode ditampilkan di halaman ini (dev)"
         : "Kode OTP telah dikirim ke email admin");
-    } catch (error: any) {
+    } catch {
       toast.error(GENERIC_LOGIN_ERROR);
     } finally {
       setIsLoading(false);
@@ -286,13 +292,6 @@ export default function AdminLogin() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
-      if (typeof supabase === 'undefined' || supabase === null) {
-        toast.error("Client Supabase tidak tersedia. Periksa konfigurasi environment.");
-        return;
-      }
-
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/admin/login`,
       });
 
       if (!res.ok) {

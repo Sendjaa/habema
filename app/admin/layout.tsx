@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { NotificationsPanel } from "@/components/admin/notifications-panel";
-import { LayoutDashboard, Package, ShoppingCart, Users, Tag, Percent, TrendingUp, LogOut, Menu, X, Mountain, Store, MapPin, Layers, Building2, Compass, GalleryHorizontal, Image, Ticket, Box, Megaphone, Settings, BarChart2, ImageIcon } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Users, Tag, Percent, LogOut, Menu, X, Mountain, Store, MapPin, Layers, Building2, Compass, GalleryHorizontal, Image, Ticket, BarChart2 } from "lucide-react";
 
 type NavSection = {
   title: string;
@@ -16,7 +16,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [adminSession, setAdminSession] = useState<{ role?: string; branchName?: string } | null>(null);
+  const [adminSession, setAdminSession] = useState<{
+    role?: string;
+    branchId?: string | null;
+    branchName?: string;
+  } | null>(null);
 
   const NAV_SECTIONS: NavSection[] = [
     {
@@ -67,25 +71,44 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   ];
 
   useEffect(() => {
+    const client = supabase;
+    if (!client || pathname === "/admin/login") return;
+
     const loadAdminSession = async () => {
       try {
-        const supabase = await createServerSupabaseClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        
-        const { data: profile } = await supabaseAdmin
-          .from('users')
-          .select('role, branch_id')
-          .eq('id', user.id)
-          .maybeSingle();
-        
-        if (profile) {
-          setAdminSession({ role: profile.role, branchId: profile.branch_id });
+        const { data: { user } } = await client.auth.getUser();
+        if (!user) {
+          setAdminSession(null);
+          return;
         }
-      } catch {}
+
+        const { data: profile } = await client
+          .from("users")
+          .select("role, branch_id, branches(name)")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (!profile) {
+          setAdminSession(null);
+          return;
+        }
+
+        const branch = Array.isArray(profile.branches)
+          ? profile.branches[0]
+          : profile.branches;
+
+        setAdminSession({
+          role: profile.role ?? undefined,
+          branchId: profile.branch_id ?? null,
+          branchName: branch?.name ?? undefined,
+        });
+      } catch {
+        setAdminSession(null);
+      }
     };
+
     loadAdminSession();
-  }, []);
+  }, [pathname]);
 
   const isActive = (href: string) => {
     if (href === "/admin") return pathname === "/admin";
@@ -94,7 +117,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   const handleLogout = async () => {
     await fetch("/api/auth/admin-trust", { method: "DELETE" }).catch(() => null);
-    await supabase.auth.signOut();
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
     router.replace("/admin/login");
   };
 
@@ -108,7 +133,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-[#F1EFE8] font-body flex">
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div
+        <button
+          type="button"
+          aria-label="Tutup menu navigasi"
           className="fixed inset-0 z-40 bg-black/40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -134,18 +161,20 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </span>
           </Link>
           <button
+            type="button"
+            aria-label="Tutup menu navigasi"
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden w-7 h-7 rounded-lg border border-stone-200 flex items-center justify-center text-stone-400 hover:bg-stone-50"
+            className="lg:hidden w-7 h-7 rounded-lg border border-stone-200 flex items-center justify-center text-stone-400 hover:bg-stone-50 focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
 
         {/* Admin info for branch admin */}
-        {isBranchAdmin && adminSession?.role && (
+        {isBranchAdmin && (
           <div className="px-4 py-3 border-b border-stone-100 bg-stone-50">
             <p className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
-              Cabang: {adminSession.role}
+              Cabang: {adminSession?.branchName ?? "Tidak diketahui"}
             </p>
           </div>
         )}
@@ -194,10 +223,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <header className="bg-white border-b border-stone-200 sticky top-0 z-30">
           <div className="px-4 py-2.5 flex items-center gap-3">
             <button
+              type="button"
+              aria-label="Buka menu navigasi"
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden w-8 h-8 rounded-lg border border-stone-200 flex items-center justify-center text-stone-500 hover:bg-stone-50"
+              className="lg:hidden w-8 h-8 rounded-lg border border-stone-200 flex items-center justify-center text-stone-500 hover:bg-stone-50 focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
             >
-              <Menu className="w-4 h-4" />
+              <Menu className="w-4 h-4" aria-hidden="true" />
             </button>
             <div className="flex items-center gap-2.5 lg:hidden">
               <div className="w-7 h-7 rounded-lg bg-emerald-800 flex items-center justify-center">
