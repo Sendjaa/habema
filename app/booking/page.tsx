@@ -1,7 +1,7 @@
 "use client";
 
 // ==================== IMPORTS ====================
-import { useState, Suspense, useEffect, useRef } from "react";
+import { useState, Suspense, useEffect, useRef, useCallback } from "react";
 import type { User } from "@supabase/supabase-js";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -120,6 +120,7 @@ function BookingContent() {
   // QRIS dinamis: di-generate per amount, bukan QRIS statis.
   const [dynamicQrisUrl, setDynamicQrisUrl] = useState<string | null>(null);
   const [isGeneratingQris, setIsGeneratingQris] = useState(false);
+  const autoQrisBookingRef = useRef<string | null>(null);
 
   const [showLoginModal, setShowLoginModal] = useState(false);
   const skipAuthCheck = useRef(false);
@@ -944,7 +945,7 @@ Mohon konfirmasi pesanan saya ya!`;
     }
   };
 
-  const generateDynamicQris = async () => {
+  const generateDynamicQris = useCallback(async () => {
     if (!createdBookingId) {
       toast.error("ID pesanan tidak ditemukan.");
       return;
@@ -973,7 +974,15 @@ Mohon konfirmasi pesanan saya ya!`;
     } finally {
       setIsGeneratingQris(false);
     }
-  };
+  }, [createdBookingId, totalPrice]);
+
+  useEffect(() => {
+    if (!createdBookingId || !isManualQrisMethod(paymentMethod)) return;
+    if (dynamicQrisUrl || isGeneratingQris) return;
+    if (autoQrisBookingRef.current === createdBookingId) return;
+    autoQrisBookingRef.current = createdBookingId;
+    void generateDynamicQris();
+  }, [createdBookingId, paymentMethod, dynamicQrisUrl, isGeneratingQris, generateDynamicQris]);
 
   const handleUploadProof = async () => {
     if (!proofFile) {
@@ -1361,6 +1370,13 @@ Mohon konfirmasi pesanan saya ya!`;
                           alt={`QRIS Dinamis - Total Rp${Number(totalPrice).toLocaleString("id-ID")}`}
                           className="w-56 h-56 rounded-xl object-contain ring-1 ring-emerald-300 bg-white p-2"
                         />
+                      ) : isGeneratingQris ? (
+                        <div className="w-56 h-56 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/40 flex flex-col items-center justify-center gap-2 p-4 text-center">
+                          <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
+                          <p className="text-[11px] text-stone-600 font-medium">
+                            Membuat QRIS sesuai nominal pesanan...
+                          </p>
+                        </div>
                       ) : (
                         <div className="w-56 h-56 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/40 flex flex-col items-center justify-center gap-2 p-4 text-center">
                           <QrCode className="w-10 h-10 text-emerald-600" />
@@ -1381,7 +1397,9 @@ Mohon konfirmasi pesanan saya ya!`;
                       <p className="text-[10px] text-stone-500 font-medium text-center">
                         {dynamicQrisUrl
                           ? "Scan dengan GoPay, OVO, Dana, m-banking, atau e-wallet apa pun. Nominal sudah sesuai pesanan."
-                          : "Klik Generate QRIS Dinamis untuk membuat kode pembayaran sesuai total pesanan."}
+                          : isGeneratingQris
+                            ? "Mohon tunggu, kode QRIS sedang dibuat otomatis."
+                            : "Klik Generate QRIS Dinamis untuk membuat kode pembayaran sesuai total pesanan."}
                       </p>
                     </div>
 
