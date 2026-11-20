@@ -1,0 +1,45 @@
+{
+  "name": "Habema Checkout UI Spec",
+  "page": "/checkout/[id]",
+  "devices": [
+    { "name": "Desktop-XL", "width": 1440, "height": 1024 },
+    { "name": "Tablet-Landscape", "width": 1024, "height": 768 },
+    { "name": "Mobile-Portrait", "width": 375, "height": 812 }
+  ],
+  "tokens": {
+    "colors": {
+      "primary": "#0F5EF0",
+      "accent": "#F2A900",
+      "gray100": "#F9FAFB",
+      "gray900": "#111827",
+      "border": "#E5E7EB",
+      "error": "#EF4444",
+      "success": "#10B981"
+    },
+    "radius": "8px",
+    "spacingBase": "16px",
+    "shadowCard": "0 4 12 0 rgba(0,0,0,0.07)",
+    "fonts": {
+      "base": "Inter, 400, 16px",
+      "heading": "Inter, 600, 24px",
+      "headingTablet": "Inter, 600, 20px",
+      "headingMobile": "Inter, 600, 18px"
+    }
+  },
+  "components": [
+    "HeaderBar",
+    "ProgressSteps",
+    "CheckoutCard",
+    "ItemRow",
+    "QtySelector",
+    "PriceBadge",
+    "FormField",
+    "PaymentButton",
+    "FooterNote"
+  ],
+  "layout": {
+    "desktop": "2-column grid (CheckoutCard 70% | SummaryCard 30% sticky)",
+    "tablet": "single column stacked (CheckoutCard then SummaryCard)",
+    "mobile": "single column, SummaryCard collapsible, PaymentButton sticky bottom"
+  }
+}

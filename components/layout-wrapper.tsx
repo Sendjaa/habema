@@ -30,7 +30,17 @@ export function LayoutWrapper({
   useEffect(() => {
     const checkAdmin = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const client = supabase;
+        if (!client) {
+          if (!isLoginPage) {
+            router.push("/admin/login");
+          } else {
+            setIsAdmin(false);
+          }
+          return;
+        }
+
+        const { data: { session } } = await client.auth.getSession();
 
         if (!session) {
           if (!isLoginPage) {
@@ -41,14 +51,14 @@ export function LayoutWrapper({
           return;
         }
 
-        const { data: profile, error } = await supabase
+        const { data: profile, error } = await client
           .from('users')
           .select('is_vendor')
           .eq('id', session.user.id)
           .single();
 
         if (error || !profile?.is_vendor) {
-          await supabase.auth.signOut();
+          await client.auth.signOut();
           if (!isLoginPage) {
             router.push("/admin/login");
           } else {
@@ -75,11 +85,13 @@ export function LayoutWrapper({
     return <div className="min-h-screen">{children}</div>
   }
 
-  // Don't show header and footer on admin pages (except login)
-  if (isAdminPage && !isLoginPage) {
+  // Admin routes (including login) never show the public header/footer
+  if (isAdminPage) {
     return (
       <div className="min-h-screen">
-        {isAdmin === null ? (
+        {isLoginPage ? (
+          children
+        ) : isAdmin === null ? (
           <div className="min-h-screen flex items-center justify-center bg-gray-50">
             <Loader2 className="w-8 h-8 animate-spin text-gray-600" />
           </div>

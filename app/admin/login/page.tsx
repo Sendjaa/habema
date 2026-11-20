@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from '@/lib/supabaseClient';
-import { createServerSupabaseClient } from '@/lib/supabaseServer'
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { DEV_LOCAL_AUTH } from '@/lib/dev-local-auth';
 import { Turnstile } from "@marsidev/react-turnstile";
 import OtpVerifyStep from "@/components/auth/otp-verify-step";
@@ -15,11 +13,12 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
-const GENERIC_LOGIN_ERROR = "Kredensial tidak valid";
-const isPasswordTooShort = (password: string) => password.length < 8;
-const isPasswordTooLong = (password: string) => password.length > 72;
-const isValidEmail = (email: string) =>
-  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+import {
+  GENERIC_LOGIN_ERROR,
+  isPasswordTooLong,
+  isPasswordTooShort,
+  isValidEmail,
+} from "@/lib/auth-validation";
 
 const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "")
   .split(",")
@@ -113,7 +112,16 @@ export default function AdminLogin() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(GENERIC_LOGIN_ERROR);
+        if (res.status >= 500) {
+          toast.error(
+            typeof data?.error === "string"
+              ? data.error
+              : "Layanan login sedang bermasalah. Silakan coba lagi.",
+          );
+        } else {
+          toast.error(GENERIC_LOGIN_ERROR);
+        }
+        return;
       }
 
       if (data.success && data.session) {
@@ -139,7 +147,7 @@ export default function AdminLogin() {
       toast.success(code
         ? "Email OTP gagal terkirim, kode ditampilkan di halaman ini (dev)"
         : "Kode OTP telah dikirim ke email admin");
-    } catch (error: any) {
+    } catch {
       toast.error(GENERIC_LOGIN_ERROR);
     } finally {
       setIsLoading(false);
@@ -373,7 +381,7 @@ export default function AdminLogin() {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-          </div>  
+          </div>
 
           {/* Turnstile */}
           {DEV_LOCAL_AUTH ? (

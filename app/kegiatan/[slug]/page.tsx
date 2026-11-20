@@ -6,13 +6,13 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { and, arrayContains, asc, desc, eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { activityTiles, bundles, equipment, shopProducts } from '@/lib/db/schema'
+import { bundles, equipment, shopProducts } from '@/lib/db/schema'
 import {
   defaultActivitySections,
-  fallbackActivityImage,
   getActivity,
   type ActivitySection,
 } from '@/lib/activities'
+import { ActivitySectionTabs } from '@/components/kegiatan/activity-section-tabs'
 
 /**
  * Halaman kegiatan — satu tempat untuk "saya mau <kegiatan>, butuh apa saja?".
@@ -44,12 +44,7 @@ async function load(slug: string) {
 
   const db = getDb()
 
-  const [tileRows, gearRows, productRows, bundleRows] = await Promise.all([
-    db
-      .select({ imageUrl: activityTiles.imageUrl, imageAlt: activityTiles.imageAlt })
-      .from(activityTiles)
-      .where(and(eq(activityTiles.slug, slug), eq(activityTiles.isActive, true)))
-      .limit(1),
+  const [gearRows, productRows, bundleRows] = await Promise.all([
     db
       .select({
         id: equipment.id,
@@ -110,12 +105,8 @@ async function load(slug: string) {
       .limit(3),
   ])
 
-  const tile = tileRows[0]
-
   return {
     activity,
-    heroImage: tile?.imageUrl || activity.image || fallbackActivityImage,
-    heroAlt: tile?.imageAlt ?? null,
     gear: gearRows.filter((g) => g.id && g.name),
     products: productRows.filter((p) => p.name),
     packageBundles: bundleRows.filter((b) => b.id && b.name),
@@ -131,25 +122,122 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params
   const activity = getActivity(slug)
-  if (!activity) return { title: 'Kegiatan tidak ditemukan — Habema Outdoor' }
+  if (!activity) return { title: 'Kegiatan tidak ditemukan | Habema Outdoor' }
 
   return {
-    title: `${activity.label} — Alat Sewa & Perlengkapan | Habema Outdoor`,
+    title: `${activity.label} | Alat Sewa & Perlengkapan | Habema Outdoor`,
     description:
       `${activity.blurb}. Pilihan alat sewa dan perlengkapan untuk ${activity.label.toLowerCase()}, ` +
       'lengkap dengan paket rombongan.',
   }
 }
 
-function SectionHeading({ kicker, title, note }: { kicker: string; title: string; note: string }) {
+function SectionHeading({
+  kicker,
+  title,
+  note,
+  count,
+}: {
+  kicker: string
+  title: string
+  note: string
+  count?: number
+}) {
   return (
-    <>
-      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-gold">{kicker}</p>
-      <h2 className="mt-2 font-sans text-2xl md:text-4xl lg:text-6xl font-bold uppercase tracking-tight text-stone-900">
-        {title}
-      </h2>
-      <p className="mt-2 text-sm text-muted-foreground max-w-2xl">{note}</p>
-    </>
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-orange-700">{kicker}</p>
+        <h2 className="mt-2 font-sans text-2xl md:text-3xl lg:text-4xl font-bold uppercase tracking-tight text-stone-900">
+          {title}
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-stone-600">{note}</p>
+      </div>
+      {count != null && (
+        <span className="inline-flex shrink-0 items-center rounded-full border border-orange-200 bg-orange-50 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-orange-800">
+          {count} pilihan
+        </span>
+      )}
+    </div>
+  )
+}
+
+type CatalogCardProps = {
+  id: string | number
+  name: string
+  brand: string | null
+  imageUrl: string | null
+  price: number
+  originalPrice?: number | null
+  discountLabel?: string
+  stockNote?: string
+  unit?: string
+}
+
+function CatalogCard({
+  id,
+  name,
+  brand,
+  imageUrl,
+  price,
+  originalPrice,
+  discountLabel,
+  stockNote,
+  unit,
+}: CatalogCardProps) {
+  return (
+    <Link
+      href={`/product/${id}`}
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition-colors hover:border-orange-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+    >
+      <div className="relative aspect-square bg-stone-100">
+        {imageUrl ? (
+          <Image
+            src={imageUrl}
+            alt={name}
+            fill
+            sizes="(max-width: 1023px) 50vw, 25vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          />
+        ) : (
+          <span className="absolute inset-0 flex items-center justify-center text-[11px] text-stone-600">
+            Tanpa foto
+          </span>
+        )}
+        {discountLabel && (
+          <span className="absolute left-3 top-3 rounded-md bg-orange-700 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+            {discountLabel}
+          </span>
+        )}
+        {stockNote && (
+          <span className="absolute right-3 top-3 rounded-md border border-orange-200 bg-orange-50 px-2 py-1 text-[10px] font-bold text-orange-800">
+            {stockNote}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col p-4">
+        {brand && (
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-600">
+            {brand}
+          </p>
+        )}
+        <h3 className="mt-1.5 line-clamp-2 text-sm font-bold leading-snug text-stone-900">
+          {name}
+        </h3>
+        <div className="mt-auto pt-4">
+          <p className="text-sm font-black text-orange-700">
+            {rupiah(price)}
+            {unit && (
+              <span className="ml-1 text-[11px] font-semibold text-stone-600">/{unit}</span>
+            )}
+          </p>
+          {originalPrice != null && originalPrice > price && (
+            <p className="mt-0.5 text-[11px] text-stone-600 line-through">
+              {rupiah(originalPrice)}
+            </p>
+          )}
+        </div>
+      </div>
+    </Link>
   )
 }
 
@@ -158,7 +246,7 @@ function SectionCta({ href, children }: { href: string; children: ReactNode }) {
     <div className="mt-6">
       <Link
         href={href}
-        className="inline-flex items-center justify-center px-6 h-12 rounded-xl font-bold text-forest bg-card border border-border hover:border-forest transition-colors"
+                className="inline-flex h-12 items-center justify-center rounded-xl border border-orange-200 bg-white px-6 font-bold text-orange-700 transition-colors hover:border-orange-500 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
       >
         {children}
       </Link>
@@ -182,7 +270,7 @@ export default async function ActivityPage({
 
   if (!data) notFound()
 
-  const { activity, heroImage, heroAlt, gear, products, packageBundles } = data
+  const { activity, gear, products, packageBundles } = data
   const order = activity.sections ?? defaultActivitySections
   // Kegiatan yang katalognya keberangkatan memakai istilah "jadwal", bukan
   // "paket rombongan", dan menghitung harganya per orang.
@@ -197,49 +285,43 @@ export default async function ActivityPage({
               kicker={order.includes('products') ? 'Sewa atau beli' : 'Peralatan sewa'}
               title={`Alat untuk ${activity.label}`}
               note="Harga sewa per malam dengan ketersediaan mengikuti stok cabang. Satu hari sewa dihitung 24 jam sejak alat diambil."
+              count={gear.length}
             />
 
             <ul className="mt-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
-              {gear.map((item) => (
-                <li key={item.id}>
-                  <Link
-                    href={`/product/${item.id}`}
-                    className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:shadow-md"
-                  >
-                    <div className="relative aspect-square bg-stone-100">
-                      {item.imageUrl ? (
-                        <Image
-                          src={item.imageUrl}
-                          alt={item.name ?? ''}
-                          fill
-                          sizes="(max-width: 1024px) 50vw, 25vw"
-                          className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                      ) : (
-                        <span className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground">
-                          Tanpa foto
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-1 flex-col p-3">
-                      {item.brand && (
-                        <p className="text-[9px] uppercase tracking-widest text-muted-foreground">
-                          {item.brand}
-                        </p>
-                      )}
-                      <h3 className="mt-1 font-sans text-xs md:text-sm font-bold text-stone-900 leading-tight line-clamp-2">
-                        {item.name}
-                      </h3>
-                      <div className="mt-auto pt-2">
-                        <p className="text-sm font-black text-forest">
-                          {rupiah(item.isPromo ? item.promoPricePerNight : item.pricePerNight)}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">/ malam</p>
-                      </div>
-                    </div>
-                  </Link>
-                </li>
-              ))}
+              {gear.map((item) => {
+                const normalPrice = Number(item.pricePerNight ?? 0)
+                const promoPrice = Number(item.promoPricePerNight ?? 0)
+                const hasPromo =
+                  item.isPromo === true && promoPrice > 0 && promoPrice < normalPrice
+                const price = hasPromo ? promoPrice : normalPrice
+                const discount = hasPromo
+                  ? Math.round(((normalPrice - promoPrice) / normalPrice) * 100)
+                  : 0
+                const stock = item.stockQuantity
+                const stockNote =
+                  stock != null && stock <= 3
+                    ? stock === 0
+                      ? 'Stok habis'
+                      : `Sisa ${stock}`
+                    : undefined
+
+                return (
+                  <li key={item.id}>
+                    <CatalogCard
+                      id={item.id}
+                      name={item.name ?? 'Alat sewa'}
+                      brand={item.brand}
+                      imageUrl={item.imageUrl}
+                      price={price}
+                      originalPrice={discount > 0 ? normalPrice : null}
+                      discountLabel={discount > 0 ? `-${discount}%` : undefined}
+                      stockNote={stockNote}
+                      unit="malam"
+                    />
+                  </li>
+                )
+              })}
             </ul>
 
             <SectionCta href={`/catalog_rental?kegiatan=${activity.slug}`}>
@@ -251,57 +333,46 @@ export default async function ActivityPage({
 
     products:
       products.length > 0 ? (
-        <section className="border-t border-border py-12 md:py-16 bg-cream-dark">
+        <section className="bg-orange-50/40 py-12 md:py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <SectionHeading
               kicker="Perlengkapan pribadi"
               title={`Perlengkapan yang biasa dibeli untuk ${activity.label.toLowerCase()}`}
               note="Perlengkapan yang umumnya dibeli sendiri karena bersifat habis pakai atau pribadi, sehingga tidak disewakan."
+              count={products.length}
             />
 
             <ul className="mt-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
-              {products.map((item) => (
-                <li key={item.id}>
-                  <Link
-                    href={`/product/${item.id}`}
-                    className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:shadow-md"
-                  >
-                    <div className="relative aspect-square bg-stone-100">
-                      {item.imageUrl ? (
-                        <Image
-                          src={item.imageUrl}
-                          alt={item.name}
-                          fill
-                          sizes="(max-width: 1024px) 50vw, 25vw"
-                          className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                      ) : (
-                        <span className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground">
-                          Tanpa foto
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-1 flex-col p-3">
-                      {item.brand && (
-                        <p className="text-[9px] uppercase tracking-widest text-muted-foreground">
-                          {item.brand}
-                        </p>
-                      )}
-                      <h3 className="mt-1 font-sans text-xs md:text-sm font-bold text-stone-900 leading-tight line-clamp-2">
-                        {item.name}
-                      </h3>
-                      <div className="mt-auto pt-2">
-                        <p className="text-sm font-black text-forest">{rupiah(item.price)}</p>
-                        {item.originalPrice && Number(item.originalPrice) > Number(item.price) && (
-                          <p className="text-[10px] text-muted-foreground line-through">
-                            {rupiah(item.originalPrice)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                </li>
-              ))}
+              {products.map((item) => {
+                const price = Number(item.price ?? 0)
+                const originalPrice = Number(item.originalPrice ?? 0)
+                const hasDiscount = originalPrice > price
+                const discount = hasDiscount
+                  ? Math.round(((originalPrice - price) / originalPrice) * 100)
+                  : 0
+                const stock = item.stock
+                const stockNote =
+                  stock != null && stock <= 3
+                    ? stock === 0
+                      ? 'Stok habis'
+                      : `Sisa ${stock}`
+                    : undefined
+
+                return (
+                  <li key={item.id}>
+                    <CatalogCard
+                      id={item.id}
+                      name={item.name}
+                      brand={item.brand}
+                      imageUrl={item.imageUrl}
+                      price={price}
+                      originalPrice={discount > 0 ? originalPrice : null}
+                      discountLabel={discount > 0 ? `-${discount}%` : undefined}
+                      stockNote={stockNote}
+                    />
+                  </li>
+                )
+              })}
             </ul>
 
             <SectionCta href="/catalog_shop">Buka katalog toko</SectionCta>
@@ -321,6 +392,7 @@ export default async function ActivityPage({
                   ? 'Harga per orang sudah termasuk peralatan. Pilih keberangkatan; kuota dikonfirmasi oleh tim cabang.'
                   : 'Komposisi alat sudah dihitung untuk rombongan, sehingga tidak perlu menyusun satu per satu.'
               }
+              count={packageBundles.length}
             />
 
             <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -328,16 +400,16 @@ export default async function ActivityPage({
                 <li key={bundle.id}>
                   <Link
                     href={`/packages/${bundle.id}`}
-                    className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-all hover:shadow-md"
+                    className="flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-5 shadow-sm transition-colors hover:border-orange-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
                   >
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-bold uppercase tracking-wider text-forest">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-orange-700">
                         {bundle.targetAudience}
                       </span>
                       {bundle.paxMin != null && (
-                        <span className="text-[11px] text-muted-foreground">
+                        <span className="text-[11px] text-stone-600">
                           {bundle.paxMax != null && bundle.paxMax !== bundle.paxMin
-                            ? `${bundle.paxMin}–${bundle.paxMax} orang`
+                            ? `${bundle.paxMin}-${bundle.paxMax} orang`
                             : `${bundle.paxMin} orang`}
                         </span>
                       )}
@@ -346,15 +418,15 @@ export default async function ActivityPage({
                       {bundle.name}
                     </h3>
                     {bundle.description && (
-                      <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+                      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-stone-600">
                         {bundle.description}
                       </p>
                     )}
                     <div className="mt-4 flex items-baseline gap-2">
-                      <span className="text-xl font-black text-forest">
+                      <span className="text-xl font-black text-orange-700">
                         {rupiah(bundle.bundlePrice)}
                       </span>
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="text-[11px] text-stone-600">
                         {packagesLead ? '/ orang' : '/ paket / malam'}
                       </span>
                     </div>
@@ -371,72 +443,95 @@ export default async function ActivityPage({
       ) : null,
   }
 
-  const rendered = order
-    .map((key) => sections[key])
-    .filter((node): node is ReactNode => node !== null)
+  const sectionMeta: Record<ActivitySection, { label: string; count: number }> = {
+    gear: { label: 'Alat Sewa', count: gear.length },
+    products: { label: 'Perlengkapan', count: products.length },
+    packages: { label: packagesLead ? 'Jadwal' : 'Paket', count: packageBundles.length },
+  }
+
+  const availableSections = order.flatMap((key) => {
+    const node = sections[key]
+    if (!node) return []
+    return [{ key, ...sectionMeta[key], node }]
+  })
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Foto kurasi dari activity_tiles (/admin/activities). URL-nya diisi
-          admin dari host mana pun, jadi tidak lewat next/image yang
-          domainnya dibatasi remotePatterns. */}
-      <section className="relative min-h-[340px] md:min-h-[440px] overflow-hidden bg-forest-dark">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={heroImage}
-          alt={heroAlt ?? activity.label}
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-linear-to-t from-forest/95 via-forest/60 to-forest-dark/30" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 flex flex-col justify-end min-h-[340px] md:min-h-[440px]">
-          <Link
-            href="/"
-            className="text-[11px] font-bold uppercase tracking-widest text-white/70 hover:text-white"
+    <div className="min-h-screen bg-white">
+      <header className="border-b border-orange-100 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-8 md:pt-10 md:pb-10">
+          <nav
+            aria-label="Breadcrumb"
+            className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-widest"
           >
-            ← Semua kegiatan
-          </Link>
-          <h1 className="mt-3 font-sans text-2xl md:text-4xl lg:text-6xl font-bold uppercase tracking-tight text-white leading-[0.95]">
-            {activity.label}
-          </h1>
-          <p className="mt-3 text-sm md:text-base text-white/85 max-w-2xl">{activity.blurb}</p>
-          <p className="mt-4 text-[11px] uppercase tracking-wider text-gold font-bold">
-            {order
-              .map((key) =>
-                key === 'gear'
-                  ? `${gear.length} alat sewa`
-                  : key === 'products'
-                    ? `${products.length} produk toko`
-                    : `${packageBundles.length} paket`,
-              )
-              .join(' · ')}
-          </p>
+            <Link href="/" className="text-orange-700 hover:text-orange-800">
+              Aktivitas
+            </Link>
+            <span className="text-stone-300" aria-hidden="true">
+              /
+            </span>
+            <span className="text-stone-600" aria-current="page">
+              {activity.label}
+            </span>
+          </nav>
+
+          <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-end">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-orange-700">
+                Katalog kegiatan
+              </p>
+              <h1 className="mt-3 font-sans text-4xl font-bold uppercase leading-[0.95] tracking-tight text-stone-900 sm:text-5xl lg:text-6xl">
+                {activity.label}
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-stone-600 md:text-base">
+                {activity.blurb}.
+              </p>
+            </div>
+
+            <aside className="border-t-2 border-orange-600 pt-4 lg:border-l-2 lg:border-t-0 lg:pl-5 lg:pt-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-stone-600">
+                Sebelum berangkat
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-stone-700">
+                Ketersediaan alat mengikuti jadwal sewa di cabang. Cek stok sebelum menentukan
+                tanggal pengambilan.
+              </p>
+              <Link
+                href="/contact"
+                className="mt-3 inline-flex text-xs font-bold uppercase tracking-wider text-orange-700 underline decoration-orange-300 underline-offset-4 hover:text-orange-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+              >
+                Hubungi tim cabang
+              </Link>
+            </aside>
+          </div>
         </div>
-      </section>
+      </header>
 
-      {rendered.map((node, i) => (
-        <Fragment key={order[i]}>{node}</Fragment>
-      ))}
+      {availableSections.length > 1 ? (
+        <ActivitySectionTabs sections={availableSections} />
+      ) : (
+        availableSections.map(({ key, node }) => <Fragment key={key}>{node}</Fragment>)
+      )}
 
-      {rendered.length === 0 && (
+      {availableSections.length === 0 && (
         <section className="py-16">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
-            <h2 className="font-sans text-2xl md:text-4xl lg:text-6xl font-bold uppercase tracking-tight text-stone-900">
+            <h2 className="font-sans text-2xl font-bold uppercase tracking-tight text-stone-900 md:text-4xl">
               Katalog {activity.label} sedang disusun
             </h2>
-            <p className="mt-3 text-sm text-muted-foreground">
+            <p className="mt-3 text-sm leading-relaxed text-stone-600">
               Sampaikan kebutuhan kegiatan Anda; tim cabang akan menyiapkan daftar alat beserta
               ketersediaan stok.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Link
                 href="/catalog_rental"
-                className="inline-flex items-center justify-center px-6 h-12 rounded-xl font-bold text-white bg-forest hover:bg-forest-dark transition-colors"
+                className="inline-flex h-12 items-center justify-center rounded-xl bg-orange-700 px-6 font-bold text-white transition-colors hover:bg-orange-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
               >
                 Lihat katalog alat
               </Link>
               <Link
                 href="/contact"
-                className="inline-flex items-center justify-center px-6 h-12 rounded-xl font-bold text-forest bg-card border border-border hover:border-forest transition-colors"
+        className="inline-flex h-12 items-center justify-center rounded-xl border border-orange-200 bg-white px-6 font-bold text-orange-700 transition-colors hover:border-orange-500 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
               >
                 Tanya tim cabang
               </Link>

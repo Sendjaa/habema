@@ -1,7 +1,7 @@
 "use client";
 
 // ==================== IMPORTS ====================
-import { useState, Suspense, useEffect, useRef } from "react";
+import { useState, Suspense, useEffect, useRef, useCallback } from "react";
 import type { User } from "@supabase/supabase-js";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -27,7 +27,6 @@ import {
 import {
   MANUAL_QRIS_METHOD,
   MANUAL_QRIS_ONLY,
-  QRIS_IMAGE_PATH,
   QRIS_MERCHANT_NAME,
   QRIS_VERIFY_SLA,
   PROOF_MAX_SIZE,
@@ -118,7 +117,10 @@ function BookingContent() {
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [isUploadingProof, setIsUploadingProof] = useState(false);
-  const [qrisImageOk, setQrisImageOk] = useState(true);
+  // QRIS dinamis: di-generate per amount, bukan QRIS statis.
+  const [dynamicQrisUrl, setDynamicQrisUrl] = useState<string | null>(null);
+  const [isGeneratingQris, setIsGeneratingQris] = useState(false);
+  const autoQrisBookingRef = useRef<string | null>(null);
 
   const [showLoginModal, setShowLoginModal] = useState(false);
   const skipAuthCheck = useRef(false);
@@ -943,6 +945,45 @@ Mohon konfirmasi pesanan saya ya!`;
     }
   };
 
+  const generateDynamicQris = useCallback(async () => {
+    if (!createdBookingId) {
+      toast.error("ID pesanan tidak ditemukan.");
+      return;
+    }
+    setIsGeneratingQris(true);
+    try {
+      const res = await fetch("/api/qris/dynamic", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: Math.round(totalPrice),
+          includeImage: true,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Gagal generate QRIS dinamis");
+      }
+      if (!data.imageUrl) {
+        throw new Error("Gambar QRIS gagal dibuat. Silakan coba lagi.");
+      }
+      setDynamicQrisUrl(data.imageUrl);
+      toast.success("QRIS dinamis berhasil dibuat!");
+    } catch (error: any) {
+      toast.error(error?.message || "Gagal generate QRIS dinamis.");
+    } finally {
+      setIsGeneratingQris(false);
+    }
+  }, [createdBookingId, totalPrice]);
+
+  useEffect(() => {
+    if (!createdBookingId || !isManualQrisMethod(paymentMethod)) return;
+    if (dynamicQrisUrl || isGeneratingQris) return;
+    if (autoQrisBookingRef.current === createdBookingId) return;
+    autoQrisBookingRef.current = createdBookingId;
+    void generateDynamicQris();
+  }, [createdBookingId, paymentMethod, dynamicQrisUrl, isGeneratingQris, generateDynamicQris]);
+
   const handleUploadProof = async () => {
     if (!proofFile) {
       toast.error("Silakan pilih foto bukti pembayaran terlebih dahulu.");
@@ -1323,30 +1364,66 @@ Mohon konfirmasi pesanan saya ya!`;
 
                     {/* QR Code */}
                     <div className="flex flex-col items-center gap-2">
-                      {qrisImageOk ? (
+                      {dynamicQrisUrl ? (
                         <img
-                          src={QRIS_IMAGE_PATH}
-                          alt={`QRIS ${QRIS_MERCHANT_NAME}`}
-                          onError={() => setQrisImageOk(false)}
-                          className="w-56 h-56 rounded-xl object-contain ring-1 ring-stone-200 bg-white p-2"
+                          src={dynamicQrisUrl}
+                          alt={`QRIS Dinamis - Total Rp${Number(totalPrice).toLocaleString("id-ID")}`}
+                          className="w-56 h-56 rounded-xl object-contain ring-1 ring-emerald-300 bg-white p-2"
                         />
-                      ) : (
-                        <div className="w-56 h-56 rounded-xl border-2 border-dashed border-stone-300 bg-stone-50 flex flex-col items-center justify-center gap-2 p-4 text-center">
-                          <QrCode className="w-10 h-10 text-stone-400" />
-                          <p className="text-[11px] text-stone-500 font-medium">
-                            Gambar QRIS belum dipasang. Hubungi admin untuk
-                            melanjutkan pembayaran.
+                      ) : isGeneratingQris ? (
+                        <div className="w-56 h-56 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/40 flex flex-col items-center justify-center gap-2 p-4 text-center">
+                          <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
+                          <p className="text-[11px] text-stone-600 font-medium">
+                            Membuat QRIS sesuai nominal pesanan...
                           </p>
                         </div>
+                      ) : (
+                        <div className="w-56 h-56 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/40 flex flex-col items-center justify-center gap-2 p-4 text-center">
+                          <QrCode className="w-10 h-10 text-emerald-600" />
+                          <p className="text-[11px] text-stone-600 font-medium">
+                            QRIS dinamis belum dibuat. Klik tombol Generate
+                            QRIS Dinamis di bawah agar nominal sesuai pesanan.
+                          </p>
+                        </div>
+                      )}
+                      {dynamicQrisUrl && (
+                        <p className="text-[10px] text-emerald-600 font-bold">
+                          QRIS Dinamis — Nominal sudah sesuai pesanan
+                        </p>
                       )}
                       <p className="text-xs font-bold text-slate-800">
                         {QRIS_MERCHANT_NAME}
                       </p>
                       <p className="text-[10px] text-stone-500 font-medium text-center">
-                        Scan dengan GoPay, OVO, Dana, m-banking, atau e-wallet
-                        apa pun. Pastikan nominal sama persis.
+                        {dynamicQrisUrl
+                          ? "Scan dengan GoPay, OVO, Dana, m-banking, atau e-wallet apa pun. Nominal sudah sesuai pesanan."
+                          : isGeneratingQris
+                            ? "Mohon tunggu, kode QRIS sedang dibuat otomatis."
+                            : "Klik Generate QRIS Dinamis untuk membuat kode pembayaran sesuai total pesanan."}
                       </p>
                     </div>
+
+                    {/* Tombol Generate QRIS Dinamis */}
+                    {!dynamicQrisUrl && (
+                      <Button
+                        type="button"
+                        onClick={generateDynamicQris}
+                        disabled={isGeneratingQris || !createdBookingId}
+                        className="w-full h-11 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors"
+                      >
+                        {isGeneratingQris ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Membuat QRIS...
+                          </>
+                        ) : (
+                          <>
+                            <QrCode className="w-4 h-4 mr-2" />
+                            Generate QRIS Dinamis
+                          </>
+                        )}
+                      </Button>
+                    )}
 
                     {/* Upload bukti */}
                     <div className="space-y-2">

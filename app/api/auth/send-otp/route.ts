@@ -4,6 +4,12 @@ import { generateOTP, storeOTP, invalidatePreviousOTPs } from '@/lib/otp';
 import { deliverOtpEmail } from '@/lib/otp-delivery';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { DEV_LOCAL_AUTH } from '@/lib/dev-local-auth';
+import {
+  GENERIC_LOGIN_ERROR,
+  isPasswordTooLong,
+  isPasswordTooShort,
+  isValidEmail,
+} from '@/lib/auth-validation';
 
 export async function POST(req: Request) {
   try {
@@ -11,7 +17,7 @@ export async function POST(req: Request) {
     const { email, turnstileToken, type, password, firstName, lastName } = body;
 
     if (!email || !type) {
-      return NextResponse.json({ error: 'Email dan tipe OTP wajib diisi' }, { status: 400 });
+      return NextResponse.json({ error: GENERIC_LOGIN_ERROR }, { status: 401 })
     }
 
     if (type !== 'register' && type !== 'login') {
@@ -19,6 +25,11 @@ export async function POST(req: Request) {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+
+    // Validasi format email — pesan selalu generik untuk mencegah enumeration.
+    if (!isValidEmail(normalizedEmail)) {
+      return NextResponse.json({ error: GENERIC_LOGIN_ERROR }, { status: 401 })
+    }
 
     // Di dev lokal tidak ada Turnstile yang bisa diselesaikan dan kode OTP
     // hanya ditulis ke terminal (lib/otp-email.ts), jadi pagar ini tidak
@@ -46,8 +57,8 @@ export async function POST(req: Request) {
     }
 
     if (type === 'register') {
-      if (!password || password.length < 6) {
-        return NextResponse.json({ error: 'Password minimal 6 karakter' }, { status: 400 });
+      if (isPasswordTooShort(password) || isPasswordTooLong(password)) {
+        return NextResponse.json({ error: GENERIC_LOGIN_ERROR }, { status: 401 })
       }
       if (!firstName) {
         return NextResponse.json({ error: 'Nama depan wajib diisi' }, { status: 400 });
@@ -72,13 +83,16 @@ export async function POST(req: Request) {
 
     if (type === 'login') {
       if (password) {
+        if (isPasswordTooShort(password) || isPasswordTooLong(password)) {
+          return NextResponse.json({ error: GENERIC_LOGIN_ERROR }, { status: 401 });
+        }
         const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
           email: normalizedEmail,
           password,
         });
 
         if (signInError) {
-          return NextResponse.json({ error: 'Email atau password salah' }, { status: 401 });
+          return NextResponse.json({ error: GENERIC_LOGIN_ERROR }, { status: 401 });
         }
       } else {
         // Passwordless: untuk user yang di-invite tanpa password (mis. via Supabase Invite).
@@ -130,6 +144,6 @@ export async function POST(req: Request) {
     });
   } catch (error: any) {
     console.error('send-otp error:', error);
-    return NextResponse.json({ error: error.message || 'Terjadi kesalahan' }, { status: 500 });
+    return NextResponse.json({ error: 'Terjadi kesalahan' }, { status: 500 });
   }
 }
