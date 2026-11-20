@@ -70,7 +70,7 @@ export interface OtTrip {
   images?: OtTripImage[]
 }
 
-export type OtTripStatus = 'draft' | 'published' | 'archived' | 'full' | 'cancelled'
+export type OtTripStatus = 'draft' | 'published' | 'archived' | 'full' | 'cancelled' | 'all';
 export type OtDifficultyLevel = 'easy' | 'moderate' | 'hard' | 'extreme'
 
 export interface OtTripFaqItem {

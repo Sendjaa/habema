@@ -46,6 +46,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         { href: "/admin/promo-banners", label: "Banner Promo", icon: GalleryHorizontal },
         { href: "/admin/activities", label: "Foto Kegiatan", icon: Compass },
         { href: "/admin/catalog-shop", label: "Katalog Toko", icon: Store },
+        { href: "/admin/opentrip", label: "Open Trip", icon: Compass },
       ],
     },
     {

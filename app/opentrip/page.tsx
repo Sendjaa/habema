@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Search,
   MapPin,
@@ -119,650 +119,36 @@ interface DiscountVoucher {
   title: string;
   discountAmount: number;
   minParticipants: number;
-  validUntil: string;
+  validUntil: string | null;
+}
+
+interface TripFaq {
+  id: string;
+  question: string;
+  answer: string;
+}
+
+interface ParticipantReview {
+  id: string;
+  participant: string;
+  avatar: string | null;
+  trip: string;
+  rating: number;
+  highlight: boolean;
+  note: string;
+}
+
+interface OpenTripContent {
+  vouchers: DiscountVoucher[];
+  gear: GearAddon[];
+  faqs: TripFaq[];
+  gallery: GalleryPhoto[];
+  reviews: ParticipantReview[];
 }
 
 interface OpenTripPageProps {
   trips?: OtTrip[];
 }
-
-// // ==========================================
-// // 2. DATA SAMPLE OPERASIONAL HABEMA
-// // ==========================================
-// const SAMPLE_TRIPS: OtTrip[] = [
-//   {
-//     id: "trp-01",
-//     title: "Gunung Prau via Patak Banteng",
-//     slug: "gunung-prau-patak-banteng",
-//     description:
-//       "Pendakian akhir pekan menuju dataran tinggi Dieng dengan jalur menanjak terukur, pemandangan gugusan Sindoro-Sumbing, serta area perkemahan sabana luas.",
-//     short_description: "Pendakian ringan-menengah dengan panorama sunrise sabana Dieng.",
-//     destination: "Gunung Prau",
-//     destination_region: "Wonosobo, Jawa Tengah",
-//     pickup_location: "Pool Habema Buah Batu, Bandung",
-//     dropoff_location: "Pool Habema Buah Batu, Bandung",
-//     base_price: 780000,
-//     discount_price: 690000,
-//     tax_amount: 0,
-//     final_price: 690000,
-//     currency: "IDR",
-//     duration_days: 2,
-//     duration_nights: 1,
-//     min_participants: 6,
-//     max_participants: 16,
-//     current_participants: 13,
-//     departure_date: "2026-12-05",
-//     return_date: "2026-12-06",
-//     departure_time: "20:00 WIB",
-//     return_time: "21:00 WIB",
-//     status: "published",
-//     featured: true,
-//     priority: 1,
-//     category_id: "cat-gunung",
-//     featured_image:
-//       "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
-//     gallery_images: [
-//       "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
-//       "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80",
-//       "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80",
-//       "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
-//     ],
-//     itinerary: [
-//       {
-//         day: 1,
-//         title: "Keberangkatan Bandung – Basecamp Patak Banteng",
-//         activities: [
-//           "20:00 — Registrasi ulang dan pengecekan logistik di Pool Habema Bandung.",
-//           "21:00 — Perjalanan darat via tol menuju Dieng, Wonosobo.",
-//         ],
-//       },
-//       {
-//         day: 2,
-//         title: "Pendakian Sabana Prau – Kembali ke Bandung",
-//         activities: [
-//           "05:30 — Tiba di Basecamp Patak Banteng, sarapan, dan briefing jalur.",
-//           "08:00 — Mulai pendakian menuju area camp sabana (estimasi 3 jam).",
-//           "12:00 — Mendirikan tenda, makan siang hangat, dan istirahat.",
-//           "17:00 — Sesi foto golden hour menghadap Sindoro-Sumbing.",
-//         ],
-//       },
-//     ],
-//     highlights: [
-//       "Rasio pemandu lapangan 1:4 peserta",
-//       "Tenda kapasitas 4 orang diisi maksimal 3 peserta",
-//       "Makan hangat 3x selama berada di gunung",
-//     ],
-//     inclusions: [
-//       "Transportasi PP Bandung – Basecamp (AC)",
-//       "Simaksi / tiket masuk kawasan pendakian",
-//       "Tenda dome double-layer & alat masak tim",
-//       "Makan 3x di gunung & logistik air mineral",
-//       "Pemandu gunung bersertifikat & P3K standar",
-//     ],
-//     exclusions: [
-//       "Perlengkapan pribadi (carrier, sleeping bag, jaket)",
-//       "Makan selama perjalanan darat di rest area",
-//       "Porter pribadi",
-//     ],
-//     what_to_bring: [
-//       "Jaket windproof / insulasi (suhu malam 6–10°C)",
-//       "Sepatu trekking dengan sol mencengkeram",
-//       "Headlamp & baterai cadangan",
-//       "Jas hujan / poncho",
-//     ],
-//     important_notes: [
-//       "Peserta wajib menyerahkan surat keterangan sehat maksimal H-2 keberangkatan.",
-//     ],
-//     cancellation_policy: "Pembatalan H-7 pengembalian 50%, di bawah H-3 tidak dapat direfund.",
-//     refund_policy: "Pengembalian dana penuh jika trip dibatalkan pihak Habema akibat cuaca ekstrem.",
-//     faq: [
-//       {
-//         question: "Apakah cocok untuk pendaki pemula?",
-//         answer: "Ya, jalur Patak Banteng berjarak sekitar 3,2 km dengan waktu tempuh 2,5–3,5 jam.",
-//       },
-//     ],
-//     min_age: 15,
-//     max_age: 55,
-//     difficulty_level: "easy",
-//     fitness_required: "Mampu berjalan kaki menanjak selama 3 jam dengan beban ringan.",
-//     category: { id: "cat-gunung", name: "Pendakian Gunung", slug: "pendakian-gunung" },
-//   },
-//   {
-//     id: "trp-02",
-//     title: "Gunung Papandayan – Hutan Mati & Pondok Saladah",
-//     slug: "gunung-papandayan-garut",
-//     description:
-//       "Eksplorasi kawah aktif, padang edelweiss Tegal Alun, dan lanskap Hutan Mati yang ikonik di Garut dengan jarak tempuh dekat dari Bandung.",
-//     short_description: "Rute klasik Garut melintasi kawah belerang, Hutan Mati, dan Tegal Alun.",
-//     destination: "Gunung Papandayan",
-//     destination_region: "Garut, Jawa Barat",
-//     pickup_location: "Pool Habema Buah Batu, Bandung",
-//     dropoff_location: "Pool Habema Buah Batu, Bandung",
-//     base_price: 490000,
-//     discount_price: null,
-//     tax_amount: 0,
-//     final_price: 490000,
-//     currency: "IDR",
-//     duration_days: 2,
-//     duration_nights: 1,
-//     min_participants: 6,
-//     max_participants: 18,
-//     current_participants: 11,
-//     departure_date: "2026-12-12",
-//     return_date: "2026-12-13",
-//     departure_time: "06:00 WIB",
-//     return_time: "17:00 WIB",
-//     status: "published",
-//     featured: true,
-//     priority: 2,
-//     category_id: "cat-gunung",
-//     featured_image:
-//       "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80",
-//     gallery_images: [
-//       "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80",
-//       "https://images.unsplash.com/photo-1537225228614-56cc3556d7ed?auto=format&fit=crop&w=1200&q=80",
-//       "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=80",
-//     ],
-//     itinerary: [
-//       {
-//         day: 1,
-//         title: "Bandung – Camp David – Pondok Saladah",
-//         activities: [
-//           "06:00 — Keberangkatan dari Bandung menuju Cisurupan, Garut.",
-//           "09:30 — Registrasi Camp David dan mulai trekking melintasi Kawah Mas.",
-//           "13:00 — Tiba di Pondok Saladah, pendirian camp dan makan siang.",
-//         ],
-//       },
-//       {
-//         day: 2,
-//         title: "Hutan Mati – Tegal Alun – Kembali ke Bandung",
-//         activities: [
-//           "05:30 — Trekking pagi menuju Hutan Mati dan sabana Tegal Alun.",
-//           "10:00 — Bongkar tenda dan perjalanan turun menuju parkiran.",
-//           "13:30 — Perjalanan pulang ke Bandung.",
-//         ],
-//       },
-//     ],
-//     highlights: [
-//       "Akses cepat 2,5 jam dari Bandung",
-//       "Bonus dokumentasi kamera mirrorless tim",
-//       "Potongan 20% sewa carrier & sleeping bag Habema",
-//     ],
-//     inclusions: [
-//       "Transportasi PP Bandung – Camp David",
-//       "Tiket masuk TWA Gunung Papandayan",
-//       "Tenda, matras foil, dan peralatan masak tim",
-//       "Makan 3x selama berkemah",
-//       "Pemandu lapangan & P3K",
-//     ],
-//     exclusions: ["Masker respirator kawah pribadi", "Pengeluaran pribadi di basecamp"],
-//     what_to_bring: ["Masker kain/buff untuk area kawah", "Sleeping bag comfort 10°C", "Sepatu outdoor"],
-//     important_notes: ["Dilarang memetik bunga edelweiss di kawasan konservasi Tegal Alun."],
-//     cancellation_policy: "Pembatalan H-5 pengembalian 50%.",
-//     refund_policy: "Refund 100% jika status gunung meningkat menjadi Waspada/Siaga.",
-//     faq: [],
-//     min_age: 12,
-//     max_age: 60,
-//     difficulty_level: "easy",
-//     fitness_required: "Pemula ramah keluarga dengan stamina dasar baik.",
-//     category: { id: "cat-gunung", name: "Pendakian Gunung", slug: "pendakian-gunung" },
-//   },
-//   {
-//     id: "trp-03",
-//     title: "Gunung Gede via Putri – Surya Kencana",
-//     slug: "gunung-gede-via-putri",
-//     description:
-//       "Pendakian menantang melintasi jalur akar khas Gunung Putri menuju alun-alun sabana Surya Kencana di ketinggian 2.750 MDPL sebelum summit attack ke puncak 2.958 MDPL.",
-//     short_description: "Jalur menanjak konsisten menuju sabana Surya Kencana dan Puncak Gede.",
-//     destination: "Gunung Gede",
-//     destination_region: "Cianjur, Jawa Barat",
-//     pickup_location: "Pool Habema Buah Batu, Bandung",
-//     dropoff_location: "Pool Habema Buah Batu, Bandung",
-//     base_price: 650000,
-//     discount_price: 595000,
-//     tax_amount: 0,
-//     final_price: 595000,
-//     currency: "IDR",
-//     duration_days: 2,
-//     duration_nights: 1,
-//     min_participants: 6,
-//     max_participants: 12,
-//     current_participants: 10,
-//     departure_date: "2026-12-19",
-//     return_date: "2026-12-20",
-//     departure_time: "04:30 WIB",
-//     return_time: "20:30 WIB",
-//     status: "published",
-//     featured: false,
-//     priority: 3,
-//     category_id: "cat-gunung",
-//     featured_image:
-//       "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80",
-//     gallery_images: [
-//       "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80",
-//       "https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?auto=format&fit=crop&w=1200&q=80",
-//       "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1200&q=80",
-//     ],
-//     itinerary: [
-//       {
-//         day: 1,
-//         title: "Bandung – Simaksi Putri – Alun-alun Surya Kencana",
-//         activities: [
-//           "04:30 — Berangkat dari Bandung menuju Cipanas, Cianjur.",
-//           "08:30 — Pemeriksaan surat sehat & barang bawaan di Pos Putri.",
-//           "14:30 — Tiba di Surya Kencana Timur dan mendirikan tenda.",
-//         ],
-//       },
-//       {
-//         day: 2,
-//         title: "Summit Puncak Gede – Turun Basecamp",
-//         activities: [
-//           "04:00 — Summit attack menuju Puncak Gede (2.958 MDPL).",
-//           "08:30 — Kembali ke camp, sarapan, dan persiapan turun.",
-//           "15:00 — Tiba di basecamp dan bertolak ke Bandung.",
-//         ],
-//       },
-//     ],
-//     highlights: [
-//       "Pengurusan kuota booking online TNGGP terjamin",
-//       "Rasio guide 1:4 khusus jalur terjal",
-//       "Logistik air & makan hangat penuh",
-//     ],
-//     inclusions: [
-//       "Transportasi PP Bandung – Gunung Putri",
-//       "Tiket masuk & asuransi TNGGP",
-//       "Tenda kapasitas 4 diisi 3 orang",
-//       "Makan 3x & snack summit",
-//       "Guide bersertifikat APGI",
-//     ],
-//     exclusions: ["Surat keterangan sehat dokter (wajib H-1)", "Gear pribadi"],
-//     what_to_bring: ["Surat sehat asli", "Jaket tebal (suhu 3–7°C)", "Trekking pole sangat disarankan"],
-//     important_notes: ["Kuota TNGGP mengikat pada identitas KTP yang didaftarkan."],
-//     cancellation_policy: "Tiket TNGGP yang sudah terbit tidak dapat dipindahtangankan.",
-//     refund_policy: "Sesuai kebijakan penutupan jalur Balai Besar TNGGP.",
-//     faq: [],
-//     min_age: 17,
-//     max_age: 50,
-//     difficulty_level: "moderate",
-//     fitness_required: "Menengah; direkomendasikan sudah pernah mendaki minimal 1 gunung.",
-//     category: { id: "cat-gunung", name: "Pendakian Gunung", slug: "pendakian-gunung" },
-//   },
-//   {
-//     id: "trp-04",
-//     title: "Ranca Upas & Kawah Rengganis Basecamp Camp",
-//     slug: "camping-ranca-upas-ciwidey",
-//     description:
-//       "Program berkemah santai di dataran tinggi Ciwidey dengan fasilitas tenda terpasang rapi sebelum peserta tiba, api unggun malam, dan jelajah kawah.",
-//     short_description: "Camping tanpa repot mendirikan tenda di hutan pinus & padang Ciwidey.",
-//     destination: "Ranca Upas",
-//     destination_region: "Ciwidey, Kab. Bandung",
-//     pickup_location: "Pool Habema Buah Batu, Bandung",
-//     dropoff_location: "Pool Habema Buah Batu, Bandung",
-//     base_price: 375000,
-//     discount_price: null,
-//     tax_amount: 0,
-//     final_price: 375000,
-//     currency: "IDR",
-//     duration_days: 2,
-//     duration_nights: 1,
-//     min_participants: 8,
-//     max_participants: 24,
-//     current_participants: 15,
-//     departure_date: "2026-12-26",
-//     return_date: "2026-12-27",
-//     departure_time: "13:00 WIB",
-//     return_time: "13:00 WIB",
-//     status: "published",
-//     featured: false,
-//     priority: 4,
-//     category_id: "cat-camp",
-//     featured_image:
-//       "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=1200&q=80",
-//     gallery_images: [
-//       "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=1200&q=80",
-//       "https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?auto=format&fit=crop&w=1200&q=80",
-//       "https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?auto=format&fit=crop&w=1200&q=80",
-//     ],
-//     itinerary: [
-//       {
-//         day: 1,
-//         title: "Check-in Camp – BBQ & Api Unggun",
-//         activities: [
-//           "13:00 — Berangkat dari Bandung menuju Ciwidey.",
-//           "15:00 — Tiba di lokasi, tenda dan kasur angin sudah siap pakai.",
-//           "19:30 — Makan malam BBQ, kopi seduh manual, dan sesi akustik.",
-//         ],
-//       },
-//       {
-//         day: 2,
-//         title: "Morning Walk – Kawah Rengganis – Pulang",
-//         activities: [
-//           "06:30 — Sarapan pagi dan jalan santai area konservasi rusa.",
-//           "09:00 — Kunjungan ke Kawah Rengganis & jembatan gantung.",
-//           "12:00 — Kembali ke Bandung.",
-//         ],
-//       },
-//     ],
-//     highlights: [
-//       "Tenda sudah berdiri lengkap dengan sleeping bag & lampu",
-//       "Paket makan malam BBQ & sarapan pagi",
-//       "Cocok untuk solo traveler maupun pasangan",
-//     ],
-//     inclusions: [
-//       "Transportasi PP Bandung – Ciwidey",
-//       "Tenda sudah terpasang + matras + sleeping bag",
-//       "Makan malam BBQ & sarapan",
-//       "Kayu bakar api unggun & tiket masuk kawasan",
-//     ],
-//     exclusions: ["Tiket wahana tambahan pribadi"],
-//     what_to_bring: ["Pakaian hangat malam hari", "Obat-obatan pribadi"],
-//     important_notes: ["Suhu malam Ciwidey dapat mencapai 11°C."],
-//     cancellation_policy: "Reschedule gratis maksimal H-4.",
-//     refund_policy: "Pengembalian 80% untuk pembatalan H-5.",
-//     faq: [],
-//     min_age: 6,
-//     max_age: 65,
-//     difficulty_level: "easy",
-//     fitness_required: "Santai; tidak memerlukan persiapan fisik khusus.",
-//     category: { id: "cat-camp", name: "Camping & Alam", slug: "camping-alam" },
-//   },
-//   {
-//     id: "trp-05",
-//     title: "Gunung Ciremai via Apuy – Atap Jawa Barat",
-//     slug: "gunung-ciremai-via-apuy",
-//     description:
-//       "Ekspedisi menaklukkan titik tertinggi Jawa Barat (3.078 MDPL) melalui jalur hutan hujan pegunungan Apuy, Majalengka.",
-//     short_description: "Pendakian puncak tertinggi Jawa Barat (3.078 MDPL) jalur Apuy.",
-//     destination: "Gunung Ciremai",
-//     destination_region: "Majalengka, Jawa Barat",
-//     pickup_location: "Pool Habema Buah Batu, Bandung",
-//     dropoff_location: "Pool Habema Buah Batu, Bandung",
-//     base_price: 720000,
-//     discount_price: null,
-//     tax_amount: 0,
-//     final_price: 720000,
-//     currency: "IDR",
-//     duration_days: 2,
-//     duration_nights: 1,
-//     min_participants: 6,
-//     max_participants: 12,
-//     current_participants: 12,
-//     departure_date: "2027-01-09",
-//     return_date: "2027-01-10",
-//     departure_time: "04:00 WIB",
-//     return_time: "21:30 WIB",
-//     status: "full",
-//     featured: false,
-//     priority: 5,
-//     category_id: "cat-gunung",
-//     featured_image:
-//       "https://images.unsplash.com/photo-1454496522488-7a8e488e8606?auto=format&fit=crop&w=1200&q=80",
-//     gallery_images: [
-//       "https://images.unsplash.com/photo-1454496522488-7a8e488e8606?auto=format&fit=crop&w=1200&q=80",
-//       "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=1200&q=80",
-//       "https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?auto=format&fit=crop&w=1200&q=80",
-//     ],
-//     itinerary: [
-//       {
-//         day: 1,
-//         title: "Bandung – Basecamp Apuy – Pos 5 Sanghyang Rangkah",
-//         activities: [
-//           "04:00 — Perjalanan menuju Argapura, Majalengka.",
-//           "08:30 — Mulai pendakian dari Pos Berod menuju Pos 5.",
-//           "15:30 — Mendirikan camp di Pos 5 Sanghyang Rangkah.",
-//         ],
-//       },
-//       {
-//         day: 2,
-//         title: "Summit Puncak Ciremai – Turun Basecamp",
-//         activities: [
-//           "03:30 — Summit attack melintasi Goa Walet menuju bibir kawah.",
-//           "06:00 — Puncak 3.078 MDPL.",
-//           "14:00 — Tiba kembali di basecamp dan perjalanan pulang.",
-//         ],
-//       },
-//     ],
-//     highlights: [
-//       "Puncak tertinggi Jawa Barat 3.078 MDPL",
-//       "Tim logistik air khusus karena minim sumber air",
-//       "Briefing manajemen hipotermia sebelum pendakian",
-//     ],
-//     inclusions: [
-//       "Transportasi PP Bandung – Apuy",
-//       "Tiket masuk TNGC & asuransi",
-//       "Tenda 4-season & logistik air tim",
-//       "Makan 3x & pemandu lokal bersertifikat",
-//     ],
-//     exclusions: ["Surat sehat dokter", "Perlengkapan pribadi"],
-//     what_to_bring: ["Jaket gunung windproof", "Sarung tangan & kupluk", "Headlamp terang"],
-//     important_notes: ["Kuota keberangkatan tanggal ini telah penuh."],
-//     cancellation_policy: "Pembatalan H-7 potong biaya administrasi simaksi.",
-//     refund_policy: "Refund penuh jika taman nasional ditutup.",
-//     faq: [],
-//     min_age: 17,
-//     max_age: 50,
-//     difficulty_level: "challenging",
-//     fitness_required: "Menengah ke atas; terbiasa latihan kardio rutin.",
-//     category: { id: "cat-gunung", name: "Pendakian Gunung", slug: "pendakian-gunung" },
-//   },
-// ];
-
-const GEAR_ADDONS: GearAddon[] = [
-  {
-    id: "gear-carrier",
-    name: "Carrier 50L–60L + Raincover",
-    spec: "Eiger / Osprey terawat",
-    pricePerTrip: 45000,
-  },
-  {
-    id: "gear-sb",
-    name: "Sleeping Bag Polar Bulu Angsa",
-    spec: "Comfort 5°C, bersih higienis",
-    pricePerTrip: 30000,
-  },
-  {
-    id: "gear-pole",
-    name: "Sepasang Trekking Pole",
-    spec: "Aluminium ringan anti-shock",
-    pricePerTrip: 25000,
-  },
-  {
-    id: "gear-headlamp",
-    name: "Headlamp LED + Baterai Baru",
-    spec: "300 Lumens tahan hujan",
-    pricePerTrip: 20000,
-  },
-];
-
-const DISCOUNT_VOUCHERS: DiscountVoucher[] = [
-  {
-    id: "vch-01",
-    code: "HABEMABDG50",
-    title: "Potongan Rp 50.000 Keberangkatan Bandung",
-    discountAmount: 50000,
-    minParticipants: 1,
-    validUntil: "31 Des 2026",
-  },
-  {
-    id: "vch-02",
-    code: "ROMBONGAN120",
-    title: "Potongan Rp 120.000 Daftar Minimal 3 Orang",
-    discountAmount: 120000,
-    minParticipants: 3,
-    validUntil: "31 Des 2026",
-  },
-  {
-    id: "vch-03",
-    code: "PEAKWEEKEND",
-    title: "Potongan Rp 35.000 Semua Rute Pendakian",
-    discountAmount: 35000,
-    minParticipants: 1,
-    validUntil: "15 Jan 2027",
-  },
-];
-
-const FIELD_GALLERY: GalleryPhoto[] = [
-  {
-    id: "gal-01",
-    tripTitle: "Gunung Prau via Patak Banteng",
-    location: "Sabana Dieng, Wonosobo",
-    elevation: "2.565 MDPL",
-    date: "Oktober 2026",
-    caption: "Kloter 14 — Pemandangan pagi menghadap Gunung Sindoro dan Sumbing dari area camp timur.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "gal-02",
-    tripTitle: "Gunung Papandayan",
-    location: "Hutan Mati, Garut",
-    elevation: "2.665 MDPL",
-    date: "Oktober 2026",
-    caption: "Kloter 22 — Melintasi jalur Hutan Mati sebelum menuju padang edelweiss Tegal Alun.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "gal-03",
-    tripTitle: "Gunung Gede via Putri",
-    location: "Alun-alun Surya Kencana",
-    elevation: "2.750 MDPL",
-    date: "September 2026",
-    caption: "Kloter 09 — Penataan tenda tim di Surya Kencana Timur dengan jarak aman antar flysheet.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "gal-04",
-    tripTitle: "Ranca Upas Basecamp Camp",
-    location: "Ciwidey, Kab. Bandung",
-    elevation: "1.700 MDPL",
-    date: "September 2026",
-    caption: "Kloter 31 — Sesi berkemah komunitas akhir pekan dengan perlengkapan tenda penuh dari Habema.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "gal-05",
-    tripTitle: "Gunung Ciremai via Apuy",
-    location: "Bibir Kawah Ciremai",
-    elevation: "3.078 MDPL",
-    date: "Agustus 2026",
-    caption: "Kloter 05 — Tim tiba di titik tertinggi Jawa Barat pukul 06:15 WIB dalam cuaca cerah.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1454496522488-7a8e488e8606?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "gal-06",
-    tripTitle: "Gunung Prau via Patak Banteng",
-    location: "Bukit Teletubbies, Dieng",
-    elevation: "2.565 MDPL",
-    date: "Agustus 2026",
-    caption: "Kloter 11 — Perjalanan turun bersama seluruh peserta setelah sarapan hangat di camp.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "gal-07",
-    tripTitle: "Gunung Gede via Putri",
-    location: "Puncak Gede, Cianjur",
-    elevation: "2.958 MDPL",
-    date: "Juli 2026",
-    caption: "Kloter 07 — Dokumentasi puncak bersama pemandu lapangan Habema.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "gal-08",
-    tripTitle: "Gunung Papandayan",
-    location: "Pondok Saladah, Garut",
-    elevation: "2.288 MDPL",
-    date: "Juli 2026",
-    caption: "Kloter 19 — Area perkemahan Pondok Saladah sore hari menjelang makan malam tim.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1537225228614-56cc3556d7ed?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "gal-09",
-    tripTitle: "Gunung Prau via Patak Banteng",
-    location: "Puncak Seribu Bukit, Dieng",
-    elevation: "2.565 MDPL",
-    date: "Juni 2026",
-    caption: "Kloter 08 — Lautan awan pagi menyelimuti lembah Dieng selepas fajar.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "gal-10",
-    tripTitle: "Ranca Upas Basecamp Camp",
-    location: "Hutan Pinus Ciwidey",
-    elevation: "1.700 MDPL",
-    date: "Juni 2026",
-    caption: "Kloter 27 — Suasana tenda peserta menyala hangat di bawah kabut malam Ciwidey.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "gal-11",
-    tripTitle: "Gunung Gede via Putri",
-    location: "Jalur Hutan Montane, Cianjur",
-    elevation: "2.400 MDPL",
-    date: "Mei 2026",
-    caption: "Kloter 04 — Pendakian teratur dengan pendampingan guide di sepanjang jalur akar.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "gal-12",
-    tripTitle: "Gunung Ciremai via Apuy",
-    location: "Punggung Puncak Ciremai",
-    elevation: "3.078 MDPL",
-    date: "Mei 2026",
-    caption: "Kloter 03 — Barisan punggungan berbatu menjelang bibir kawah utama.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "gal-13",
-    tripTitle: "Gunung Papandayan",
-    location: "Tegal Alun, Garut",
-    elevation: "2.520 MDPL",
-    date: "April 2026",
-    caption: "Kloter 16 — Kabut tipis bergerak melintasi lembah konservasi edelweiss.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "gal-14",
-    tripTitle: "Ranca Upas Basecamp Camp",
-    location: "Campground Ciwidey",
-    elevation: "1.700 MDPL",
-    date: "April 2026",
-    caption: "Kloter 24 — Sesi seduh kopi pagi dan sarapan bersama sebelum jelajah kawah.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "gal-15",
-    tripTitle: "Gunung Ciremai via Apuy",
-    location: "Pos 5 Sanghyang Rangkah",
-    elevation: "2.680 MDPL",
-    date: "Maret 2026",
-    caption: "Kloter 02 — Pengecekan perlengkapan tim sebelum berangkat summit dini hari.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "gal-16",
-    tripTitle: "Gunung Prau via Patak Banteng",
-    location: "Jalur Punggung Dieng",
-    elevation: "2.500 MDPL",
-    date: "Maret 2026",
-    caption: "Kloter 06 — Panorama pegunungan Jawa Tengah saat langit cerah.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1464278533981-50106e6176b1?auto=format&fit=crop&w=1200&q=80",
-  },
-];
 
 // ==========================================
 // 3. FUNGSI HELPER FORMAT
@@ -970,6 +356,64 @@ function mapApiTrip(row: Record<string, any>): OtTrip {
 }
 
 // ==========================================
+// 3c. KARTU TESTIMONI PESERTA (DARI DATABASE)
+// ==========================================
+function ReviewCard({ rev }: { rev: ParticipantReview }) {
+  return (
+    <article
+      className={`relative w-77.5 sm:w-92.5 shrink-0 rounded-2xl p-6 pb-5 flex flex-col justify-between transition-colors ${
+        rev.highlight
+          ? "bg-linear-to-br from-[#F3E2D5] via-[#F7ECE3] to-[#FAF5F0] border border-[#C85A17]/20"
+          : "bg-white border border-stone-900/12"
+      }`}
+    >
+      <div>
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 block mb-2.5">
+          Testimoni Peserta
+        </span>
+        <p className="text-xs sm:text-[13px] text-stone-800 leading-relaxed min-h-22">
+          {rev.note}
+        </p>
+      </div>
+
+      <div className="mt-5 pt-2 flex items-end justify-between gap-3">
+        <span
+          aria-hidden="true"
+          className={`text-4xl font-serif leading-none select-none ${
+            rev.highlight ? "text-[#C85A17]/30" : "text-stone-300"
+          }`}
+        >
+          &ldquo;
+        </span>
+
+        <div className="-mr-6 -mb-5 bg-[#F4F1EA] pl-3.5 pt-2.5 pr-4 pb-3 rounded-tl-2xl flex items-center gap-2.5 border-t border-l border-stone-900/10">
+          {rev.avatar ? (
+            <img
+              src={rev.avatar}
+              alt={rev.participant}
+              loading="lazy"
+              className="w-9 h-9 rounded-lg object-cover border border-stone-900/15 shrink-0"
+            />
+          ) : (
+            <span className="w-9 h-9 rounded-lg bg-[#183028] text-[#F4F1EA] grid place-items-center text-sm font-bold shrink-0">
+              {rev.participant.charAt(0).toUpperCase()}
+            </span>
+          )}
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-stone-950 truncate">
+              {rev.participant}
+            </div>
+            <div className="text-[10px] font-medium text-stone-500 truncate">
+              {rev.trip}
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+// ==========================================
 // 4. KOMPONEN UTAMA HALAMAN OPEN TRIP
 // ==========================================
 export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageProps) {
@@ -979,6 +423,14 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
     initialTrips.length === 0
   );
   const [tripsError, setTripsError] = useState<string | null>(null);
+
+  // Konten operasional dari database (voucher, gear, FAQ, galeri, testimoni)
+  const [vouchers, setVouchers] = useState<DiscountVoucher[]>([]);
+  const [gearAddons, setGearAddons] = useState<GearAddon[]>([]);
+  const [tripFaqs, setTripFaqs] = useState<TripFaq[]>([]);
+  const [fieldGallery, setFieldGallery] = useState<GalleryPhoto[]>([]);
+  const [reviews, setReviews] = useState<ParticipantReview[]>([]);
+  const [isLoadingContent, setIsLoadingContent] = useState<boolean>(true);
 
   // State Filter Jadwal Keberangkatan
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -1043,6 +495,35 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
     };
   }, [initialTrips]);
 
+  // Ambil konten operasional (voucher, gear, FAQ, galeri, testimoni)
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadContent = async () => {
+      try {
+        const res = await fetch("/api/opentrip-content", { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const content: Partial<OpenTripContent> = json?.data ?? {};
+        if (cancelled) return;
+        setVouchers(Array.isArray(content.vouchers) ? content.vouchers : []);
+        setGearAddons(Array.isArray(content.gear) ? content.gear : []);
+        setTripFaqs(Array.isArray(content.faqs) ? content.faqs : []);
+        setFieldGallery(Array.isArray(content.gallery) ? content.gallery : []);
+        setReviews(Array.isArray(content.reviews) ? content.reviews : []);
+      } catch (error) {
+        console.error("Gagal memuat konten open trip:", error);
+      } finally {
+        if (!cancelled) setIsLoadingContent(false);
+      }
+    };
+
+    loadContent();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Daftar Kategori Unik dari Data Trip
   const categories = useMemo(() => {
     const names = new Set<string>(["Semua"]);
@@ -1086,7 +567,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
   }, [trips]);
 
   // Daftar Destinasi Unik untuk Filter Portofolio Foto
-  const filteredGallery = FIELD_GALLERY;
+  const filteredGallery = fieldGallery;
 
   // Navigasi Keyboard untuk Lightbox & Modal
   useEffect(() => {
@@ -1222,7 +703,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
   // Voucher aktif yang memenuhi syarat jumlah peserta
   const activeVoucherDiscount = useMemo(() => {
     if (!appliedVoucherCode) return 0;
-    const voucher = DISCOUNT_VOUCHERS.find((v) => v.code === appliedVoucherCode);
+    const voucher = vouchers.find((v) => v.code === appliedVoucherCode);
     if (!voucher || participantCount < voucher.minParticipants) return 0;
     return voucher.discountAmount;
   }, [appliedVoucherCode, participantCount]);
@@ -1231,7 +712,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
   const calculatedTotal = useMemo(() => {
     if (!activeTrip) return 0;
     const gearPerPerson = selectedGearIds.reduce((sum, id) => {
-      const found = GEAR_ADDONS.find((g) => g.id === id);
+      const found = gearAddons.find((g) => g.id === id);
       return sum + (found ? found.pricePerTrip : 0);
     }, 0);
     const subtotal = (activeTrip.final_price + gearPerPerson) * participantCount;
@@ -1377,8 +858,15 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
             </p>
           </div>
 
+          {vouchers.length === 0 ? (
+            <div className="border border-stone-900/20 p-6 text-sm text-stone-600 bg-[#F4F1EA]/45">
+              {isLoadingContent
+                ? "Memuat voucher…"
+                : "Belum ada voucher aktif saat ini."}
+            </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 border border-stone-900/20 divide-y md:divide-y-0 md:divide-x divide-stone-900/20">
-            {DISCOUNT_VOUCHERS.map((voucher) => {
+            {vouchers.map((voucher) => {
               const isClaimed = claimedVoucherCodes.includes(voucher.code);
               return (
                 <div
@@ -1390,9 +878,11 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                       <span className="px-2 py-0.5 bg-white border border-stone-300 text-[11px] font-bold tracking-wider text-stone-950">
                         {voucher.code}
                       </span>
-                      <span className="text-[11px] text-stone-500 tabular-nums">
-                        s.d. {voucher.validUntil}
-                      </span>
+                      {voucher.validUntil && (
+                        <span className="text-[11px] text-stone-500 tabular-nums">
+                          s.d. {voucher.validUntil}
+                        </span>
+                      )}
                     </div>
                     <h2 className="text-sm font-bold text-stone-950 leading-snug">
                       {voucher.title}
@@ -1422,6 +912,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
               );
             })}
           </div>
+          )}
         </div>
       </section>
 
@@ -1748,7 +1239,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                       setActivePhotoIndex(originalIndex);
                     }
                   }}
-                  className="w-32 sm:w-40 md:w-44 lg:w-52 aspect-[1/2] shrink-0 rounded-2xl overflow-hidden bg-stone-300 shadow-sm will-change-transform cursor-pointer"
+                  className="w-32 sm:w-40 md:w-44 lg:w-52 aspect-1/2 shrink-0 rounded-2xl overflow-hidden bg-stone-300 shadow-sm will-change-transform cursor-pointer"
                 >
                   <img
                     src={photo.imageUrl}
@@ -1805,7 +1296,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                 <div className="w-12 h-12 rounded-full bg-[#183028]/10 text-[#183028] flex items-center justify-center">
                   <Calendar className="w-5 h-5" />
                 </div>
-                <div className="w-0.5 h-28 sm:h-32 mt-3 bg-gradient-to-b from-[#183028]/25 to-transparent" />
+                <div className="w-0.5 h-28 sm:h-32 mt-3 bg-linear-to-b from-[#183028]/25 to-transparent" />
               </div>
 
               <div className="pt-1">
@@ -1833,7 +1324,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                 <div className="w-12 h-12 rounded-full border-2 border-dashed border-[#183028] bg-[#F4F1EA] text-[#183028] flex items-center justify-center">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
-                <div className="w-0.5 h-28 sm:h-32 mt-3 border-l-2 border-dashed border-[#183028]/35 [mask-image:linear-gradient(to_bottom,black_45%,transparent)]" />
+                <div className="w-0.5 h-28 sm:h-32 mt-3 border-l-2 border-dashed border-[#183028]/35 mask-[linear-gradient(to_bottom,black_45%,transparent)]" />
               </div>
 
               <div className="pt-1">
@@ -1861,7 +1352,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                 <div className="w-12 h-12 rounded-full border-2 border-[#183028] bg-[#183028]/10 text-[#183028] flex items-center justify-center">
                   <Backpack className="w-5 h-5" />
                 </div>
-                <div className="w-0.5 h-28 sm:h-32 mt-3 bg-gradient-to-b from-[#183028] via-[#183028]/35 to-transparent" />
+                <div className="w-0.5 h-28 sm:h-32 mt-3 bg-linear-to-b from-[#183028] via-[#183028]/35 to-transparent" />
               </div>
 
               <div className="pt-1">
@@ -1891,6 +1382,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
       {/* ==========================================
           5C. CATATAN PESERTA KLOTER TERAKHIR (FIELD LOG REVIEWS)
          ========================================== */}
+      {reviews.length > 0 && (
       <section className="border-t border-stone-900/15 bg-[#F4F1EA] py-14 sm:py-20 overflow-hidden">
         {/* Header 2 Kolom sesuai Referensi */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-10 sm:mb-12">
@@ -1913,153 +1405,32 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
           </div>
         </div>
 
-        {/* Dua Baris Kartu Ulasan Bergeser Horizontal dengan Cutout Profil */}
-        {(() => {
-          const rowOneReviews = [
-            {
-              participant: "Raka Pratama",
-              trip: "Gunung Prau • Kloter 14",
-              avatar:
-                "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80",
-              highlight: true,
-              note: "Rasio guide 1:4 benar-benar terasa membantu di tanjakan akhir Patak Banteng. Tenda sudah berdiri rapi saat kami sampai sabana dan konsumsi hangat selalu tepat waktu.",
-            },
-            {
-              participant: "Nadia Kusuma",
-              trip: "Gunung Gede • Kloter 09",
-              avatar:
-                "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80",
-              highlight: false,
-              note: "Daftar sendiri tanpa rombongan tetap nyaman. Carrier dan sleeping bag sewaan langsung siap di Pool Buah Batu pas hari H, kondisi bersih, wangi, dan terawat.",
-            },
-            {
-              participant: "Dimas Nugraha",
-              trip: "Gunung Papandayan • Kloter 22",
-              avatar:
-                "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80",
-              highlight: true,
-              note: "Manajemen waktu dan briefing cuaca dari leader sangat jelas. Cocok buat pendaki pemula yang ingin perjalanan terorganisir tanpa terburu-buru.",
-            },
-            {
-              participant: "Salsabila Putri",
-              trip: "Ranca Upas Camp • Kloter 31",
-              avatar:
-                "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=160&q=80",
-              highlight: false,
-              note: "Tenda dan matras sudah terpasang rapi sebelum kami tiba di Ciwidey. Makan malam BBQ hangat dan koordinasi tim sangat ramah untuk peserta baru.",
-            },
-          ];
-
-          const rowTwoReviews = [
-            {
-              participant: "Fajar Ramadhan",
-              trip: "Gunung Ciremai • Kloter 05",
-              avatar:
-                "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=160&q=80",
-              highlight: false,
-              note: "Logistik air di jalur Apuy diatur sangat matang oleh tim Habema. Summit ke 3.078 MDPL berjalan aman dengan pengawalan guide depan dan sweeper.",
-            },
-            {
-              participant: "Alya Maharani",
-              trip: "Gunung Prau • Kloter 11",
-              avatar:
-                "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=160&q=80",
-              highlight: true,
-              note: "Pengurusan simaksi, transportasi PP dari Bandung, sampai makan di gunung semuanya transparan tanpa biaya tersembunyi. Pasti ikut kloter berikutnya.",
-            },
-            {
-              participant: "Bagas Prakoso",
-              trip: "Gunung Gede • Kloter 07",
-              avatar:
-                "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=160&q=80",
-              highlight: false,
-              note: "Kapasitas tenda 4 diisi 3 orang bikin istirahat di Surya Kencana jauh lebih lega. Suhu malam dingin tapi perlengkapan tim sangat memadai.",
-            },
-            {
-              participant: "Tiara Anggraini",
-              trip: "Gunung Papandayan • Kloter 19",
-              avatar:
-                "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80",
-              highlight: true,
-              note: "Dokumentasi foto sepanjang jalur Hutan Mati dan Tegal Alun dibagikan lengkap setelah pulang. Proses klaim voucher rombongan juga langsung memotong biaya.",
-            },
-          ];
-
-          const renderReviewCard = (
-            rev: (typeof rowOneReviews)[number],
-            key: string
-          ) => (
-            <article
-              key={key}
-              className={`relative w-[310px] sm:w-[370px] shrink-0 rounded-2xl p-6 pb-5 flex flex-col justify-between transition-colors ${
-                rev.highlight
-                  ? "bg-gradient-to-br from-[#F3E2D5] via-[#F7ECE3] to-[#FAF5F0] border border-[#C85A17]/20"
-                  : "bg-white border border-stone-900/12"
-              }`}
-            >
-              <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 block mb-2.5">
-                  Testimoni Peserta
-                </span>
-                <p className="text-xs sm:text-[13px] text-stone-800 leading-relaxed min-h-[88px]">
-                  {rev.note}
-                </p>
-              </div>
-
-              {/* Bagian Bawah: Tanda Kutip Kiri & Cutout Profil Kanan */}
-              <div className="mt-5 pt-2 flex items-end justify-between gap-3">
-                <span
-                  aria-hidden="true"
-                  className={`text-4xl font-serif leading-none select-none ${
-                    rev.highlight ? "text-[#C85A17]/30" : "text-stone-300"
+        <div className="space-y-5 sm:space-y-6">
+          {[0, 1].map((rowIndex) => {
+            const rowReviews = reviews.filter((_, index) => index % 2 === rowIndex);
+            if (rowReviews.length === 0) return null;
+            return (
+              <div
+                key={rowIndex}
+                className="w-full overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                <div
+                  className={`flex gap-4 sm:gap-5 pr-4 sm:pr-8 w-max ${
+                    rowIndex === 0
+                      ? "px-4 sm:px-8 lg:px-12"
+                      : "pl-6 sm:pl-20 lg:pl-36"
                   }`}
                 >
-                  &ldquo;
-                </span>
-
-                <div className="-mr-6 -mb-5 bg-[#F4F1EA] pl-3.5 pt-2.5 pr-4 pb-3 rounded-tl-2xl flex items-center gap-2.5 border-t border-l border-stone-900/10">
-                  <img
-                    src={rev.avatar}
-                    alt={rev.participant}
-                    loading="lazy"
-                    className="w-9 h-9 rounded-lg object-cover border border-stone-900/15 shrink-0"
-                  />
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-stone-950 truncate">
-                      {rev.participant}
-                    </div>
-                    <div className="text-[10px] font-medium text-stone-500 truncate">
-                      {rev.trip}
-                    </div>
-                  </div>
+                  {rowReviews.map((rev) => (
+                    <ReviewCard key={rev.id} rev={rev} />
+                  ))}
                 </div>
               </div>
-            </article>
-          );
-
-          return (
-            <div className="space-y-5 sm:space-y-6">
-              {/* Baris 1 */}
-              <div className="w-full overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <div className="flex gap-4 sm:gap-5 px-4 sm:px-8 lg:px-12 w-max">
-                  {rowOneReviews.map((rev) =>
-                    renderReviewCard(rev, `r1-${rev.participant}`)
-                  )}
-                </div>
-              </div>
-
-              {/* Baris 2 (Staggered Offset) */}
-              <div className="w-full overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <div className="flex gap-4 sm:gap-5 pl-6 sm:pl-20 lg:pl-36 pr-4 sm:pr-8 w-max">
-                  {rowTwoReviews.map((rev) =>
-                    renderReviewCard(rev, `r2-${rev.participant}`)
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
+            );
+          })}
+        </div>
       </section>
+      )}
 
       {/* ==========================================
           5D. FAQ & KEBIJAKAN LAPANGAN
@@ -2081,34 +1452,24 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
             </div>
 
             <div className="lg:col-span-8 border border-stone-900/20 divide-y divide-stone-900/15">
-              {[
-                {
-                  q: "Bagaimana jika kuota minimal peserta tidak terpenuhi?",
-                  a: "Apabila hingga H-3 kuota minimal belum tercapai, peserta dapat memilih pindah ke jadwal keberangkatan berikutnya tanpa biaya tambahan atau pengembalian dana 100%.",
-                },
-                {
-                  q: "Apakah peserta pemula bisa mengikuti Open Trip gunung?",
-                  a: "Bisa. Pilih jadwal dengan label tingkat kesulitan 'Pemula' seperti Gunung Prau atau Gunung Papandayan. Pemandu kami mengatur ritme jalan kelompok dan mendampingi peserta paling belakang.",
-                },
-                {
-                  q: "Kapan dan di mana perlengkapan sewa tambahan diambil?",
-                  a: "Seluruh item sewa gear yang ditambahkan saat pemesanan disiapkan di Pool Habema Buah Batu Bandung dan diserahkan saat registrasi ulang sebelum keberangkatan.",
-                },
-                {
-                  q: "Bagaimana kebijakan jika taman nasional tutup karena cuaca ekstrem?",
-                  a: "Jika otoritas taman nasional menutup jalur pendakian secara resmi, jadwal dapat di-reschedule atau biaya paket dikembalikan penuh setelah dikurangi biaya administrasi simaksi yang telah terbit.",
-                },
-              ].map((faqItem, idx) => {
+              {isLoadingContent ? (
+                <div className="p-6 text-sm text-stone-600">Memuat FAQ…</div>
+              ) : tripFaqs.length === 0 ? (
+                <div className="p-6 text-sm text-stone-600">
+                  Belum ada FAQ yang dipublikasikan.
+                </div>
+              ) : (
+                tripFaqs.map((faqItem, idx) => {
                 const isOpen = openFaqIndex === idx;
                 return (
-                  <div key={faqItem.q} className="bg-white">
+                  <div key={faqItem.id} className="bg-white">
                     <button
                       type="button"
                       onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
                       className="w-full px-5 sm:px-6 py-4 sm:py-5 text-left flex items-center justify-between gap-4 hover:bg-[#F4F1EA]/50 transition-colors cursor-pointer"
                     >
                       <span className="text-sm sm:text-base font-bold text-stone-950">
-                        {faqItem.q}
+                        {faqItem.question}
                       </span>
                       <span className="shrink-0 w-7 h-7 border border-stone-300 flex items-center justify-center text-stone-900">
                         {isOpen ? (
@@ -2120,12 +1481,13 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                     </button>
                     {isOpen && (
                       <div className="px-5 sm:px-6 pb-5 text-xs sm:text-sm text-stone-600 leading-relaxed border-t border-stone-100 pt-3">
-                        {faqItem.a}
+                        {faqItem.answer}
                       </div>
                     )}
                   </div>
                 );
-              })}
+                })
+              )}
             </div>
           </div>
         </div>
@@ -2209,7 +1571,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                     modalPhotos[modalImageIdx] || activeTrip.featured_image;
                   return (
                     <div className="mb-5">
-                      <div className="aspect-[16/9] w-full overflow-hidden bg-stone-200 border border-stone-300">
+                      <div className="aspect-video w-full overflow-hidden bg-stone-200 border border-stone-300">
                         <img
                           src={currentPhoto}
                           alt={activeTrip.title}
@@ -2443,7 +1805,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                       </span>
                     </div>
                     <div className="space-y-2">
-                      {GEAR_ADDONS.map((gear) => {
+                      {gearAddons.map((gear) => {
                         const checked = selectedGearIds.includes(gear.id);
                         return (
                           <label
@@ -2493,7 +1855,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                         className="w-full px-3 py-2 text-xs font-semibold bg-white border border-stone-300 text-stone-900 focus:border-stone-950 focus:outline-none"
                       >
                         <option value="">Tanpa Voucher</option>
-                        {DISCOUNT_VOUCHERS.filter((v) =>
+                        {vouchers.filter((v) =>
                           claimedVoucherCodes.includes(v.code)
                         ).map((v) => (
                           <option key={v.id} value={v.code}>
@@ -2598,7 +1960,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
               </button>
             </div>
 
-            <div className="bg-stone-950 aspect-[16/10] max-h-[60vh] w-full overflow-hidden flex items-center justify-center">
+            <div className="bg-stone-950 aspect-16/10 max-h-[60vh] w-full overflow-hidden flex items-center justify-center">
               <img
                 src={filteredGallery[activePhotoIndex].imageUrl}
                 alt={filteredGallery[activePhotoIndex].tripTitle}

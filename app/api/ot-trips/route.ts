@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
       `, { count: 'exact' })
       .range(from, to)
 
-    // Apply filters
-    if (filters.status) {
+    // Apply filters ('all' dipakai admin untuk melihat semua status)
+    if (filters.status && filters.status !== 'all') {
       query = query.eq('status', filters.status)
     }
 

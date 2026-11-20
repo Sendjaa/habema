@@ -63,7 +63,7 @@ function CatalogContent() {
   );
   
   // parallax scroll value
-  const scrollY = useParallax();
+  const _scrollY = useParallax();
   
   useEffect(() => {
     setStartDate(urlStartDate);
@@ -72,6 +72,11 @@ function CatalogContent() {
     setEditingDates(!(urlStartDate && urlEndDate));
   
     const fetchData = async () => {
+      if (!supabase) {
+        console.error("Supabase client not initialized");
+        setLoading(false);
+        return;
+      }
       setLoading(true);
   
       try {
@@ -141,11 +146,12 @@ function CatalogContent() {
       return;
     }
     const fetchBranchStock = async () => {
+      if (!supabase) return;
       try {
         const res = await fetch(`/api/branches/availability`);
         const result = await res.json();
         if (result.success) {
-          const stockMap = new Map<string, number>();
+          const _stockMap = new Map<string, number>();
           for (const row of result.data || []) {
             if (row.id === selectedBranchId) {
               // This is a branch-level stock entry, but we need equipment-level
@@ -504,7 +510,7 @@ function CatalogContent() {
                             href={`/product/${product.id}${dateQuery}`}
                             className="group shrink-0 snap-start w-44 sm:w-52 md:w-56 flex flex-col bg-white border border-stone-300 transition-colors duration-200 hover:border-stone-950 overflow-hidden"
                           >
-                            <div className="relative aspect-[4/3] bg-stone-100 border-b border-stone-200 overflow-hidden">
+                            <div className="relative aspect-4/3 bg-stone-100 border-b border-stone-200 overflow-hidden">
                               {(product as any).image_url ? (
                                 <Image
                                   src={(product as any).image_url}
