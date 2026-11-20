@@ -96,15 +96,8 @@ export interface OtTrip {
   category?: OtCategory;
 }
 
-interface GalleryPhoto {
-  id: string;
-  tripTitle: string;
-  location: string;
-  elevation: string;
-  date: string;
-  caption: string;
-  imageUrl: string;
-}
+// Gallery image URL (hanya url gambar, tanpa metadata tambahan)
+type GalleryImage = string;
 
 interface GearAddon {
   id: string;
@@ -142,7 +135,7 @@ interface OpenTripContent {
   vouchers: DiscountVoucher[];
   gear: GearAddon[];
   faqs: TripFaq[];
-  gallery: GalleryPhoto[];
+  gallery: GalleryImage[];
   reviews: ParticipantReview[];
 }
 
@@ -391,6 +384,8 @@ function ReviewCard({ rev }: { rev: ParticipantReview }) {
             <img
               src={rev.avatar}
               alt={rev.participant}
+              width={36}
+              height={36}
               loading="lazy"
               className="w-9 h-9 rounded-lg object-cover border border-stone-900/15 shrink-0"
             />
@@ -428,7 +423,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
   const [vouchers, setVouchers] = useState<DiscountVoucher[]>([]);
   const [gearAddons, setGearAddons] = useState<GearAddon[]>([]);
   const [tripFaqs, setTripFaqs] = useState<TripFaq[]>([]);
-  const [fieldGallery, setFieldGallery] = useState<GalleryPhoto[]>([]);
+  const [fieldGallery, setFieldGallery] = useState<GalleryImage[]>([]);
   const [reviews, setReviews] = useState<ParticipantReview[]>([]);
   const [isLoadingContent, setIsLoadingContent] = useState<boolean>(true);
 
@@ -509,7 +504,9 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
         setVouchers(Array.isArray(content.vouchers) ? content.vouchers : []);
         setGearAddons(Array.isArray(content.gear) ? content.gear : []);
         setTripFaqs(Array.isArray(content.faqs) ? content.faqs : []);
-        setFieldGallery(Array.isArray(content.gallery) ? content.gallery : []);
+        setFieldGallery(
+          Array.isArray(content.gallery) ? content.gallery.map((g: any) => g.imageUrl) : []
+        );
         setReviews(Array.isArray(content.reviews) ? content.reviews : []);
       } catch (error) {
         console.error("Gagal memuat konten open trip:", error);
@@ -1230,7 +1227,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
               const originalIndex = idx % filteredGallery.length;
               return (
                 <div
-                  key={`${photo.id}-${idx}`}
+                  key={`${idx}`}
                   ref={(el) => {
                     cardRefs.current[idx] = el;
                   }}
@@ -1242,8 +1239,10 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                   className="w-32 sm:w-40 md:w-44 lg:w-52 aspect-1/2 shrink-0 rounded-2xl overflow-hidden bg-stone-300 shadow-sm will-change-transform cursor-pointer"
                 >
                   <img
-                    src={photo.imageUrl}
-                    alt={photo.tripTitle}
+                    src={photo}
+                    alt="Gallery photo"
+                    width={400}
+                    height={800}
                     draggable={false}
                     loading="lazy"
                     className="w-full h-full object-cover pointer-events-none"
@@ -1575,6 +1574,8 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                         <img
                           src={currentPhoto}
                           alt={activeTrip.title}
+                          width={1200}
+                          height={800}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -1595,6 +1596,8 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                               <img
                                 src={imgUrl}
                                 alt={`${activeTrip.title} ${idx + 1}`}
+                                width={64}
+                                height={44}
                                 className="w-full h-full object-cover"
                               />
                             </button>
@@ -1937,19 +1940,6 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-5 py-3.5 bg-[#F4F1EA] border-b border-stone-300 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2 text-xs font-semibold text-stone-700 truncate">
-                <span className="font-bold text-stone-950 truncate">
-                  {filteredGallery[activePhotoIndex].tripTitle}
-                </span>
-                <span>•</span>
-                <span className="shrink-0">
-                  {filteredGallery[activePhotoIndex].date}
-                </span>
-                <span>•</span>
-                <span className="shrink-0">
-                  {filteredGallery[activePhotoIndex].elevation}
-                </span>
-              </div>
               <button
                 type="button"
                 onClick={() => setActivePhotoIndex(null)}
@@ -1962,8 +1952,10 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
 
             <div className="bg-stone-950 aspect-16/10 max-h-[60vh] w-full overflow-hidden flex items-center justify-center">
               <img
-                src={filteredGallery[activePhotoIndex].imageUrl}
-                alt={filteredGallery[activePhotoIndex].tripTitle}
+                src={filteredGallery[activePhotoIndex]}
+                alt="Gallery photo"
+                width={1600}
+                height={1000}
                 className="w-full h-full object-contain"
               />
             </div>
@@ -1973,7 +1965,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
               <div className="px-5 py-2.5 bg-stone-900 flex items-center gap-2 overflow-x-auto">
                 {filteredGallery.map((thumb, tIdx) => (
                   <button
-                    key={thumb.id}
+                    key={tIdx}
                     type="button"
                     onClick={() => setActivePhotoIndex(tIdx)}
                     className={`w-14 h-10 shrink-0 overflow-hidden border-2 transition-opacity cursor-pointer ${
@@ -1983,8 +1975,10 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                     }`}
                   >
                     <img
-                      src={thumb.imageUrl}
-                      alt={thumb.tripTitle}
+                      src={thumb}
+                      alt="Gallery thumbnail"
+                      width={56}
+                      height={40}
                       className="w-full h-full object-cover"
                     />
                   </button>
@@ -1994,7 +1988,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
 
             <div className="px-5 py-4 bg-white border-t border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <p className="text-xs sm:text-sm text-stone-700 leading-relaxed">
-                {filteredGallery[activePhotoIndex].caption}
+                Gambar galeri lapangan
               </p>
 
               <div className="flex items-center gap-2 shrink-0">
