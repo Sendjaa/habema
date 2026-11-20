@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabaseServer'
 import { requireAdmin } from '@/lib/admin-auth'
-import type { Trip, TripStatus, DifficultyLevel } from '@/lib/opentrip-types'
+import type { OtTrip, OtTripStatus, OtDifficultyLevel } from '@/lib/opentrip-types'
 
 export async function GET(
   _request: NextRequest,
@@ -20,9 +20,16 @@ export async function GET(
       .single()
     
     const { data: { user } } = await supabase.auth.getUser()
+    const statusData = status.data as unknown as { status: string } | null
+    if (!statusData) {
+      return NextResponse.json(
+        { success: false, error: 'Trip tidak ditemukan atau tidak diakses' },
+        { status: 404 }
+      )
+    }
 
-// Jika status adalah 'draft' dan bukan admin, tampilkan hanya data publik
-    if (status.data && status.data.status !== 'published') {
+    // Jika status adalah 'draft' dan bukan admin, tampilkan hanya data publik
+    if (statusData && statusData.status !== 'published') {
       // Cek apakah user adalah owner trip
       const tripData = await supabase
         .from('ot_trips' as any)
@@ -50,63 +57,64 @@ export async function GET(
       .single()
     
     if (error) throw new Error(error.message)
-    
+    const tripRow = data as unknown as Record<string, any>
+
     // Transform data
-    const trip: Trip = {
-      id: data.id,
-      title: data.title,
-      slug: data.slug,
-      description: data.description,
-      short_description: data.short_description,
-      destination: data.destination,
-      destination_region: data.destination_region,
-      pickup_location: data.pickup_location,
-      dropoff_location: data.dropoff_location,
-      base_price: data.base_price,
-      discount_price: data.discount_price,
-      tax_amount: data.tax_amount,
-      final_price: data.final_price,
-      currency: data.currency || 'IDR',
-      duration_days: data.duration_days,
-      duration_nights: data.duration_nights || data.duration_days - 1,
-      min_participants: data.min_participants,
-      max_participants: data.max_participants,
-      current_participants: data.current_participants || 0,
-      departure_date: data.departure_date,
-      return_date: data.return_date,
-      departure_time: data.departure_time,
-      return_time: data.return_time,
-      status: data.status as TripStatus,
-      featured: data.featured,
-      priority: data.priority,
-      category_id: data.category_id,
-      featured_image: data.featured_image,
-      gallery_images: data.images || [],
-      itinerary: data.itinerary,
-      highlights: data.highlights,
-      inclusions: data.inclusions,
-      exclusions: data.exclusions,
-      what_to_bring: data.what_to_bring,
-      important_notes: data.important_notes,
-      cancellation_policy: data.cancellation_policy,
-      refund_policy: data.refund_policy,
-      faq: data.faq,
-      min_age: data.min_age,
-      max_age: data.max_age,
-      difficulty_level: data.difficulty_level as DifficultyLevel | null,
-      fitness_required: data.fitness_required,
-      meta_title: data.meta_title,
-      meta_description: data.meta_description,
-      meta_keywords: data.meta_keywords,
-      created_by: data.created_by,
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-      published_at: data.published_at,
-      archived_at: data.archived_at,
-      category: data.category,
+    const trip: OtTrip = {
+      id: tripRow.id,
+      title: tripRow.title,
+      slug: tripRow.slug,
+      description: tripRow.description,
+      short_description: tripRow.short_description,
+      destination: tripRow.destination,
+      destination_region: tripRow.destination_region,
+      pickup_location: tripRow.pickup_location,
+      dropoff_location: tripRow.dropoff_location,
+      base_price: tripRow.base_price,
+      discount_price: tripRow.discount_price,
+      tax_amount: tripRow.tax_amount,
+      final_price: tripRow.final_price,
+      currency: tripRow.currency || 'IDR',
+      duration_days: tripRow.duration_days,
+      duration_nights: tripRow.duration_nights || tripRow.duration_days - 1,
+      min_participants: tripRow.min_participants,
+      max_participants: tripRow.max_participants,
+      current_participants: tripRow.current_participants || 0,
+      departure_date: tripRow.departure_date,
+      return_date: tripRow.return_date,
+      departure_time: tripRow.departure_time,
+      return_time: tripRow.return_time,
+      status: tripRow.status as OtTripStatus,
+      featured: tripRow.featured,
+      priority: tripRow.priority,
+      category_id: tripRow.category_id,
+      featured_image: tripRow.featured_image,
+      gallery_images: tripRow.images || [],
+      itinerary: tripRow.itinerary,
+      highlights: tripRow.highlights,
+      inclusions: tripRow.inclusions,
+      exclusions: tripRow.exclusions,
+      what_to_bring: tripRow.what_to_bring,
+      important_notes: tripRow.important_notes,
+      cancellation_policy: tripRow.cancellation_policy,
+      refund_policy: tripRow.refund_policy,
+      faq: tripRow.faq,
+      min_age: tripRow.min_age,
+      max_age: tripRow.max_age,
+      difficulty_level: tripRow.difficulty_level as OtDifficultyLevel | null,
+      fitness_required: tripRow.fitness_required,
+      meta_title: tripRow.meta_title,
+      meta_description: tripRow.meta_description,
+      meta_keywords: tripRow.meta_keywords,
+      created_by: tripRow.created_by,
+      created_at: tripRow.created_at,
+      updated_at: tripRow.updated_at,
+      published_at: tripRow.published_at,
+      archived_at: tripRow.archived_at,
+      category: tripRow.category,
     }
     
-    return NextResponse.json<Trip>({ data: trip, success: true })
+    return NextResponse.json({ data: trip, success: true })
   } catch (error) {
     console.error('Error fetching trip:', error)
     return NextResponse.json(
@@ -130,10 +138,11 @@ export async function PUT(
     }
 
     const guard = await requireAdmin()
-    if (!guard.success) {
-      return NextResponse.json({ success: false, error: guard.error }, { status: 403 })
+    if (!guard.ok) {
+      return guard.response
     }
-    
+
+    const { id } = await params
     const body = await request.json()
     
     // Build update data dynamically
@@ -212,8 +221,8 @@ export async function DELETE(
     }
 
     const guard = await requireAdmin()
-    if (!guard.success) {
-      return NextResponse.json({ success: false, error: guard.error }, { status: 403 })
+    if (!guard.ok) {
+      return guard.response
     }
 
     const { id } = await params

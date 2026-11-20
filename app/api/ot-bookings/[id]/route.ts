@@ -1,14 +1,15 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabaseServer'
-import type { Booking, UpdateBookingRequest } from '@/lib/opentrip-types'
+import type { OtBooking } from '@/lib/opentrip-types'
 
 export async function GET(
-  request: NextResponse,
-  { params }: { params: { id: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createServerSupabaseClient()
-    
+    const { id } = await params
+
     // Check auth
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
@@ -16,20 +17,20 @@ export async function GET(
     }
 
     // Get booking with trip details
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('ot_bookings')
       .select(`
         *,
         trip:ot_trips(id, title, slug, featured_image, final_price, departure_date, return_date, destination, max_participants, current_participants),
         payments:ot_payments(id, amount, status, payment_method, transaction_id)
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .single()
 
     if (error) throw new Error(error.message)
 
-    return NextResponse.json<Booking>({ data, success: true })
+    return NextResponse.json<{ data: OtBooking; success: boolean }>({ data, success: true })
   } catch (error) {
     console.error('Error fetching booking:', error)
     return NextResponse.json(
@@ -41,12 +42,13 @@ export async function GET(
 
 // PUT - Update booking (user can cancel, admin can manage all)
 export async function PUT(
-  request: NextResponse,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createServerSupabaseClient()
-    
+    const { id } = await params
+
     // Check auth
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
@@ -63,10 +65,10 @@ export async function PUT(
     const isAdmin = profile && ['admin', 'super_admin'].includes(profile.role)
 
     // Get current booking
-    const { data: currentBooking, error: fetchError } = await supabase
+    const { data: currentBooking, error: fetchError } = await (supabase as any)
       .from('ot_bookings')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (fetchError || !currentBooking) {
@@ -84,7 +86,7 @@ export async function PUT(
     const body = await request.json()
 
     // Build update data
-    const updateData: any = {}
+    const updateData: Record<string, unknown> = {}
     if (body.booking_status !== undefined) updateData.booking_status = body.booking_status
     if (body.payment_status !== undefined) updateData.payment_status = body.payment_status
     if (body.special_requests !== undefined) updateData.special_requests = body.special_requests
@@ -106,10 +108,10 @@ export async function PUT(
       updateData.completed_at = new Date().toISOString()
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('ot_bookings')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabaseServer'
-import type { Booking, CreateBookingRequest, PaginatedResponse } from '@/lib/opentrip-types'
+import type { OtBooking, PaginatedResponse } from '@/lib/opentrip-types'
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const from = (page - 1) * limit
     const to = from + limit - 1
 
-    let query = supabase
+    let query = (supabase as any)
       .from('ot_bookings')
       .select(`
         *,
@@ -38,11 +38,11 @@ export async function GET(request: NextRequest) {
 
     if (error) throw new Error(error.message)
 
-    return NextResponse.json<PaginatedResponse<Booking>>({
-      data: data || [],
+    return NextResponse.json<PaginatedResponse<OtBooking>>({
+      data: (data || []) as OtBooking[],
       pagination: {
-        page: Math.max(1, Number(searchParams.get('page') || 1)),
-        limit: Math.min(50, Math.max(1, Number(searchParams.get('limit') || 10))),
+        page,
+        limit,
         total: count || 0,
         totalPages: Math.ceil((count || 0) / limit),
       },
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient()
-    
+
     // Check auth
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get trip details
-    const { data: trip, error: tripError } = await supabase
+    const { data: trip, error: tripError } = await (supabase as any)
       .from('ot_trips')
       .select('id, final_price, max_participants, current_participants, status, min_participants, title')
       .eq('id', trip_id)
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
       contact_person_phone: contact_person_phone || null,
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('ot_bookings')
       .insert(insertData)
       .select()

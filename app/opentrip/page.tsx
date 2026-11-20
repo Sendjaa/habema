@@ -804,9 +804,182 @@ function getDifficultyLabel(level: OtDifficultyLevel | null): string {
 }
 
 // ==========================================
+// 3b. NORMALISASI DATA API /api/ot-trips
+// ==========================================
+function toList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => (typeof item === "string" ? item : ""))
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+  }
+  if (typeof value === "string" && value.trim()) {
+    return value
+      .split(/\r?\n/)
+      .map((line) => line.replace(/^[-•*]\s*/, "").trim())
+      .filter((line) => line.length > 0);
+  }
+  return [];
+}
+
+function toItinerary(value: unknown): OtItineraryItem[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter(
+        (item): item is Record<string, unknown> =>
+          !!item && typeof item === "object"
+      )
+      .map((item, index) => ({
+        day: Number(item.day) || index + 1,
+        title:
+          typeof item.title === "string" && item.title.trim()
+            ? item.title
+            : `Hari ${index + 1}`,
+        activities: toList(item.activities),
+      }));
+  }
+  if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return toItinerary(parsed);
+    } catch {
+      // Bukan JSON — ditampilkan sebagai satu blok rencana perjalanan.
+    }
+    return [
+      { day: 1, title: "Rencana Perjalanan", activities: toList(value) },
+    ];
+  }
+  return [];
+}
+
+function toFaq(value: unknown): OtFaqItem[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(
+      (item): item is Record<string, unknown> => !!item && typeof item === "object"
+    )
+    .map((item) => ({
+      question: typeof item.question === "string" ? item.question : "",
+      answer: typeof item.answer === "string" ? item.answer : "",
+    }))
+    .filter((item) => item.question.length > 0);
+}
+
+function toGalleryImages(row: Record<string, any>): string[] {
+  const images = Array.isArray(row.images) ? row.images : [];
+  const urls = images
+    .map((image): string => {
+      if (typeof image === "string") return image;
+      if (image && typeof image === "object") {
+        return typeof image.image_url === "string" ? image.image_url : "";
+      }
+      return "";
+    })
+    .filter((url) => url.length > 0);
+
+  return urls.length > 0 ? urls : toList(row.gallery_images);
+}
+
+function formatTime(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) return "--";
+  return `${value.slice(0, 5)} WIB`;
+}
+
+function mapApiTrip(row: Record<string, any>): OtTrip {
+  const rawStatus = String(row.status ?? "draft");
+  const status: OtTripStatus =
+    rawStatus === "cancelled" || rawStatus === "completed"
+      ? "archived"
+      : (rawStatus as OtTripStatus);
+
+  const rawDifficulty = row.difficulty_level ?? null;
+  const difficulty_level: OtDifficultyLevel | null =
+    rawDifficulty === "hard"
+      ? "challenging"
+      : rawDifficulty === "extreme"
+        ? "expert"
+        : (rawDifficulty as OtDifficultyLevel | null);
+
+  return {
+    id: String(row.id ?? ""),
+    title: String(row.title ?? ""),
+    slug: String(row.slug ?? ""),
+    description: String(row.description ?? ""),
+    short_description: String(row.short_description ?? ""),
+    destination: String(row.destination ?? ""),
+    destination_region: String(row.destination_region ?? ""),
+    pickup_location: String(row.pickup_location ?? ""),
+    dropoff_location: String(row.dropoff_location ?? ""),
+    base_price: Number(row.base_price ?? 0),
+    discount_price:
+      row.discount_price === null || row.discount_price === undefined
+        ? null
+        : Number(row.discount_price),
+    tax_amount: Number(row.tax_amount ?? 0),
+    final_price: Number(row.final_price ?? 0),
+    currency: String(row.currency ?? "IDR"),
+    duration_days: Number(row.duration_days ?? 0),
+    duration_nights: Number(row.duration_nights ?? 0),
+    min_participants: Number(row.min_participants ?? 1),
+    max_participants: Number(row.max_participants ?? 0),
+    current_participants: Number(row.current_participants ?? 0),
+    departure_date: String(row.departure_date ?? ""),
+    return_date: String(row.return_date ?? ""),
+    departure_time: formatTime(row.departure_time),
+    return_time: formatTime(row.return_time),
+    status,
+    featured: Boolean(row.featured),
+    priority: Number(row.priority ?? 0),
+    category_id: String(row.category_id ?? ""),
+    featured_image: String(row.featured_image ?? ""),
+    gallery_images: toGalleryImages(row),
+    itinerary: toItinerary(row.itinerary),
+    highlights: toList(row.highlights),
+    inclusions: toList(row.inclusions),
+    exclusions: toList(row.exclusions),
+    what_to_bring: toList(row.what_to_bring),
+    important_notes: toList(row.important_notes),
+    cancellation_policy: String(row.cancellation_policy ?? ""),
+    refund_policy: String(row.refund_policy ?? ""),
+    faq: toFaq(row.faq),
+    min_age: row.min_age === null || row.min_age === undefined ? null : Number(row.min_age),
+    max_age: row.max_age === null || row.max_age === undefined ? null : Number(row.max_age),
+    difficulty_level,
+    fitness_required:
+      row.fitness_required === true
+        ? "Peserta perlu kondisi fisik yang baik."
+        : typeof row.fitness_required === "string"
+          ? row.fitness_required
+          : "",
+    meta_title: row.meta_title ?? undefined,
+    meta_description: row.meta_description ?? undefined,
+    meta_keywords: row.meta_keywords ?? undefined,
+    created_by: row.created_by ?? undefined,
+    created_at: row.created_at ?? undefined,
+    updated_at: row.updated_at ?? undefined,
+    published_at: row.published_at ?? undefined,
+    archived_at: row.archived_at ?? null,
+    category: row.category
+      ? {
+          id: String(row.category.id ?? ""),
+          name: String(row.category.name ?? ""),
+          slug: String(row.category.slug ?? ""),
+        }
+      : undefined,
+  };
+}
+
+// ==========================================
 // 4. KOMPONEN UTAMA HALAMAN OPEN TRIP
 // ==========================================
-export default function OpenTripPage({ trips = [] }: OpenTripPageProps) {
+export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageProps) {
+  // Daftar jadwal dari database (diisi lewat /api/ot-trips)
+  const [trips, setTrips] = useState<OtTrip[]>(initialTrips);
+  const [isLoadingTrips, setIsLoadingTrips] = useState<boolean>(
+    initialTrips.length === 0
+  );
+  const [tripsError, setTripsError] = useState<string | null>(null);
+
   // State Filter Jadwal Keberangkatan
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("Semua");
@@ -837,6 +1010,38 @@ export default function OpenTripPage({ trips = [] }: OpenTripPageProps) {
   const dragStartScrollRef = useRef<number>(0);
   const movedDistanceRef = useRef<number>(0);
   const [activePhotoIndex, setActivePhotoIndex] = useState<number | null>(null);
+
+  // Ambil jadwal dari API saat prop tidak diisi (route /opentrip)
+  useEffect(() => {
+    if (initialTrips.length > 0) return;
+    let cancelled = false;
+
+    const loadTrips = async () => {
+      try {
+        const res = await fetch("/api/ot-trips?limit=50", { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const rows = Array.isArray(json?.data) ? json.data : [];
+        if (!cancelled) {
+          setTrips(
+            rows.map((row: Record<string, any>) => mapApiTrip(row))
+          );
+        }
+      } catch (error) {
+        console.error("Gagal memuat jadwal open trip:", error);
+        if (!cancelled) {
+          setTripsError("Gagal memuat jadwal. Coba muat ulang halaman.");
+        }
+      } finally {
+        if (!cancelled) setIsLoadingTrips(false);
+      }
+    };
+
+    loadTrips();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialTrips]);
 
   // Daftar Kategori Unik dari Data Trip
   const categories = useMemo(() => {
@@ -1297,23 +1502,34 @@ export default function OpenTripPage({ trips = [] }: OpenTripPageProps) {
           </div>
 
           {/* Dispatch Schedule Ledger (Tanpa Thumbnail Gambar) */}
-          {filteredTrips.length === 0 ? (
+          {isLoadingTrips ? (
             <div className="bg-white border border-stone-900/20 p-10 text-center">
               <p className="text-sm font-bold text-stone-900">
-                Tidak ada jadwal yang sesuai filter pencarian.
+                Memuat jadwal keberangkatan…
               </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery("");
-                  setSelectedCategory("Semua");
-                  setSelectedDifficulty("Semua");
-                  setOnlyAvailable(false);
-                }}
-                className="mt-3 px-4 py-2 bg-stone-950 text-white text-xs font-bold uppercase tracking-wider cursor-pointer"
-              >
-                Reset Filter
-              </button>
+            </div>
+          ) : filteredTrips.length === 0 ? (
+            <div className="bg-white border border-stone-900/20 p-10 text-center">
+              <p className="text-sm font-bold text-stone-900">
+                {trips.length === 0
+                  ? tripsError ??
+                    "Belum ada jadwal open trip yang tersedia saat ini."
+                  : "Tidak ada jadwal yang sesuai filter pencarian."}
+              </p>
+              {trips.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSelectedCategory("Semua");
+                    setSelectedDifficulty("Semua");
+                    setOnlyAvailable(false);
+                  }}
+                  className="mt-3 px-4 py-2 bg-stone-950 text-white text-xs font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  Reset Filter
+                </button>
+              )}
             </div>
           ) : (
             <div className="bg-white border border-stone-900/20 divide-y divide-stone-900/15">

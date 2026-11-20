@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabaseServer'
-import type { TripFilters, PaginatedResponse, Trip } from '@/lib/opentrip-types'
+import type { OtTripFilters, PaginatedResponse, OtTrip } from '@/lib/opentrip-types'
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
 
     // Parse filters
-    const filters: TripFilters = {
+    const filters: OtTripFilters = {
       category: searchParams.get('category') || undefined,
       status: (searchParams.get('status') as any) || 'published',
       featured: searchParams.get('featured') === 'true',
@@ -29,12 +29,12 @@ export async function GET(request: NextRequest) {
     const from = (page - 1) * limit
     const to = from + limit - 1
 
-    let query = supabase
-      .from('trips')
+    let query = (supabase as any)
+      .from('ot_trips')
       .select(`
         *,
-        category:trip_categories(id, name, slug, icon, color),
-        images:trip_images(id, image_url, alt_text, sort_order, is_featured)
+        category:ot_trip_categories(id, name, slug, icon, color),
+        images:ot_trip_images(id, image_url, alt_text, sort_order, is_featured)
       `, { count: 'exact' })
       .range(from, to)
 
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
       images: trip.images || [],
     }))
 
-    return NextResponse.json<PaginatedResponse<Trip>>({
+    return NextResponse.json<PaginatedResponse<OtTrip>>({
       data: tripsWithMeta,
       pagination: {
         page,
@@ -263,8 +263,8 @@ export async function POST(request: NextRequest) {
       status: 'draft',
     }
 
-    const { data, error } = await supabase
-      .from('trips')
+    const { data, error } = await (supabase as any)
+      .from('ot_trips')
       .insert(insertData)
       .select()
       .single()

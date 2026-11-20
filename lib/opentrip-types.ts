@@ -298,7 +298,6 @@ export interface CreateOtTripRequest {
   category_id?: string
   featured_image?: string
   gallery_images?: string[]
-  short_description?: string
   itinerary?: string
   highlights?: string
   inclusions?: string
