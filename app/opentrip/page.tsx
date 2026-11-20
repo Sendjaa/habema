@@ -384,6 +384,8 @@ function ReviewCard({ rev }: { rev: ParticipantReview }) {
             <img
               src={rev.avatar}
               alt={rev.participant}
+              width={36}
+              height={36}
               loading="lazy"
               className="w-9 h-9 rounded-lg object-cover border border-stone-900/15 shrink-0"
             />
@@ -1239,6 +1241,8 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                   <img
                     src={photo}
                     alt="Gallery photo"
+                    width={400}
+                    height={800}
                     draggable={false}
                     loading="lazy"
                     className="w-full h-full object-cover pointer-events-none"
@@ -1570,6 +1574,8 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                         <img
                           src={currentPhoto}
                           alt={activeTrip.title}
+                          width={1200}
+                          height={800}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -1590,6 +1596,8 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                               <img
                                 src={imgUrl}
                                 alt={`${activeTrip.title} ${idx + 1}`}
+                                width={64}
+                                height={44}
                                 className="w-full h-full object-cover"
                               />
                             </button>
@@ -1946,6 +1954,8 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
               <img
                 src={filteredGallery[activePhotoIndex]}
                 alt="Gallery photo"
+                width={1600}
+                height={1000}
                 className="w-full h-full object-contain"
               />
             </div>
@@ -1967,6 +1977,8 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                     <img
                       src={thumb}
                       alt="Gallery thumbnail"
+                      width={56}
+                      height={40}
                       className="w-full h-full object-cover"
                     />
                   </button>
