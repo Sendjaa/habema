@@ -476,49 +476,80 @@ function CatalogContent() {
               <div className="space-y-8">
                 {/* Best Seller Section */}
                 {bestSellers.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <h1 className="text-lg font-bold text-stone-800">Paling Banyak di Sewa</h1>
-                      <span className="text-xs text-stone-400 font-medium">
-                        Paling populer
+                  <section className="py-2">
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 pb-4 mb-5 border-b border-stone-300">
+                      <div>
+                        <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#183028] mb-1">
+                          Paling Populer
+                        </span>
+                        <h1 className="text-xl sm:text-2xl font-bold font-sans text-stone-950 tracking-tight">
+                          Paling Banyak di Sewa
+                        </h1>
+                      </div>
+                      <span className="text-xs text-stone-500 font-medium tabular-nums">
+                        {bestSellers.length} perlengkapan terlaris
                       </span>
                     </div>
-                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+
+                    <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                       {bestSellers.map((product) => {
                         const price = Number((product as any).price_per_night || 0);
                         const rentalCount = Number((product as any).rental_count || 0);
+                        const rating = Number((product as any).average_rating || 4.9);
+                        const categoryName = (product as any).equipment_categories?.name;
+
                         return (
                           <Link
                             key={product.id}
                             href={`/product/${product.id}${dateQuery}`}
-                            className="group shrink-0 w-44 md:w-56 bg-white rounded-xl border border-stone-200 overflow-hidden hover:shadow-md transition-all"
+                            className="group shrink-0 snap-start w-44 sm:w-52 md:w-56 flex flex-col bg-white border border-stone-300 transition-colors duration-200 hover:border-stone-950 overflow-hidden"
                           >
-                            <div className="relative aspect-square bg-stone-100">
+                            <div className="relative aspect-[4/3] bg-stone-100 border-b border-stone-200 overflow-hidden">
                               {(product as any).image_url ? (
                                 <Image
                                   src={(product as any).image_url}
                                   alt={product.name}
                                   fill
-                                  sizes="200px"
-                                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                  sizes="(max-width: 640px) 176px, 224px"
+                                  className="object-cover group-hover:scale-[1.03] transition-transform duration-300"
                                 />
                               ) : (
-                                <div className="flex h-full items-center justify-center text-stone-400 text-xs font-bold uppercase tracking-widest">
+                                <div className="flex h-full items-center justify-center bg-stone-100 text-stone-400 text-[10px] font-bold uppercase tracking-widest">
                                   No Image
                                 </div>
                               )}
+
+                              {categoryName && (
+                                <span className="absolute top-2.5 left-2.5 bg-white/95 border border-stone-300 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-stone-800">
+                                  {categoryName}
+                                </span>
+                              )}
                             </div>
-                            <div className="p-3">
-                              <h3 className="text-sm font-semibold font-sans text-stone-800 line-clamp-2 mb-1 group-hover:text-stone-900 transition-colors truncate">
+
+                            <div className="flex flex-col flex-1 p-3.5">
+                              <h3 className="text-sm sm:text-[15px] font-bold font-sans text-stone-900 line-clamp-1 mb-2 group-hover:text-[#183028] transition-colors">
                                 {product.name}
                               </h3>
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-bold text-forest">
-                                  Rp{price.toLocaleString("id-ID")}
-                                  <span className="text-[10px] text-stone-400 font-normal">/hari</span>
+
+                              <div className="flex items-center gap-1.5 text-xs text-stone-500 font-medium mb-3 tabular-nums">
+                                <span className="text-stone-800 font-semibold">
+                                  ★ {rating}
                                 </span>
-                                <span className="text-[10px] text-stone-400 font-medium">
-                                  {rentalCount}x
+                                <span className="text-stone-300">•</span>
+                                <span>{rentalCount}x disewa</span>
+                              </div>
+
+                              <div className="mt-auto pt-2.5 border-t border-stone-200 flex items-baseline justify-between gap-1">
+                                <div>
+                                  <span className="text-sm sm:text-base font-bold text-stone-950 tabular-nums">
+                                    Rp{price.toLocaleString("id-ID")}
+                                  </span>
+                                  <span className="text-[11px] text-stone-500 font-normal ml-1">
+                                    /hari
+                                  </span>
+                                </div>
+                                <span className="text-xs font-bold text-stone-400 transition-transform group-hover:translate-x-0.5 group-hover:text-stone-950">
+                                  →
                                 </span>
                               </div>
                             </div>
@@ -526,10 +557,8 @@ function CatalogContent() {
                         );
                       })}
                     </div>
-                  </div>
-                
+                  </section>
                 )}
-
 
                 {/* Kegiatan aktif — datang dari tile homepage */}
                 {urlActivity && (

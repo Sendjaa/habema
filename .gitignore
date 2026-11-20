@@ -40,3 +40,6 @@ public/uploads/
 
 .vercel
 .env*
+
+# Checkout pihak ketiga untuk QRIS (repo terpisah, bukan bagian aplikasi)
+qris-dinamis/
