@@ -110,6 +110,7 @@ export interface OtTripCategory {
 
 export interface OtTripFilters {
   category?: string
+  slug?: string
   status?: OtTripStatus
   featured?: boolean
   search?: string

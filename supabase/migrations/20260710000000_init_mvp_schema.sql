@@ -212,6 +212,10 @@ create table if not exists public.addresses (id uuid primary key default gen_ran
 alter table public.addresses add column if not exists user_id    uuid;
 alter table public.addresses add column if not exists label      text;
 alter table public.addresses add column if not exists recipient  text;
+alter table public.addresses add column if not exists recipient_name text;
+alter table public.addresses add column if not exists province     text;
+alter table public.addresses add column if not exists city         text;
+alter table public.addresses add column if not exists postal_code  text;
 alter table public.addresses add column if not exists phone      text;
 alter table public.addresses add column if not exists address    text;
 alter table public.addresses add column if not exists is_default boolean not null default false;

@@ -9,6 +9,7 @@ import { FeaturedProducts } from '@/components/home/featured-products'
 import { FeaturedBundles } from '@/components/home/featured-bundles'
 import { ShopHeroSection } from '@/components/home/shop-hero-section'
 import { ShopProducts } from '@/components/home/shop-products'
+import FeaturedOpenTrips from '@/components/home/featured-opentrips'
 import { CTA } from '@/components/home/cta-section'
 import { FirstVisitPrompt } from '@/components/home/first-visit-prompt'
 
@@ -24,6 +25,7 @@ export default async function Home() {
       <ShopHeroSection />
       <ShopProducts />
       <FeaturedBundles />
+      <FeaturedOpenTrips limit={3} />
       <CTA />
       <FirstVisitPrompt />
     </>
