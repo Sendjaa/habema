@@ -197,9 +197,13 @@ function rowToForm(row: Record<string, any>, fields: ContentField[]): Record<str
 function ImageUploadField({
   value,
   onUpload,
+  label,
+  hint,
 }: {
   value: string;
   onUpload: (url: string) => void;
+  label: string;
+  hint?: string;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -207,12 +211,8 @@ function ImageUploadField({
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setUploadError("Pilih file JPEG, PNG, atau WebP.");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadError("Ukuran gambar maksimal 5 MB.");
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Tipe file harus gambar (JPEG, PNG, WebP).");
       return;
     }
     setUploading(true);
@@ -220,28 +220,16 @@ function ImageUploadField({
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch("/api/admin/opentrip-content/upload", {
+      const res = await fetch("/api/opentrip-content/upload", {
         method: "POST",
         body: fd,
       });
-      const raw = await res.text();
-      let json: any = null;
-      try {
-        json = raw ? JSON.parse(raw) : null;
-      } catch {
-        json = null;
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+      if (json?.data?.url) {
+        onUpload(String(json.data.url));
+        toast.success("Gambar berhasil diunggah");
       }
-      if (!res.ok) {
-        throw new Error(
-          json?.error ||
-            (res.status === 404
-              ? "Endpoint upload tidak ditemukan. Muat ulang halaman admin lalu coba lagi."
-              : raw.slice(0, 200) || `HTTP ${res.status}`),
-        );
-      }
-      if (!json?.data?.url) throw new Error("Server tidak mengembalikan URL gambar.");
-      onUpload(String(json.data.url));
-      toast.success("Gambar berhasil diunggah");
     } catch (error: any) {
       setUploadError(error?.message || "Gagal mengunggah gambar");
       toast.error(error?.message || "Gagal mengunggah gambar");
@@ -251,42 +239,49 @@ function ImageUploadField({
   };
 
   return (
-    <div className="space-y-3">
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          void handleFile(f);
-          e.target.value = "";
-        }}
-      />
-      <Button
-        type="button"
-        variant="outline"
-        className="gap-2"
-        disabled={uploading}
-        onClick={() => inputRef.current?.click()}
-      >
-        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-        {uploading ? "Mengunggah..." : value ? "Ganti gambar" : "Pilih gambar"}
-      </Button>
-      {uploadError && <p className="text-xs text-destructive">{uploadError}</p>}
-      {value ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={value}
-          alt="Pratinjau foto galeri"
-          width={384}
-          height={176}
-          className="h-44 w-full max-w-sm rounded-md border border-stone-200 bg-stone-100 object-cover"
-        />
-      ) : (
-        <div className="flex h-32 w-full max-w-sm items-center justify-center rounded-md border border-dashed border-stone-300 bg-stone-50 text-xs text-muted-foreground">
-          Belum ada gambar
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className={hint ? "sm:col-span-2" : undefined}>
+        <Label className="mb-1.5 block text-sm">{label}</Label>
+        <div className="flex items-center gap-2">
+          <Input
+            ref={inputRef as any}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              void handleFile(f);
+              e.target.value = "";
+            }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2"
+            disabled={uploading}
+            onClick={() => inputRef.current?.click()}
+          >
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {uploading ? "Mengunggah…" : "Unggah gambar"}
+          </Button>
         </div>
+        {uploadError && <p className="text-xs text-destructive mt-1">{uploadError}</p>}
+        {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
+      </div>
+      {value ? (
+        <div className="grid grid-cols-1 sm:col-span-2 gap-2">
+          <p className="text-xs text-muted-foreground">Gambar saat ini:</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={value}
+            alt={label}
+            width={320}
+            height={180}
+            className="w-full h-40 object-cover rounded-md border border-stone-200 bg-stone-100"
+          />
+        </div>
+      ) : (
+        <p className="sm:col-span-2 text-xs text-muted-foreground">Belum ada gambar. Unggah gambar baru.</p>
       )}
     </div>
   );
@@ -298,6 +293,7 @@ function ContentTab({ config }: { config: ResourceConfig }) {
   const [form, setForm] = useState<Record<string, any> | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [galleryImageUrl, setGalleryImageUrl] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -321,11 +317,13 @@ function ContentTab({ config }: { config: ResourceConfig }) {
 
   const openCreate = () => {
     setEditingId(null);
+    setGalleryImageUrl("");
     setForm(emptyForm(config.fields));
   };
 
   const openEdit = (row: Record<string, any>) => {
     setEditingId(String(row.id));
+    setGalleryImageUrl(String(row.image_url ?? ""));
     setForm(rowToForm(row, config.fields));
   };
 
@@ -337,18 +335,25 @@ function ContentTab({ config }: { config: ResourceConfig }) {
       return;
     }
 
+    // Sync galleryImageUrl ke form.image_url untuk tab gallery
+    const formToSubmit = { ...form };
+    if (config.resource === "gallery") {
+      formToSubmit.image_url = galleryImageUrl;
+    }
+
     setSaving(true);
     try {
       const res = await fetch(`/api/admin/opentrip-content/${config.resource}`, {
         method: editingId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editingId ? { ...form, id: editingId } : form),
+        body: JSON.stringify(editingId ? { ...formToSubmit, id: editingId } : formToSubmit),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
       toast.success(`${config.noun} berhasil ${editingId ? "diperbarui" : "ditambahkan"}`);
       setForm(null);
       setEditingId(null);
+      setGalleryImageUrl("");
       await load();
     } catch (error: any) {
       toast.error(error?.message || "Gagal menyimpan data");
@@ -485,10 +490,13 @@ function ContentTab({ config }: { config: ResourceConfig }) {
                         />
                       ) : config.resource === "gallery" && field.key === "image_url" ? (
                         <ImageUploadField
-                          value={String(form?.image_url ?? "")}
+                          value={String(form?.image_url ?? galleryImageUrl ?? "")}
                           onUpload={(url: string) => {
+                            setGalleryImageUrl(url);
                             setForm((prev) => (prev ? { ...prev, image_url: url } : prev));
                           }}
+                          label={field.label}
+                          hint={field.help}
                         />
                       ) : (
                         <Input
