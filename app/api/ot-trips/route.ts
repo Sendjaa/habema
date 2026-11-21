@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     // Parse filters
     const filters: OtTripFilters = {
       category: searchParams.get('category') || undefined,
+      slug: searchParams.get('slug') || undefined,
       status: (searchParams.get('status') as any) || 'published',
       featured: searchParams.get('featured') === 'true',
       search: searchParams.get('search') || undefined,
@@ -50,6 +51,10 @@ export async function GET(request: NextRequest) {
 
     if (filters.category) {
       query = query.eq('category_id', filters.category)
+    }
+
+    if (filters.slug) {
+      query = query.eq('slug', filters.slug)
     }
 
     if (filters.search) {

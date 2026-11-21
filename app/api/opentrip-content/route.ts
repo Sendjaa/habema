@@ -25,7 +25,7 @@ async function getAdminClient() {
 type Row = Record<string, any>
 
 export async function GET() {
-  const supabase = await getAdminClient()
+  const supabase = (await getAdminClient()) as any
   if (!supabase) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
   }
@@ -54,7 +54,7 @@ export async function GET() {
     supabase
       .from('ot_trip_reviews')
       .select(
-        'id, rating, title, content, pros, is_featured, created_at, trip:ot_trips(title), user:users(full_name, profile_image_url)'
+        'id, rating, title, content, pros, is_featured, created_at, trip:ot_trips!trip_id(title), user:users!user_id(full_name, profile_image_url)'
       )
       .eq('is_approved', true)
       .order('is_featured', { ascending: false })

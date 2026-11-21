@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import {
   Plus,
   Tag,
   Trash2,
+  Upload,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -140,7 +141,14 @@ const CONTENT: Record<Exclude<TabId, "trips">, ResourceConfig> = {
     resource: "gallery",
     noun: "foto galeri",
     fields: [
-      { key: "image_url", label: "URL gambar", type: "text", required: true, full: true },
+      {
+        key: "image_url",
+        label: "Foto galeri",
+        type: "text",
+        required: true,
+        full: true,
+        help: "Format JPEG, PNG, atau WebP. Maksimal 5 MB.",
+      },
       { key: "caption", label: "Caption", type: "text", full: true },
       { key: "trip_title", label: "Nama trip", type: "text" },
       { key: "location", label: "Lokasi", type: "text" },
@@ -184,6 +192,104 @@ function rowToForm(row: Record<string, any>, fields: ContentField[]): Record<str
     else form[field.key] = value ?? "";
   }
   return form;
+}
+
+function ImageUploadField({
+  value,
+  onUpload,
+}: {
+  value: string;
+  onUpload: (url: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setUploadError("Pilih file JPEG, PNG, atau WebP.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError("Ukuran gambar maksimal 5 MB.");
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/admin/opentrip-content/upload", {
+        method: "POST",
+        body: fd,
+      });
+      const raw = await res.text();
+      let json: any = null;
+      try {
+        json = raw ? JSON.parse(raw) : null;
+      } catch {
+        json = null;
+      }
+      if (!res.ok) {
+        throw new Error(
+          json?.error ||
+            (res.status === 404
+              ? "Endpoint upload tidak ditemukan. Muat ulang halaman admin lalu coba lagi."
+              : raw.slice(0, 200) || `HTTP ${res.status}`),
+        );
+      }
+      if (!json?.data?.url) throw new Error("Server tidak mengembalikan URL gambar.");
+      onUpload(String(json.data.url));
+      toast.success("Gambar berhasil diunggah");
+    } catch (error: any) {
+      setUploadError(error?.message || "Gagal mengunggah gambar");
+      toast.error(error?.message || "Gagal mengunggah gambar");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          void handleFile(f);
+          e.target.value = "";
+        }}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        className="gap-2"
+        disabled={uploading}
+        onClick={() => inputRef.current?.click()}
+      >
+        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+        {uploading ? "Mengunggah..." : value ? "Ganti gambar" : "Pilih gambar"}
+      </Button>
+      {uploadError && <p className="text-xs text-destructive">{uploadError}</p>}
+      {value ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={value}
+          alt="Pratinjau foto galeri"
+          width={384}
+          height={176}
+          className="h-44 w-full max-w-sm rounded-md border border-stone-200 bg-stone-100 object-cover"
+        />
+      ) : (
+        <div className="flex h-32 w-full max-w-sm items-center justify-center rounded-md border border-dashed border-stone-300 bg-stone-50 text-xs text-muted-foreground">
+          Belum ada gambar
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ContentTab({ config }: { config: ResourceConfig }) {
@@ -376,6 +482,13 @@ function ContentTab({ config }: { config: ResourceConfig }) {
                           value={form[field.key] ?? ""}
                           placeholder={field.placeholder}
                           onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                        />
+                      ) : config.resource === "gallery" && field.key === "image_url" ? (
+                        <ImageUploadField
+                          value={String(form?.image_url ?? "")}
+                          onUpload={(url: string) => {
+                            setForm((prev) => (prev ? { ...prev, image_url: url } : prev));
+                          }}
                         />
                       ) : (
                         <Input

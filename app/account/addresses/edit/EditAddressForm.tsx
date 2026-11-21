@@ -73,6 +73,20 @@ export function EditAddressForm() {
       if (error) throw error
       toast.success("Alamat berhasil diperbarui")
       router.push("/account/addresses")
+
+      // Simpan ke localStorage agar bertahan setelah refresh
+      try {
+        const stored = localStorage.getItem("habema_addresses");
+        const prev = stored ? JSON.parse(stored) : [];
+        const updatedAddr = {
+          ...address,
+          recipient: address.recipient_name,
+        };
+        const newPrev = prev.map((a) =>
+          a.id === updatedAddr.id ? updatedAddr : a
+        );
+        localStorage.setItem("habema_addresses", JSON.stringify(newPrev));
+      } catch {}
     } catch (err) {
       toast.error("Gagal menyimpan alamat")
     } finally {
