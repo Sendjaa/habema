@@ -66,7 +66,8 @@ export default function AccountPage() {
 
   const handleCopyReferral = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(referralCode);
+      const link = `${window.location.origin}/register?ref=${referralCode}`;
+      await navigator.clipboard.writeText(link);
       setCopiedReferral(true);
       setTimeout(() => setCopiedReferral(false), 2000);
     } catch {
@@ -721,12 +722,12 @@ export default function AccountPage() {
                       {copiedReferral ? (
                         <>
                           <Check className="w-3.5 h-3.5 text-forest" />
-                          <span className="text-forest">Tersalin</span>
+                          <span className="text-forest">Link Tersalin</span>
                         </>
                       ) : (
                         <>
                           <Copy className="w-3.5 h-3.5 text-forest" />
-                          <span>Salin</span>
+                          <span>Salin Link</span>
                         </>
                       )}
                     </button>

@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { DEV_LOCAL_AUTH } from '@/lib/dev-local-auth'
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const BUCKET = 'payment-proofs';
+// Dev lokal tidak punya Supabase Storage (gateway hanya REST + auth).
+// Bukti disimpan sebagai file statis agar alur upload + verifikasi admin
+// tetap bisa didemokan. Folder ini gitignored (lihat .gitignore).
+const DEV_URL_PREFIX = '/uploads/payment-proofs';
+const DEV_DIR = 'public/uploads/payment-proofs';
 
 // =====================================================================
 // POST /api/bookings/upload-proof (multipart: bookingId + proof)
@@ -76,27 +84,41 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().slice(0, 5)
+    const rawExt = (file.name.split('.').pop() || 'jpg').toLowerCase()
+    const ext = rawExt.replace(/[^a-z0-9]/g, '').slice(0, 5) || 'jpg'
     const owner = booking.user_id || 'guest'
     const path = `${owner}/${bookingId}_${Date.now()}.${ext}`
     const bytes = Buffer.from(await file.arrayBuffer())
 
-    const { error: uploadError } = await supabaseAdmin.storage
-      .from(BUCKET)
-      .upload(path, bytes, { contentType: file.type, upsert: false })
+    let proofUrl: string | null = null
+    let storedInBucket = false
+    let devFileName: string | null = null
 
-    if (uploadError) {
-      console.error('Proof upload failed:', uploadError.message)
-      return NextResponse.json(
-        { error: 'Gagal menyimpan bukti. Pastikan bucket payment-proofs sudah dibuat (lihat migrasi SQL).', detail: uploadError.message },
-        { status: 500 }
-      )
+    if (DEV_LOCAL_AUTH) {
+      devFileName = path.replace(/[\\/]+/g, '-')
+      const dir = join(process.cwd(), DEV_DIR)
+      await mkdir(dir, { recursive: true })
+      await writeFile(join(dir, devFileName), bytes)
+      proofUrl = `${DEV_URL_PREFIX}/${devFileName}`
+    } else {
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from(BUCKET)
+        .upload(path, bytes, { contentType: file.type, upsert: false })
+
+      if (uploadError) {
+        console.error('Proof upload failed:', uploadError.message)
+        return NextResponse.json(
+          { error: 'Gagal menyimpan bukti. Pastikan bucket payment-proofs sudah dibuat (lihat migrasi SQL).', detail: uploadError.message },
+          { status: 500 }
+        )
+      }
+
+      const { data: urlData } = supabaseAdmin.storage
+        .from(BUCKET)
+        .getPublicUrl(path)
+      proofUrl = urlData?.publicUrl || null
+      storedInBucket = true
     }
-
-    const { data: urlData } = supabaseAdmin.storage
-      .from(BUCKET)
-      .getPublicUrl(path)
-    const proofUrl = urlData?.publicUrl || null
 
     const { error: updateError } = await supabaseAdmin
       .from('bookings')
@@ -111,7 +133,11 @@ export async function POST(request: NextRequest) {
     if (updateError) {
       console.error('Proof link failed:', updateError.message)
       // Bersihkan file yatim agar storage tidak penuh sampah
-      await supabaseAdmin.storage.from(BUCKET).remove([path]).catch(() => null)
+      if (storedInBucket) {
+        await supabaseAdmin.storage.from(BUCKET).remove([path]).catch(() => null)
+      } else if (devFileName) {
+        await rm(join(process.cwd(), DEV_DIR, devFileName), { force: true }).catch(() => null)
+      }
       const missingColumn =
         updateError.code === '42703' ||
         /payment_proof/i.test(updateError.message || '')

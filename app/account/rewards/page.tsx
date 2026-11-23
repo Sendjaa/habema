@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -131,11 +131,43 @@ export default function AccountRewardsPage() {
 
   const [activeTab, setActiveTab] = useState<"katalog" | "voucher" | "riwayat">("katalog");
   const [categoryFilter, setCategoryFilter] = useState<"all" | "rental" | "opentrip" | "shop">("all");
-  const [spentCoinsLocal, setSpentCoinsLocal] = useState<number>(0);
+  const [coinBalance, setCoinBalance] = useState<number>(0);
+  const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
   const [redeemedVouchers, setRedeemedVouchers] = useState<RedeemedVoucher[]>([]);
   const [confirmItem, setConfirmItem] = useState<PromoCatalogItem | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
+  const [redeemLoading, setRedeemLoading] = useState(false);
+
+  const loadRewardData = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const res = await fetch("/api/rewards/history", { credentials: "include" });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (!json?.success) return;
+
+      const data = json.data;
+      setCoinBalance(Number(data.coinBalance ?? 0));
+      setTransactionHistory(Array.isArray(data.transactions) ? data.transactions : []);
+      setRedeemedVouchers(
+        (Array.isArray(data.vouchers) ? data.vouchers : []).map((v: any) => ({
+          voucherId: String(v.id ?? v.voucher_id ?? ""),
+          promoCode: String(v.promo_code ?? ""),
+          title: String(v.title ?? ""),
+          discountText: String(v.discount_text ?? ""),
+          redeemedAt: formatDate(v.created_at),
+          expiresAt: formatDate(v.expires_at),
+        }))
+      );
+    } catch (error) {
+      console.error("[rewards] gagal memuat data:", error);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadRewardData();
+  }, [loadRewardData]);
 
   const fullName =
     (user as any)?.full_name || user?.user_metadata?.full_name || "Petualang Habema";
@@ -149,6 +181,7 @@ export default function AccountRewardsPage() {
     (user as any)?.referral_code ||
     user?.user_metadata?.referral_code ||
     `HBM-${namePrefix}${rawIdSuffix}`;
+  const referralLink = `${typeof window !== "undefined" ? window.location.origin : ""}/register?ref=${referralCode}`;
 
   const handleCopyText = useCallback(async (text: string) => {
     try {
@@ -174,27 +207,13 @@ export default function AccountRewardsPage() {
         // Pengguna membatalkan dialog share
       }
     }
-    handleCopyText(referralCode);
-  }, [referralCode, handleCopyText]);
+    handleCopyText(referralLink);
+  }, [referralCode, referralLink, handleCopyText]);
 
-  // Kalkulasi saldo awal koin dari database/user atau riwayat transaksi
-  const initialPoints = useMemo(() => {
-    if (!user) return 0;
-    const totalRentalSpend = bookings.reduce((acc, o) => acc + (o.total ?? 0), 0);
-    const totalShopSpend = shopOrders.reduce(
-      (acc, o) => acc + (o.total_amount ?? 0),
-      0
-    );
-    const combinedSpend = totalRentalSpend + totalShopSpend;
-
-    return Number(
-      (user as any).points_balance ??
-        user.user_metadata?.points_balance ??
-        Math.floor(combinedSpend / 1000)
-    );
-  }, [user, bookings, shopOrders]);
-
-  const currentCoins = Math.max(0, initialPoints - spentCoinsLocal);
+  const currentCoins = Math.max(
+    0,
+    Number(coinBalance || (user as any)?.coin_balance || 0)
+  );
   const cashbackRupiah = currentCoins * 100;
 
   // Riwayat mutasi koin otomatis dari transaksi selesai + penukaran lokal
@@ -207,14 +226,13 @@ export default function AccountRewardsPage() {
       coins: number;
     }[] = [];
 
-    redeemedVouchers.forEach((v) => {
-      const matched = PROMO_CATALOG.find((p) => p.code === v.promoCode);
+    transactionHistory.forEach((t: any) => {
       entries.push({
-        id: v.voucherId,
-        type: "redeem",
-        title: `Penukaran ${v.title} (${v.promoCode})`,
-        date: v.redeemedAt,
-        coins: matched ? matched.coinCost : 0,
+        id: String(t.id),
+        type: t.type === "redeem" ? "redeem" : "earn",
+        title: String(t.description ?? "Mutasi koin"),
+        date: formatDate(t.created_at),
+        coins: Number(t.amount ?? 0),
       });
     });
 
@@ -245,39 +263,48 @@ export default function AccountRewardsPage() {
     });
 
     return entries;
-  }, [bookings, shopOrders, redeemedVouchers]);
+  }, [bookings, shopOrders, transactionHistory]);
 
   const filteredPromos = useMemo(() => {
     if (categoryFilter === "all") return PROMO_CATALOG;
     return PROMO_CATALOG.filter((item) => item.category === categoryFilter);
   }, [categoryFilter]);
 
-  const handleConfirmRedeem = () => {
-    if (!confirmItem) return;
+  const handleConfirmRedeem = async () => {
+    if (!confirmItem || redeemLoading) return;
     if (currentCoins < confirmItem.coinCost) {
       setConfirmItem(null);
       return;
     }
 
-    const now = new Date();
-    const expiry = new Date(now.getTime() + confirmItem.validDays * 24 * 60 * 60 * 1000);
+    const item = confirmItem;
+    setRedeemLoading(true);
 
-    const newVoucher: RedeemedVoucher = {
-      voucherId: `VCH-${Date.now()}`,
-      promoCode: confirmItem.code,
-      title: confirmItem.title,
-      discountText: confirmItem.discountText,
-      redeemedAt: formatDate(now.toISOString()),
-      expiresAt: formatDate(expiry.toISOString()),
-    };
+    try {
+      const res = await fetch("/api/rewards/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ voucherId: item.id }),
+      });
+      const json = await res.json().catch(() => ({}));
 
-    setSpentCoinsLocal((prev) => prev + confirmItem.coinCost);
-    setRedeemedVouchers((prev) => [newVoucher, ...prev]);
-    setStatusBanner(
-      `Berhasil menukar ${confirmItem.coinCost} Koin menjadi voucher "${confirmItem.title}" (${confirmItem.code}).`
-    );
-    setConfirmItem(null);
-    setActiveTab("voucher");
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || "Gagal menukar koin");
+      }
+
+      setCoinBalance((prev) => Math.max(0, prev - item.coinCost));
+      setStatusBanner(
+        `Berhasil menukar ${item.coinCost} Koin menjadi voucher "${item.title}" (${item.code}).`
+      );
+      setConfirmItem(null);
+      setActiveTab("voucher");
+      await loadRewardData();
+    } catch (error: any) {
+      setStatusBanner(error?.message || "Gagal menukar koin");
+    } finally {
+      setRedeemLoading(false);
+    }
   };
 
   if (loading) {
@@ -432,18 +459,18 @@ export default function AccountRewardsPage() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => handleCopyText(referralCode)}
+                  onClick={() => handleCopyText(referralLink)}
                   className="inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-2xl border border-border bg-background hover:border-forest hover:bg-forest-soft text-xs font-bold text-foreground transition-colors cursor-pointer"
                 >
-                  {copiedCode === referralCode ? (
+                  {copiedCode === referralLink ? (
                     <>
                       <Check className="w-3.5 h-3.5 text-forest" />
-                      <span className="text-forest">Kode Tersalin</span>
+                      <span className="text-forest">Link Tersalin</span>
                     </>
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5 text-forest" />
-                      <span>Salin Kode</span>
+                      <span>Salin Link</span>
                     </>
                   )}
                 </button>
@@ -814,9 +841,10 @@ export default function AccountRewardsPage() {
                 <button
                   type="button"
                   onClick={handleConfirmRedeem}
-                  className="flex-1 h-10 rounded-2xl bg-gold hover:bg-gold-light text-secondary-foreground text-xs font-bold cursor-pointer"
+                  disabled={redeemLoading}
+                  className="flex-1 h-10 rounded-2xl bg-gold hover:bg-gold-light text-secondary-foreground text-xs font-bold disabled:opacity-50 cursor-pointer"
                 >
-                  Tukar Sekarang
+                  {redeemLoading ? "Memproses..." : "Tukar Sekarang"}
                 </button>
               </div>
             </div>
