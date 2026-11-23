@@ -40,6 +40,8 @@ function AuthPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo') || '/'
+  const referralCode = searchParams.get('ref') || ''
+  const initialModeParam = searchParams.get('mode')
   
   // FIX: Check untuk type=recovery (password reset), bukan hanya code
   // Supabase password reset mengirim: ?code=TOKEN&type=recovery
@@ -47,7 +49,9 @@ function AuthPageContent() {
   const resetToken = searchParams.get('code')
   const typeParam = searchParams.get('type')
   const isPasswordReset = typeParam === 'recovery'
-  const initialMode: Mode = isPasswordReset && resetToken ? 'reset' : 'login'
+  const initialMode: Mode = isPasswordReset && resetToken
+    ? 'reset'
+    : (initialModeParam === 'register' || referralCode) ? 'register' : 'login'
   
   // Clean up URL after successful OAuth login
   // Hapus code parameter jika bukan password reset
@@ -137,7 +141,7 @@ function AuthPageContent() {
           throw new Error(gate.error || 'Gagal memverifikasi login')
         }
 
-        if (gate.success) {
+        if (gate.success && supabase) {
           const { error: signInError } = await supabase.auth.signInWithPassword({
             email: email.trim(),
             password,
@@ -168,6 +172,7 @@ function AuthPageContent() {
       if (mode === 'register') {
         body.firstName = firstName.trim()
         body.lastName = lastName.trim()
+        if (referralCode) body.referralCode = referralCode.trim()
       }
 
       const res = await fetch('/api/auth/send-otp', {
@@ -214,22 +219,23 @@ function AuthPageContent() {
       }
 
       // OTP verified - now sign in on the client to establish the session
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      })
+      if (supabase) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        })
+        if (signInError) {
+          throw new Error(signInError.message)
+        }
 
-      if (signInError) {
-        throw new Error(signInError.message)
+        router.replace(redirectTo)
       }
-
-      router.replace(redirectTo)
     } catch (err: any) {
       setOtpError(err.message || 'Verifikasi gagal')
     } finally {
       setOtpLoading(false)
     }
-  }, [email, otpType, password, router, redirectTo])
+  }, [email, otpType, password, router, redirectTo, referralCode])
 
   const handleResendOtp = useCallback(async () => {
     setOtpError(null)
@@ -242,7 +248,13 @@ function AuthPageContent() {
           password,
           turnstileToken: '',
           type: otpType,
-          ...(otpType === 'register' ? { firstName: firstName.trim(), lastName: lastName.trim() } : {}),
+          ...(otpType === 'register'
+            ? {
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                ...(referralCode ? { referralCode: referralCode.trim() } : {}),
+              }
+            : {}),
         }),
       })
 
@@ -269,11 +281,13 @@ function AuthPageContent() {
     setGoogleLoading(true)
     clearMessage()
     
-    try {
-      console.log('Starting Google OAuth...')
-      console.log('Redirect to:', `${typeof window !== 'undefined' ? window.location.origin : ''}/`)
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
+try {
+        console.log('Starting Google OAuth...')
+        console.log('Redirect to:', `${typeof window !== 'undefined' ? window.location.origin : ''}/`)
+
+        if (!supabase) throw new Error('Database client tidak tersedia.')
+
+        const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           // Redirect ke auth callback untuk proses PKCE code exchange

@@ -18,6 +18,9 @@ export interface UserProfile {
   created_at: string | number | Date | null;
   user_metadata: any;
   app_metadata: any;
+  referral_code?: string | null;
+  referral_count?: number;
+  coin_balance?: number;
 }
 
 export function useAccountData() {
@@ -74,6 +77,9 @@ export function useAccountData() {
         email_confirmed: d.email_confirmed ?? !!authUser.email_confirmed_at,
         last_sign_in_at: d.last_sign_in_at ?? authUser.last_sign_in_at ?? null,
         created_at: d.created_at ?? authUser.created_at ?? null,
+        referral_code: d.referral_code ?? authUser.user_metadata?.referral_code ?? null,
+        referral_count: d.referral_count ?? 0,
+        coin_balance: d.coin_balance ?? 0,
       } as UserProfile;
     } catch (e) {
       console.warn("[account] Gagal memuat profil server:", e);
@@ -83,6 +89,7 @@ export function useAccountData() {
 
   const fetchData = useCallback(async () => {
     try {
+      if (!supabase) return null;
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
       if (authError || !authUser) {
         setUser(null);
@@ -96,6 +103,7 @@ export function useAccountData() {
 
       // Alamat: tetap via client (read own addresses; RLS sudah mengizinkan)
       try {
+        if (!supabase) return;
         const { data: addrData, error: addrError } = await supabase
           .from("addresses").select("*").eq("user_id", uid);
         setAddresses(addrError ? [] : (addrData ?? []));

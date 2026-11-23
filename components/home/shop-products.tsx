@@ -18,6 +18,7 @@ export function ShopProducts() {
     let alive = true
 
     const load = async () => {
+      if (!supabase) return;
       const { data, error } = await supabase
         .from('shop_products')
         .select('*')
