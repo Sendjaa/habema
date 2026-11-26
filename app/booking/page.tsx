@@ -72,20 +72,15 @@ function formatPhoneWa(phone: string): string {
   return cleaned ? "62" + cleaned : "";
 }
 
-// ==================== MAIN COMPONENT ====================
+
 function BookingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const productId = searchParams.get("id");
   const quantity = parseInt(searchParams.get("quantity") || "1");
-  // Mode paket grup: /booking?type=bundle&id=<bundle_id>&quantity=<jml_paket>.
-  // Harga paket bersifat per paket per malam (dikalikan durasi × qty paket).
   const bookingType = searchParams.get("type");
   const isBundleMode = bookingType === "bundle" && !!productId;
   const bundleQty = isBundleMode ? Math.max(1, Number(quantity) || 1) : Math.max(1, Number(quantity) || 1);
-
-  // Tanggal dibawa dari katalog/hero (format YYYY-MM-DD). Dipakai sebagai nilai
-  // awal agar pengguna tidak perlu memilih ulang di halaman booking.
   const urlStartDate = searchParams.get("startDate");
   const urlEndDate = searchParams.get("endDate");
   const parseUrlDate = (v: string | null): Date | null => {
@@ -93,8 +88,6 @@ function BookingContent() {
     const d = new Date(v);
     return isNaN(d.getTime()) ? null : d;
   };
-
-  // ==================== STATE ====================
   const [user, setUser] = useState<User | null>(null);
   const transaction = useCartStore((state) => state.currentTransaction);
   const [product, setProduct] = useState<any>(null);
@@ -105,7 +98,6 @@ function BookingContent() {
   const [endDate, setEndDate] = useState<Date | null>(() =>
     parseUrlDate(urlEndDate),
   );
-
   const [idData, setIdData] = useState<any | null>(null);
   const [conditionData, setConditionData] =
     useState<ConditionChecklistData | null>(null);
@@ -114,29 +106,21 @@ function BookingContent() {
   );
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  // QRIS manual: booking yang sudah dibuat + bukti bayar yang diupload.
   const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [isUploadingProof, setIsUploadingProof] = useState(false);
   const [isSimulatingPayment, setIsSimulatingPayment] = useState(false);
-  // QRIS dinamis: di-generate per amount, bukan QRIS statis.
   const [dynamicQrisUrl, setDynamicQrisUrl] = useState<string | null>(null);
   const [isGeneratingQris, setIsGeneratingQris] = useState(false);
-  // True bila QRIS dinamis belum dikonfigurasi (mis. dev lokal tanpa
-  // QRIS_STATIC_PAYLOAD). UI memakai QRIS statis sebagai fallback.
   const [qrisDynamicUnavailable, setQrisDynamicUnavailable] = useState(false);
   const autoQrisBookingRef = useRef<string | null>(null);
-
   const [showLoginModal, setShowLoginModal] = useState(false);
   const skipAuthCheck = useRef(false);
   const idFormRef = useRef<any>(null);
   const idDataRef = useRef<any>(null);
   const waWindowRef = useRef<Window | null>(null);
-
   const [customerNote, setCustomerNote] = useState("");
-
-  // Cabang pengambilan & pengembalian
   const [branches, setBranches] = useState<any[]>([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [pickupBranchId, setPickupBranchId] = useState<string | null>(null);
@@ -229,12 +213,7 @@ function BookingContent() {
     };
     fetchProduct();
   }, [productId, isBundleMode]);
-
-  // Selaraskan transaksi dengan produk yang diklik dari halaman produk/katalog.
-  // currentTransaction terpersistensi di localStorage, sehingga tanpa ini ringkasan
-  // akan menampilkan item lama dari sesi sebelumnya (dan bisa duplikat).
-  // Mode bundle dilewati: harga dihitung langsung dari bundle (per paket/malam),
-  // bukan dari keranjang equipment, agar tidak tercampur sesi lama.
+  
   useEffect(() => {
     if (!productId || !product || loading) return;
     if (isBundleMode) return;

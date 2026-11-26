@@ -42,3 +42,97 @@ comment on column public.users.referral_count is 'Jumlah teman yang bergabung me
 comment on column public.users.coin_balance is 'Saldo koin cashback untuk tukar voucher';
 comment on column public.users.referred_by is 'User yang mengundang (jika ada)';
 comment on column public.users.referral_rewarded is 'Apakah hadiah referral sudah dibagikan';
+
+create or replace function public.apply_referral_reward(p_user_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_referrer uuid;
+begin
+  select referred_by into v_referrer from public.users where id = p_user_id for update;
+  if v_referrer is null then
+    return false;
+  end if;
+
+  update public.users
+  set referral_rewarded = true,
+      coin_balance = coin_balance + 250
+  where id = p_user_id and referral_rewarded = false;
+
+  if not found then
+    return false;
+  end if;
+
+  update public.users
+  set referral_count = referral_count + 1,
+      coin_balance = coin_balance + 250
+  where id = v_referrer;
+
+  insert into public.coin_transactions (user_id, type, amount, description, reference_id)
+  values (p_user_id, 'earn', 250, 'Bonus referral bergabung', p_user_id::text);
+
+  insert into public.coin_transactions (user_id, type, amount, description, reference_id)
+  values (v_referrer, 'earn', 250, 'Bonus referral teman bergabung', p_user_id::text);
+
+  return true;
+end;
+$$;
+
+create or replace function public.redeem_voucher(
+  p_user_id uuid,
+  p_voucher_id text,
+  p_promo_code text,
+  p_title text,
+  p_discount_text text,
+  p_coin_cost integer,
+  p_valid_days integer
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_balance integer;
+  v_id uuid;
+  v_expires_at timestamptz;
+begin
+  select coin_balance into v_balance from public.users where id = p_user_id for update;
+
+  if v_balance is null or v_balance < p_coin_cost then
+    return jsonb_build_object('success', false, 'message', 'Koin tidak mencukupi');
+  end if;
+
+  v_id := gen_random_uuid();
+  v_expires_at := now() + (p_valid_days || ' days')::interval;
+
+  update public.users
+  set coin_balance = coin_balance - p_coin_cost
+  where id = p_user_id;
+
+  insert into public.redeemed_vouchers (
+    id, user_id, voucher_id, promo_code, title, discount_text, coin_cost, expires_at
+  ) values (
+    v_id, p_user_id, p_voucher_id, p_promo_code, p_title, p_discount_text, p_coin_cost, v_expires_at
+  );
+
+  insert into public.coin_transactions (user_id, type, amount, description, reference_id)
+  values (p_user_id, 'redeem', p_coin_cost, p_title, v_id::text);
+
+  return jsonb_build_object(
+    'success', true,
+    'voucher', jsonb_build_object(
+      'id', v_id,
+      'voucherId', p_voucher_id,
+      'promoCode', p_promo_code,
+      'title', p_title,
+      'discountText', p_discount_text,
+      'coinCost', p_coin_cost,
+      'expiresAt', v_expires_at
+    )
+  );
+end;
+$$;

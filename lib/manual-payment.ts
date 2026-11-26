@@ -1,12 +1,4 @@
-// =====================================================================
-// Konfigurasi pembayaran manual (QRIS statis Habema).
-//
-// Latar: Midtrans belum siap, sehingga opsi pembayaran Midtrans
-// (Transfer Bank & QRIS otomatis) disembunyikan sementara dan diganti
-// QRIS statis + upload bukti bayar yang diverifikasi admin.
-//
-// Untuk kembali ke Midtrans: set MANUAL_QRIS_ONLY = false.
-// =====================================================================
+import { Building2, QrCode, MessageCircle, type LucideIcon } from "lucide-react";
 
 /** Selama true, hanya QRIS Manual + WhatsApp yang ditawarkan di checkout. */
 export const MANUAL_QRIS_ONLY = true;
@@ -30,7 +22,7 @@ export interface PaymentOption {
   id: string;
   name: string;
   desc: string;
-  icon: string;
+  icon: LucideIcon;
   requiresAuth: boolean;
 }
 
@@ -40,21 +32,21 @@ export const MIDTRANS_OPTIONS: PaymentOption[] = [
     id: "tf",
     name: "Transfer Bank",
     desc: "Verifikasi manual 10-30 menit",
-    icon: "🏦",
+    icon: Building2,
     requiresAuth: true,
   },
   {
     id: "qris",
     name: "QRIS",
     desc: "Otomatis & Instan (Gopay, OVO, Dana)",
-    icon: "📸",
+    icon: QrCode,
     requiresAuth: true,
   },
   {
     id: "wa",
     name: "WhatsApp Konfirmasi",
     desc: "Tanya admin via WhatsApp",
-    icon: "💬",
+    icon: MessageCircle,
     requiresAuth: false,
   },
 ];
@@ -65,14 +57,14 @@ export const MANUAL_OPTIONS: PaymentOption[] = [
     id: "qris-manual",
     name: MANUAL_QRIS_METHOD,
     desc: `Scan QRIS ${QRIS_MERCHANT_NAME}, upload bukti bayar`,
-    icon: "📸",
+    icon: QrCode,
     requiresAuth: true,
   },
   {
     id: "wa",
     name: "WhatsApp Konfirmasi",
     desc: "Tanya admin via WhatsApp",
-    icon: "💬",
+    icon: MessageCircle,
     requiresAuth: false,
   },
 ];

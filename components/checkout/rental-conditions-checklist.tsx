@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertCircle, CheckCircle } from "lucide-react";
+import {
+  ShieldCheck,
+  CheckCircle2,
+  Check,
+  Copy,
+  Clock,
+} from "lucide-react";
 
 export interface ConditionChecklistData {
   itemsChecked: {
@@ -11,104 +16,114 @@ export interface ConditionChecklistData {
   };
   damageNotes: string;
   agreedToTerms: boolean;
+  policySnapshot?: {
+    brandName: string;
+    policyTitle: string;
+    overtimeFee: string;
+    clauses: string[];
+  };
+}
+
+export interface TermsClause {
+  id: string;
+  text: string;
+  mandatory: boolean;
+}
+
+export interface TermsPolicyConfig {
+  brandName: string;
+  policyTitle: string;
+  policyVersion: string;
+  overtimeRule: string;
+  depositNote: string;
+  clauses: TermsClause[];
 }
 
 interface RentalConditionsChecklistProps {
   equipmentName: string;
   onChecklistComplete: (data: ConditionChecklistData) => void;
   editable?: boolean;
+  initialPolicy?: Partial<TermsPolicyConfig>;
 }
+
+const DEFAULT_POLICY: TermsPolicyConfig = {
+  brandName: "Habema Outdoor",
+  policyTitle: "Syarat & Ketentuan Serah-Terima Gear",
+  policyVersion: "v2.4 • Standar Operasional",
+  overtimeRule: "Denda 100% tarif harian per 24 jam keterlambatan",
+  depositNote: "Jaminan KTP/SIM asli ditahan selama masa sewa",
+  clauses: [
+    {
+      id: "cl-1",
+      text: "Peralatan wajib dikembalikan dalam kondisi lengkap, kering, dan bersih sesuai standar inspeksi awal.",
+      mandatory: true,
+    },
+    {
+      id: "cl-2",
+      text: "Kerusakan fisik (robek bara api, patah frame akibat kelalaian) atau kehilangan komponen ditanggung penyewa sesuai harga penggantian.",
+      mandatory: true,
+    },
+    {
+      id: "cl-3",
+      text: "Keterlambatan pengembalian melewati batas waktu toleransi 2 jam dikenakan biaya overtime sesuai tarif harian.",
+      mandatory: true,
+    },
+  ],
+};
 
 export function RentalConditionsChecklist({
   equipmentName,
   onChecklistComplete,
   editable = true,
+  initialPolicy,
 }: RentalConditionsChecklistProps) {
-  const defaultChecklist = {
-    structure_intact: false,
-    no_visible_damage: false,
-    all_parts_present: false,
-    clean_condition: false,
-    functioning_properly: false,
-    zippers_working: false,
-    seals_intact: false,
-    no_odors: false,
+  const policy: TermsPolicyConfig = {
+    ...DEFAULT_POLICY,
+    ...initialPolicy,
+    clauses: initialPolicy?.clauses ?? DEFAULT_POLICY.clauses,
   };
 
-  const [checkedItems, setCheckedItems] = useState<{
-    [key: string]: boolean;
-  }>(defaultChecklist);
-  const [damageNotes, setDamageNotes] = useState("");
+  const [copiedPolicy, setCopiedPolicy] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const checklistItems = [
-    {
-      id: "structure_intact",
-      label: "Struktur Utama Utuh",
-      icon: "🏗️",
-      critical: true,
-    },
-    {
-      id: "no_visible_damage",
-      label: "Tidak Ada Kerusakan Terlihat",
-      icon: "✨",
-      critical: true,
-    },
-    {
-      id: "all_parts_present",
-      label: "Semua Bagian Lengkap",
-      icon: "🔧",
-      critical: true,
-    },
-    {
-      id: "clean_condition",
-      label: "Dalam Kondisi Bersih",
-      icon: "🧹",
-      critical: false,
-    },
-    {
-      id: "functioning_properly",
-      label: "Berfungsi Dengan Baik",
-      icon: "⚙️",
-      critical: true,
-    },
-    {
-      id: "zippers_working",
-      label: "Resleting/Kunci Lancar",
-      icon: "🔐",
-      critical: false,
-    },
-    {
-      id: "seals_intact",
-      label: "Segel/Lapisan Utuh",
-      icon: "🛡️",
-      critical: false,
-    },
-    {
-      id: "no_odors",
-      label: "Tidak Berbau Tidak Sedap",
-      icon: "👃",
-      critical: false,
-    },
-  ];
+  // Salin teks dokumen S&K siap tempel
+  const handleCopyPolicyText = async () => {
+    const formatted = [
+      `${policy.policyTitle.toUpperCase()} — ${policy.brandName}`,
+      `Versi: ${policy.policyVersion}`,
+      `Unit: ${equipmentName}`,
+      ``,
+      ...policy.clauses.map((c, idx) => `${idx + 1}. ${c.text}`),
+      ``,
+      `Ketentuan Keterlambatan: ${policy.overtimeRule}`,
+      `Jaminan Identitas: ${policy.depositNote}`,
+    ].join("\n");
 
-  const handleCheckItem = (itemId: string) => {
-    if (!editable && isSubmitted) return;
-
-    setCheckedItems((prev) => ({
-      ...prev,
-      [itemId]: !prev[itemId],
-    }));
+    try {
+      await navigator.clipboard.writeText(formatted);
+    } catch {
+      // Fallback bila clipboard dibatasi
+    }
+    setCopiedPolicy(true);
+    setTimeout(() => setCopiedPolicy(false), 2000);
   };
 
-  // Otomatis kirim data saat pengguna menyetujui syarat, tanpa tombol terpisah.
+  // Otomatis kirim data saat pengguna menyetujui syarat serah-terima
   useEffect(() => {
     if (!agreedToTerms || !editable) return;
     onChecklistComplete({
-      itemsChecked: checkedItems,
-      damageNotes,
+      itemsChecked: {
+        terms_acknowledged: true,
+      },
+      damageNotes: "",
       agreedToTerms,
+      policySnapshot: {
+        brandName: policy.brandName,
+        policyTitle: policy.policyTitle,
+        overtimeFee: policy.overtimeRule,
+        clauses: policy.clauses.map((c) => c.text),
+      },
     });
     setIsSubmitted(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -116,102 +131,146 @@ export function RentalConditionsChecklist({
 
   if (isSubmitted && !editable) {
     return (
-      <Card className="p-6 bg-green-50 border-green-200">
-        <div className="flex items-start gap-4">
-          <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-bold text-stone-900 mb-1">Checklist Selesai</h3>
-            <p className="text-sm text-green-800">
-              Peralatan telah diperiksa dan disetujui. Silakan lanjutkan ke
-              tahap berikutnya.
+      <div className="rounded-2xl border border-forest/30 bg-forest-soft p-5 sm:p-6 font-body">
+        <div className="flex items-start gap-3.5">
+          <div className="w-9 h-9 rounded-2xl bg-forest text-primary-foreground flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-sans text-sm sm:text-base font-bold text-foreground">
+              Syarat &amp; Ketentuan Sewa Disetujui
+            </h3>
+            <p className="text-xs sm:text-sm text-forest-dark leading-relaxed">
+              Ketentuan penyewaan <strong className="font-semibold">{equipmentName}</strong> dan{" "}
+              <strong className="font-semibold">{policy.policyTitle}</strong> ({policy.brandName}) telah disetujui.
             </p>
           </div>
         </div>
-      </Card>
+      </div>
     );
   }
 
   return (
-    <Card className="p-4 sm:p-6 bg-white border-border">
-      <div className="mb-4 sm:mb-6">
-        <h3 className="text-base sm:text-lg font-bold text-stone-900 mb-1 sm:mb-2">
-          Daftar Periksa Kondisi - {equipmentName}
-        </h3>
-        <p className="text-xs sm:text-sm text-muted-foreground">
-          Periksa kondisi peralatan sebelum serah-terima
-        </p>
+    <div className="rounded-2xl border border-border bg-card overflow-hidden font-body">
+      {/* Header Bar */}
+      <div className="px-5 py-4 border-b border-border bg-background flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="min-w-0">
+          <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-forest mb-0.5">
+            Ketentuan Penyewaan • {policy.brandName}
+          </span>
+          <h3 className="font-sans text-base sm:text-lg font-bold text-foreground truncate">
+            {policy.policyTitle} — {equipmentName}
+          </h3>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleCopyPolicyText}
+            title="Salin teks Syarat & Ketentuan"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-2xl border border-border bg-background hover:border-forest text-[11px] font-bold text-foreground transition-colors cursor-pointer"
+          >
+            {copiedPolicy ? (
+              <>
+                <Check className="w-3 h-3 text-forest" />
+                <span className="text-forest">Tersalin</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3 h-3 text-muted-foreground" />
+                <span>Salin S&amp;K</span>
+              </>
+            )}
+          </button>
+
+          <span
+            className={`px-3 py-1 rounded-2xl text-xs font-bold ${
+              agreedToTerms
+                ? "bg-forest-soft text-forest border border-forest/30"
+                : "bg-accent text-accent-foreground border border-gold/35"
+            }`}
+          >
+            {agreedToTerms ? "Disetujui" : "Perlu Persetujuan"}
+          </span>
+        </div>
       </div>
 
-      <div className="space-y-6">
-        {/* Alert */}
-        <div className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <p className="text-xs sm:text-sm text-blue-800">
-            Item yang bertanda <span className="font-bold">★</span> adalah
-            persyaratan kritis yang harus disetujui
-          </p>
-        </div>
-
-        {/* Checklist Items */}
-        <div className="space-y-2 sm:space-y-3">
-          {checklistItems.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl border border-forest/5 bg-white/50"
-            >
-              {/* Icon Standar */}
-              <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-forest/5 text-sm sm:text-lg flex-shrink-0">
-                {item.icon}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                  <span className="font-reguler text-xs sm:text-sm text-black truncate">
-                    {item.label}
-                  </span>
-                  {item.critical && (
-                    <span className="text-[9px] sm:text-[10px] bg-red-50 text-red-500 px-1.5 sm:px-2 py-0.5 rounded-full font-bold uppercase tracking-widest border border-red-100 w-fit">
-                      Wajib
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Indikator Status (Opsional, hanya sebagai penanda visual bahwa ini standar Habema) */}
-              <div className="text-[9px] sm:text-[10px] font-black text-gold uppercase tracking-widest opacity-50 flex-shrink-0">
-                Standard
-              </div>
+      <div className="p-5 sm:p-6 space-y-4 bg-background">
+        {/* Ringkasan Parameter Kebijakan Aktif (Overtime & Jaminan) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+          <div className="p-3 rounded-2xl border border-border bg-muted/35 flex items-start gap-2.5">
+            <Clock className="w-4 h-4 text-forest shrink-0 mt-0.5" />
+            <div>
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Ketentuan Keterlambatan
+              </span>
+              <span className="font-semibold text-foreground">
+                {policy.overtimeRule}
+              </span>
             </div>
-          ))}
+          </div>
+
+          <div className="p-3 rounded-2xl border border-border bg-muted/35 flex items-start gap-2.5">
+            <ShieldCheck className="w-4 h-4 text-forest shrink-0 mt-0.5" />
+            <div>
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Jaminan Serah-Terima
+              </span>
+              <span className="font-semibold text-foreground">
+                {policy.depositNote}
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Terms */}
-        {editable && (
-          <div className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-orange-50 border border-orange-200 rounded-lg">
+        {/* Kotak Centang Persetujuan Syarat & Ketentuan (Langsung Aktif) */}
+        {editable ? (
+          <label
+            htmlFor="terms"
+            className={`flex items-start gap-3 p-4 rounded-2xl border transition-colors cursor-pointer ${
+              agreedToTerms
+                ? "bg-forest-soft/60 border-forest"
+                : "bg-accent/55 border-gold/40 hover:border-gold"
+            }`}
+          >
             <Checkbox
-              className="bg-white"
               id="terms"
               checked={agreedToTerms}
               onCheckedChange={(checked) =>
-                setAgreedToTerms(checked as boolean)
+                setAgreedToTerms(checked === true)
               }
+              className="mt-0.5 bg-background border-input data-[state=checked]:bg-forest data-[state=checked]:border-forest"
             />
-            <label
-              htmlFor="terms"
-              className="text-xs sm:text-sm text-orange-900 cursor-pointer"
-            >
-              <p className="font-semibold mb-1">
-                Saya setuju dengan syarat dan ketentuan serah-terima:
+            <div className="text-xs text-foreground space-y-2 leading-relaxed">
+              <p className="font-bold text-foreground">
+                Saya telah membaca dan menyetujui {policy.policyTitle} ({policy.brandName}):
               </p>
-              <ul className="space-y-1 ml-2 text-xs sm:text-sm">
-                <li>• Peralatan akan dikembalikan dalam kondisi baik</li>
-                <li>• Kerusakan di luar asuransi akan ditanggung sepenuhnya</li>
-                <li>• Pengembalian terlambat akan dikenakan biaya overtime</li>
+              <ul className="space-y-1.5 text-foreground/85">
+                {policy.clauses.map((clause) => (
+                  <li key={clause.id} className="flex items-start gap-2">
+                    <span className="text-gold font-bold">•</span>
+                    <span>{clause.text}</span>
+                  </li>
+                ))}
               </ul>
-            </label>
+            </div>
+          </label>
+        ) : (
+          <div className="p-4 rounded-2xl border border-border bg-muted/30 text-xs text-foreground space-y-2 leading-relaxed">
+            <p className="font-bold text-foreground">
+              Ketentuan Berlaku ({policy.brandName}):
+            </p>
+            <ul className="space-y-1.5 text-foreground/85">
+              {policy.clauses.map((clause) => (
+                <li key={clause.id} className="flex items-start gap-2">
+                  <span className="text-gold font-bold">•</span>
+                  <span>{clause.text}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>
-    </Card>
+    </div>
   );
 }

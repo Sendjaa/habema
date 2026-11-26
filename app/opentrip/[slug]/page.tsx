@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { 
+import {
   ArrowLeft,
   ArrowUpRight,
   Calendar,
@@ -12,6 +12,7 @@ import {
   Clock,
   Compass,
   FileText,
+  Loader2,
   MapPin,
   Minus,
   Mountain,
@@ -358,6 +359,13 @@ export default function OpenTripDetailPage() {
   const [whatsapp, setWhatsapp] = useState("");
   const [emergencyContact, setEmergencyContact] = useState("");
   const [notesInput, setNotesInput] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [createdBooking, setCreatedBooking] = useState<{
+    id: string;
+    code: string | null;
+  } | null>(null);
+  const [paidStatus, setPaidStatus] = useState<"dp" | "lunas" | null>(null);
 
   useEffect(() => {
     if (!slug) {
@@ -541,9 +549,75 @@ export default function OpenTripDetailPage() {
       caption: trip.title,
     };
 
-  const handleBookingSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleBookingSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setBookingSubmitted(true);
+    if (!trip) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      // 1. Buat booking
+      const bookingRes = await fetch("/api/ot-bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          trip_id: trip.id,
+          total_participants: participants,
+          adult_count: participants,
+          child_count: 0,
+          infant_count: 0,
+          special_requests: notesInput || null,
+          participant_details: [
+            {
+              name: fullName,
+              email: "",
+              phone: whatsapp,
+              id_type: "ktp",
+              id_number: "",
+            },
+          ],
+          contact_person_name: fullName,
+          contact_person_phone: whatsapp,
+        }),
+      });
+
+      const bookingJson = await bookingRes.json().catch(() => ({}));
+      if (!bookingRes.ok || !bookingJson.success) {
+        throw new Error(
+          bookingJson.error || "Gagal membuat booking. Silakan coba lagi."
+        );
+      }
+
+      const bookingId = bookingJson.data?.id as string;
+      const bookingCode = (bookingJson.data?.booking_code as string) ?? "";
+
+      // 2. Proses pembayaran DP / Lunas
+      const payRes = await fetch("/api/ot-payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingId,
+          method: paymentScheme === "dp" ? "dp" : "lunas",
+        }),
+      });
+
+      const payJson = await payRes.json().catch(() => ({}));
+      if (!payRes.ok || !payJson.success) {
+        throw new Error(
+          payJson.error || "Gagal memproses pembayaran. Silakan coba lagi."
+        );
+      }
+
+      setCreatedBooking({ id: bookingId, code: bookingCode });
+      setPaidStatus(paymentScheme === "dp" ? "dp" : "lunas");
+      setBookingSubmitted(true);
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "Terjadi kesalahan tak terduga."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -1256,16 +1330,31 @@ export default function OpenTripDetailPage() {
                   <p className="text-sm  font-bold font-sans text-foreground">
                     {fullName} ({participants} Peserta)
                   </p>
+                  <p className="text-xs text-muted-foreground">
+                    Booking:{" "}
+                    <span className="font-bold font-sans text-foreground tabular-nums">
+                      {createdBooking?.code ?? "-"}
+                    </span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Skema pembayaran:{" "}
+                    <span
+                      className={`font-bold font-sans tabular-nums ${
+                        paidStatus === "lunas"
+                          ? "text-emerald-700"
+                          : "text-amber-700"
+                      }`}
+                    >
+                      {paidStatus === "lunas" ? "Lunas" : "DP"}
+                    </span>
+                  </p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Tim operasional Habema akan mengirimkan instruksi pembayaran{" "}
-                    <strong>
-                      {paymentScheme === "dp" ? "DP" : "Pelunasan"} sebesar{" "}
-                      {formatRupiah(totalPayNow)}
-                    </strong>{" "}
+                    Tim operasional Habema akan mengirimkan tautan pembayaran{" "}
+                    <strong>{formatRupiah(totalPayNow)}</strong>{" "}
                     {couponDiscount > 0 && selectedCoupon
                       ? `dengan kupon ${selectedCoupon.code}. `
                       : ""}
-                    serta tautan unggah surat sehat ke WhatsApp{" "}
+                    ke WhatsApp{" "}
                     <strong>{whatsapp}</strong>.
                   </p>
                 </div>
@@ -1346,19 +1435,38 @@ export default function OpenTripDetailPage() {
                   </span>
                 </div>
 
+                {submitError && (
+                  <div className="p-3 border border-red-200 bg-red-50 text-red-700 text-xs font-medium">
+                    {submitError}
+                  </div>
+                )}
+
                 <div className="flex gap-2.5 pt-1">
                   <button
                     type="button"
                     onClick={() => setBookingOpen(false)}
-                    className="px-4 h-11 border border-border bg-background text-xs  font-bold font-sanstracking-wider text-foreground hover:bg-muted cursor-pointer"
+                    disabled={isSubmitting}
+                    className="px-4 h-11 border border-border bg-background text-xs  font-bold font-sanstracking-wider text-foreground hover:bg-muted cursor-pointer disabled:opacity-50"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 h-11 bg-gold hover:bg-gold-light text-secondary-foreground text-xs  font-bold font-sanstracking-wider cursor-pointer"
+                    disabled={isSubmitting}
+                    className={`flex-1 h-11 text-xs  font-bold font-sanstracking-wider cursor-pointer ${
+                      isSubmitting
+                        ? "bg-muted text-muted-foreground"
+                        : "bg-gold hover:bg-gold-light text-secondary-foreground"
+                    }`}
                   >
-                    Konfirmasi Pendaftaran
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Memproses...
+                      </>
+                    ) : (
+                      "Konfirmasi Pendaftaran"
+                    )}
                   </button>
                 </div>
               </form>

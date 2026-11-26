@@ -4,6 +4,7 @@ import { generateOTP, storeOTP, invalidatePreviousOTPs } from '@/lib/otp';
 import { deliverOtpEmail } from '@/lib/otp-delivery';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { DEV_LOCAL_AUTH } from '@/lib/dev-local-auth';
+import { findReferrerId, generateUniqueReferralCode } from '@/lib/referral';
 import {
   GENERIC_LOGIN_ERROR,
   isPasswordTooLong,
@@ -14,7 +15,7 @@ import {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, turnstileToken, type, password, firstName, lastName } = body;
+    const { email, turnstileToken, type, password, firstName, lastName, referralCode } = body;
 
     if (!email || !type) {
       return NextResponse.json({ error: GENERIC_LOGIN_ERROR }, { status: 401 })
@@ -64,11 +65,22 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Nama depan wajib diisi' }, { status: 400 });
       }
 
+      const fullName = `${firstName} ${lastName || ''}`.trim();
+      const userReferralCode = await generateUniqueReferralCode(fullName);
+      const referredBy =
+        typeof referralCode === 'string' && referralCode.trim()
+          ? await findReferrerId(referralCode)
+          : null;
+
       const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email: normalizedEmail,
         password,
         email_confirm: false,
-        user_metadata: { full_name: `${firstName} ${lastName || ''}`.trim() },
+        user_metadata: {
+          full_name: fullName,
+          referral_code: userReferralCode,
+          referred_by: referredBy,
+        },
       });
 
       if (createError) {
@@ -76,6 +88,21 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: 'Email sudah terdaftar' }, { status: 409 });
         }
         return NextResponse.json({ error: createError.message }, { status: 500 });
+      }
+
+      if (createData?.user?.id) {
+        const db = supabaseAdmin as any;
+        const { error: referralUpdateError } = await db
+          .from('users')
+          .update({
+            referral_code: userReferralCode,
+            referred_by: referredBy,
+          })
+          .eq('id', createData.user.id);
+
+        if (referralUpdateError) {
+          console.warn('send-otp: gagal menyimpan data referral:', referralUpdateError.message);
+        }
       }
 
       await invalidatePreviousOTPs(normalizedEmail, 'register');

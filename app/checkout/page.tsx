@@ -139,6 +139,10 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     (async () => {
+      if (!supabase) {
+        setShowLoginModal(true);
+        return;
+      }
       const {
         data: { user: u },
       } = await supabase.auth.getUser();

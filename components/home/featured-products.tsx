@@ -135,7 +135,7 @@ export function FeaturedProducts() {
 
   if (loading)
     return (
-      <section className="relative py-16 md:py-24 border-y border-stone-300/80">
+      <section className="relative py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end pb-8 mb-8 md:mb-10 border-b border-stone-300 gap-6">
             <div className="space-y-2.5 max-w-2xl">
@@ -178,7 +178,7 @@ export function FeaturedProducts() {
     );
 
   return (
-    <section className="relative py-16 md:py-24 border-y border-stone-300/80">
+    <section className="relative py-16 md:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end pb-8 mb-8 md:mb-10 border-b border-stone-300 gap-6">
