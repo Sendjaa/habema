@@ -27,12 +27,14 @@ import {
 import {
   MANUAL_QRIS_METHOD,
   MANUAL_QRIS_ONLY,
+  QRIS_IMAGE_PATH,
   QRIS_MERCHANT_NAME,
   QRIS_VERIFY_SLA,
   PROOF_MAX_SIZE,
   getActivePaymentOptions,
   isManualQrisMethod,
 } from "@/lib/manual-payment";
+import { DEV_LOCAL_AUTH } from "@/lib/dev-local-auth";
 import { toast } from "sonner";
 
 // ==================== MIDTRANS SNAP ====================
@@ -70,20 +72,15 @@ function formatPhoneWa(phone: string): string {
   return cleaned ? "62" + cleaned : "";
 }
 
-// ==================== MAIN COMPONENT ====================
+
 function BookingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const productId = searchParams.get("id");
   const quantity = parseInt(searchParams.get("quantity") || "1");
-  // Mode paket grup: /booking?type=bundle&id=<bundle_id>&quantity=<jml_paket>.
-  // Harga paket bersifat per paket per malam (dikalikan durasi × qty paket).
   const bookingType = searchParams.get("type");
   const isBundleMode = bookingType === "bundle" && !!productId;
   const bundleQty = isBundleMode ? Math.max(1, Number(quantity) || 1) : Math.max(1, Number(quantity) || 1);
-
-  // Tanggal dibawa dari katalog/hero (format YYYY-MM-DD). Dipakai sebagai nilai
-  // awal agar pengguna tidak perlu memilih ulang di halaman booking.
   const urlStartDate = searchParams.get("startDate");
   const urlEndDate = searchParams.get("endDate");
   const parseUrlDate = (v: string | null): Date | null => {
@@ -91,8 +88,6 @@ function BookingContent() {
     const d = new Date(v);
     return isNaN(d.getTime()) ? null : d;
   };
-
-  // ==================== STATE ====================
   const [user, setUser] = useState<User | null>(null);
   const transaction = useCartStore((state) => state.currentTransaction);
   const [product, setProduct] = useState<any>(null);
@@ -103,7 +98,6 @@ function BookingContent() {
   const [endDate, setEndDate] = useState<Date | null>(() =>
     parseUrlDate(urlEndDate),
   );
-
   const [idData, setIdData] = useState<any | null>(null);
   const [conditionData, setConditionData] =
     useState<ConditionChecklistData | null>(null);
@@ -112,25 +106,21 @@ function BookingContent() {
   );
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  // QRIS manual: booking yang sudah dibuat + bukti bayar yang diupload.
   const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [isUploadingProof, setIsUploadingProof] = useState(false);
-  // QRIS dinamis: di-generate per amount, bukan QRIS statis.
+  const [isSimulatingPayment, setIsSimulatingPayment] = useState(false);
   const [dynamicQrisUrl, setDynamicQrisUrl] = useState<string | null>(null);
   const [isGeneratingQris, setIsGeneratingQris] = useState(false);
+  const [qrisDynamicUnavailable, setQrisDynamicUnavailable] = useState(false);
   const autoQrisBookingRef = useRef<string | null>(null);
-
   const [showLoginModal, setShowLoginModal] = useState(false);
   const skipAuthCheck = useRef(false);
   const idFormRef = useRef<any>(null);
   const idDataRef = useRef<any>(null);
   const waWindowRef = useRef<Window | null>(null);
-
   const [customerNote, setCustomerNote] = useState("");
-
-  // Cabang pengambilan & pengembalian
   const [branches, setBranches] = useState<any[]>([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [pickupBranchId, setPickupBranchId] = useState<string | null>(null);
@@ -144,6 +134,10 @@ function BookingContent() {
   useEffect(() => {
     const checkUser = async () => {
       try {
+        if (!supabase) {
+          setUser(null);
+          return;
+        }
         const { data } = await supabase.auth.getSession();
         setUser(data.session?.user || null);
       } catch {
@@ -204,6 +198,11 @@ function BookingContent() {
         }
         return;
       }
+      if (!supabase) {
+        setProduct(null);
+        setLoading(false);
+        return;
+      }
       const { data, error } = await supabase
         .from("equipment")
         .select(`*, equipment_categories(name)`)
@@ -214,12 +213,7 @@ function BookingContent() {
     };
     fetchProduct();
   }, [productId, isBundleMode]);
-
-  // Selaraskan transaksi dengan produk yang diklik dari halaman produk/katalog.
-  // currentTransaction terpersistensi di localStorage, sehingga tanpa ini ringkasan
-  // akan menampilkan item lama dari sesi sebelumnya (dan bisa duplikat).
-  // Mode bundle dilewati: harga dihitung langsung dari bundle (per paket/malam),
-  // bukan dari keranjang equipment, agar tidak tercampur sesi lama.
+  
   useEffect(() => {
     if (!productId || !product || loading) return;
     if (isBundleMode) return;
@@ -286,6 +280,7 @@ function BookingContent() {
         .filter((it: any) => it?.id && !it.image_url)
         .map((it: any) => String(it.id));
       if (missingIds.length === 0) return;
+      if (!supabase) return;
 
       const { data, error } = await supabase
         .from("equipment")
@@ -327,7 +322,7 @@ function BookingContent() {
   useEffect(() => {
     const loadExistingIdentityData = async () => {
       if (!user) return;
-
+      if (!supabase) return;
       try {
         const { data: identityData, error } = await supabase
           .from("user_identity")
@@ -486,6 +481,8 @@ function BookingContent() {
       max_discount: discount.max_discount ? Number(discount.max_discount) : null,
       applies_to: discount.applies_to as "all" | "category" | "equipment",
       target_id: discount.target_id,
+      voucher_type: discount.voucher_type,
+      conditions: discount.conditions,
       claimed_at: new Date().toISOString(),
     };
     useCartStore.getState().setClaimedDiscount(claimed);
@@ -540,8 +537,10 @@ function BookingContent() {
 
   const handleFinalAction = async () => {
     try {
+      if (!supabase) throw new Error("Database client tidak tersedia.");
       const {
         data: { user },
+        
       } = await supabase.auth.getUser();
       const identity = idDataRef.current || idData;
 
@@ -886,9 +885,6 @@ Mohon konfirmasi pesanan saya ya!`;
             return;
           }
 
-          // Mode nyata: arahkan ke halaman pembayaran Midtrans.
-          // Order-confirmation hanya dicapai lewat callback Midtrans
-          // (/payment/finish) setelah transaksi benar-benar selesai.
           window.location.href = result.redirect_url;
         } else {
           window.snap.pay(result.token, {
@@ -962,7 +958,15 @@ Mohon konfirmasi pesanan saya ya!`;
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Gagal generate QRIS dinamis");
+        const message = data.error || "Gagal generate QRIS dinamis";
+        // Dev lokal belum punya QRIS_STATIC_PAYLOAD: jangan tampilkan error,
+        // pakai QRIS statis yang memang tersedia.
+        if (/QRIS_STATIC_PAYLOAD|belum dikonfigurasi/i.test(message)) {
+          setQrisDynamicUnavailable(true);
+          toast.info("QRIS dinamis belum dikonfigurasi. Menggunakan QRIS statis.");
+          return;
+        }
+        throw new Error(message);
       }
       if (!data.imageUrl) {
         throw new Error("Gambar QRIS gagal dibuat. Silakan coba lagi.");
@@ -1024,6 +1028,32 @@ Mohon konfirmasi pesanan saya ya!`;
     }
   };
 
+  // Demo dev: tandai booking QRIS langsung lunas tanpa upload bukti/verifikasi.
+  const handleSimulateQrisPaid = async () => {
+    if (!createdBookingId) {
+      toast.error("ID pesanan tidak ditemukan.");
+      return;
+    }
+    setIsSimulatingPayment(true);
+    try {
+      const res = await fetch("/api/dev/qris/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId: createdBookingId }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "Gagal menyimulasikan pembayaran");
+      }
+      toast.success("Pembayaran QRIS disimulasikan berhasil (mode dev).");
+      router.push(`/bookings/${createdBookingId}`);
+    } catch (error: any) {
+      toast.error(error?.message || "Gagal menyimulasikan pembayaran.");
+    } finally {
+      setIsSimulatingPayment(false);
+    }
+  };
+
   const openAdminWaHelp = () => {
     const waPhone =
       formatPhoneWa(pickupBranch?.phone || "") || "6283898749357";
@@ -1054,11 +1084,8 @@ Mohon konfirmasi pesanan saya ya!`;
     <div className="min-h-screen bg-cream pb-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         <header className="mb-8">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-1">
-            Habema Rental
-          </p>
-          <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-stone-900">
-            Checkout
+          <h1 className="text-2xl sm:text-3xl font-bold font-sans tracking-tight text-stone-900">
+            Booking
           </h1>
           <p className="text-sm text-stone-500 font-medium mt-1">
             Lengkapi detail sewa untuk melanjutkan — {product.name}
@@ -1226,7 +1253,9 @@ Mohon konfirmasi pesanan saya ya!`;
                 {getActivePaymentOptions()
                   // Guest hanya bisa pakai opsi tanpa requiresAuth
                   .filter((m) => (user ? true : !m.requiresAuth))
-                  .map((m) => (
+                  .map((m) => {
+                    const PaymentIcon = m.icon;
+                    return (
                     <div key={m.id} className="space-y-2">
                       <div
                         onClick={() => setPaymentMethod(m.name)}
@@ -1244,7 +1273,7 @@ Mohon konfirmasi pesanan saya ya!`;
                                 : "bg-slate-50"
                             }`}
                           >
-                            {m.icon}
+                            <PaymentIcon />
                           </div>
                           <div className="flex flex-col">
                             <span
@@ -1293,7 +1322,8 @@ Mohon konfirmasi pesanan saya ya!`;
                           </div>
                         )}
                     </div>
-                  ))}
+                    );
+                  })}
 
                 {!user && (
                   <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl">
@@ -1378,17 +1408,19 @@ Mohon konfirmasi pesanan saya ya!`;
                           </p>
                         </div>
                       ) : (
-                        <div className="w-56 h-56 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/40 flex flex-col items-center justify-center gap-2 p-4 text-center">
-                          <QrCode className="w-10 h-10 text-emerald-600" />
-                          <p className="text-[11px] text-stone-600 font-medium">
-                            QRIS dinamis belum dibuat. Klik tombol Generate
-                            QRIS Dinamis di bawah agar nominal sesuai pesanan.
-                          </p>
-                        </div>
+                        <img
+                          src={QRIS_IMAGE_PATH}
+                          alt={`QRIS statis ${QRIS_MERCHANT_NAME}`}
+                          className="w-56 h-56 rounded-xl object-contain ring-1 ring-emerald-300 bg-white p-2"
+                        />
                       )}
-                      {dynamicQrisUrl && (
+                      {dynamicQrisUrl ? (
                         <p className="text-[10px] text-emerald-600 font-bold">
                           QRIS Dinamis — Nominal sudah sesuai pesanan
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-amber-700 font-bold">
+                          QRIS Statis — isi nominal manual sesuai total
                         </p>
                       )}
                       <p className="text-xs font-bold text-slate-800">
@@ -1399,12 +1431,12 @@ Mohon konfirmasi pesanan saya ya!`;
                           ? "Scan dengan GoPay, OVO, Dana, m-banking, atau e-wallet apa pun. Nominal sudah sesuai pesanan."
                           : isGeneratingQris
                             ? "Mohon tunggu, kode QRIS sedang dibuat otomatis."
-                            : "Klik Generate QRIS Dinamis untuk membuat kode pembayaran sesuai total pesanan."}
+                            : "Scan QRIS di atas, lalu masukkan nominal persis seperti total pesanan. Gunakan tombol Salin Nominal untuk menyalin."}
                       </p>
                     </div>
 
                     {/* Tombol Generate QRIS Dinamis */}
-                    {!dynamicQrisUrl && (
+                    {!dynamicQrisUrl && !qrisDynamicUnavailable && (
                       <Button
                         type="button"
                         onClick={generateDynamicQris}
@@ -1482,6 +1514,33 @@ Mohon konfirmasi pesanan saya ya!`;
                         Butuh bantuan? Hubungi admin via WhatsApp
                       </button>
                     </div>
+
+                    {DEV_LOCAL_AUTH && (
+                      <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/70 p-3 space-y-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700">
+                          Mode Dev
+                        </p>
+                        <p className="text-[11px] text-amber-800 leading-relaxed">
+                          Demo cepat tanpa upload bukti dan verifikasi admin.
+                          Booking langsung ditandai lunas.
+                        </p>
+                        <Button
+                          type="button"
+                          onClick={handleSimulateQrisPaid}
+                          disabled={isSimulatingPayment}
+                          className="w-full h-10 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white text-xs font-bold"
+                        >
+                          {isSimulatingPayment ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Memproses...
+                            </>
+                          ) : (
+                            "Simulasikan Pembayaran Berhasil"
+                          )}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </StepCard>
               </div>
@@ -1534,7 +1593,7 @@ Mohon konfirmasi pesanan saya ya!`;
           <aside className="lg:col-span-1 lg:sticky lg:top-24">
             <Card className="rounded-xl border border-stone-200 bg-white shadow-sm">
               <div className="p-4 border-b border-stone-200">
-                <h3 className="font-black uppercase tracking-tight text-stone-900 text-sm">
+                <h3 className="font-black font-sans tracking-tight text-stone-900 text-sm">
                   Ringkasan Sewa
                 </h3>
               </div>
@@ -1560,7 +1619,7 @@ Mohon konfirmasi pesanan saya ya!`;
                           height={48}
                         />
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-xs font-bold text-stone-900 line-clamp-1">
+                          <h4 className="text-xs font-bold font-sans text-stone-900 line-clamp-1">
                             {item.name}
                           </h4>
                           <p className="text-[10px] text-stone-500 font-medium">
@@ -1765,7 +1824,7 @@ function StepCard({
           >
             {completed ? <CheckCircle className="w-4 h-4" /> : number}
           </div>
-          <h3 className="font-bold text-stone-900 text-sm">{title}</h3>
+          <h3 className="font-bold font-sans text-stone-900 text-sm">{title}</h3>
         </div>
         {disabled ? (
           <div className="pl-0 sm:pl-10 text-xs text-stone-400 font-medium italic">
@@ -1784,7 +1843,7 @@ export default function BookingPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center text-slate-400 animate-pulse font-medium">
+        <div className="min-h-screen flex items-center justify-center text-slate-400 animate-pulse font-medium font-sans">
           Memuat halaman booking...
         </div>
       }

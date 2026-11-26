@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import Link from "next/link";
 import {
   Search,
   MapPin,
@@ -142,6 +143,8 @@ interface OpenTripContent {
 interface OpenTripPageProps {
   trips?: OtTrip[];
 }
+
+const EMPTY_TRIPS: OtTrip[] = [];
 
 // ==========================================
 // 3. FUNGSI HELPER FORMAT
@@ -390,12 +393,12 @@ function ReviewCard({ rev }: { rev: ParticipantReview }) {
               className="w-9 h-9 rounded-lg object-cover border border-stone-900/15 shrink-0"
             />
           ) : (
-            <span className="w-9 h-9 rounded-lg bg-[#183028] text-[#F4F1EA] grid place-items-center text-sm font-bold shrink-0">
+            <span className="w-9 h-9 rounded-lg bg-[#183028] text-[#F4F1EA] grid place-items-center text-sm font-sans font-bold shrink-0">
               {rev.participant.charAt(0).toUpperCase()}
             </span>
           )}
           <div className="min-w-0">
-            <div className="text-xs font-bold text-stone-950 truncate">
+            <div className="text-xs font-sans font-bold text-stone-950 truncate">
               {rev.participant}
             </div>
             <div className="text-[10px] font-medium text-stone-500 truncate">
@@ -411,7 +414,7 @@ function ReviewCard({ rev }: { rev: ParticipantReview }) {
 // ==========================================
 // 4. KOMPONEN UTAMA HALAMAN OPEN TRIP
 // ==========================================
-export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageProps) {
+export default function OpenTripPage({ trips: initialTrips = EMPTY_TRIPS }: OpenTripPageProps) {
   // Daftar jadwal dari database (diisi lewat /api/ot-trips)
   const [trips, setTrips] = useState<OtTrip[]>(initialTrips);
   const [isLoadingTrips, setIsLoadingTrips] = useState<boolean>(
@@ -674,16 +677,6 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
     };
   }, [loopGallery.length]);
 
-  const openTripModal = (trip: OtTrip) => {
-    setActiveTrip(trip);
-    setModalImageIdx(0);
-    setActiveTab("itinerary");
-    setParticipantCount(1);
-    setSelectedGearIds([]);
-    setAppliedVoucherCode(claimedVoucherCodes[0] ?? null);
-    setBookingSubmitted(false);
-  };
-
   const handleClaimVoucher = (code: string) => {
     setClaimedVoucherCodes((prev) =>
       prev.includes(code) ? prev : [...prev, code]
@@ -727,12 +720,8 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
             {/* Kolom Kiri: Pernyataan Operasional */}
             <div className="lg:col-span-8 p-6 sm:p-10 lg:p-12 border-b lg:border-b-0 lg:border-r border-stone-900/15 flex flex-col justify-between">
               <div>
-                <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#183028] mb-5">
-                  <span className="w-2 h-2 bg-[#C85A17]" />
-                  <span>Habema Outdoor Expedition • Bandung</span>
-                </div>
 
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-stone-950 tracking-tight leading-[1.08] max-w-3xl">
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-sans font-bold text-stone-950 tracking-tight leading-[1.08] max-w-3xl">
                   Jadwal Keberangkatan Open Trip &amp; Ekspedisi Terbuka.
                 </h1>
 
@@ -746,21 +735,21 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
               <div className="mt-8 pt-6 border-t border-stone-900/15 flex flex-wrap items-center gap-6 text-xs text-stone-700">
                 <div>
                   <span className="text-stone-500 block">Titik Kumpul Utama</span>
-                  <span className="font-bold text-stone-950">
+                  <span className="font-sans font-bold text-stone-950">
                     Pool Habema Buah Batu, Bandung
                   </span>
                 </div>
                 <div className="h-7 w-px bg-stone-900/15 hidden sm:block" />
                 <div>
                   <span className="text-stone-500 block">Rasio Pemandu</span>
-                  <span className="font-bold text-stone-950 tabular-nums">
+                  <span className="font-sans font-bold text-stone-950 tabular-nums">
                     1 Guide : 4 Peserta
                   </span>
                 </div>
                 <div className="h-7 w-px bg-stone-900/15 hidden sm:block" />
                 <div>
                   <span className="text-stone-500 block">Fasilitas Sewa Alat</span>
-                  <span className="font-bold text-[#183028]">
+                  <span className="font-sans font-bold text-[#183028]">
                     Diskon 20% Peserta Trip
                   </span>
                 </div>
@@ -771,7 +760,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
             {nextDispatchTrip && (
               <div className="lg:col-span-4 p-6 sm:p-8 lg:p-10 bg-white flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-widest text-[#C85A17] pb-3 border-b border-stone-200">
+                  <div className="flex items-center justify-between text-[11px] font-sans font-bold uppercase tracking-widest text-[#C85A17] pb-3 border-b border-stone-200">
                     <span>Keberangkatan Terdekat</span>
                     <span className="tabular-nums">
                       Sisa{" "}
@@ -784,7 +773,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                     </span>
                   </div>
 
-                  <h2 className="text-xl sm:text-2xl font-bold text-stone-950 mt-4 leading-snug">
+                  <h2 className="text-xl sm:text-2xl font-sans font-bold text-stone-950 mt-4 leading-snug">
                     {nextDispatchTrip.title}
                   </h2>
                   <p className="text-xs text-stone-600 mt-1.5 flex items-center gap-1.5">
@@ -797,7 +786,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                       <span className="text-stone-500 block text-[11px]">
                         Tanggal
                       </span>
-                      <span className="font-bold text-stone-950 tabular-nums mt-0.5 block">
+                      <span className="font-sans font-bold text-stone-950 tabular-nums mt-0.5 block">
                         {nextDispatchTrip.departure_date}
                       </span>
                     </div>
@@ -805,7 +794,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                       <span className="text-stone-500 block text-[11px]">
                         Durasi
                       </span>
-                      <span className="font-bold text-stone-950 tabular-nums mt-0.5 block">
+                      <span className="font-sans font-bold text-stone-950 tabular-nums mt-0.5 block">
                         {nextDispatchTrip.duration_days}H{" "}
                         {nextDispatchTrip.duration_nights}M
                       </span>
@@ -816,18 +805,17 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                 <div className="mt-6 pt-5 border-t border-stone-200">
                   <div className="flex items-baseline justify-between mb-4">
                     <span className="text-xs text-stone-500">Biaya / Peserta</span>
-                    <span className="text-xl font-bold text-stone-950 tabular-nums">
+                    <span className="text-xl font-sans font-bold text-stone-950 tabular-nums">
                       {formatRupiah(nextDispatchTrip.final_price)}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => openTripModal(nextDispatchTrip)}
-                    className="w-full py-3 px-4 bg-[#183028] hover:bg-[#11221c] text-[#F4F1EA] text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  <Link
+                    href={`/opentrip/${nextDispatchTrip.slug}`}
+                    className="w-full py-3 px-4 bg-[#183028] hover:bg-[#11221c] text-[#F4F1EA] text-xs font-sans font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
                   >
                     <span>Pilih Jadwal Ini</span>
                     <ArrowUpRight className="w-4 h-4" />
-                  </button>
+                  </Link>
                 </div>
               </div>
             )}
@@ -842,10 +830,10 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
             <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-[#C85A17] block">
+              <span className="text-xs font-sans font-bold uppercase tracking-widest text-[#C85A17] block">
                 Promo &amp; Potongan Biaya
               </span>
-              <h1 className="text-2xl sm:text-3xl font-bold text-stone-950 mt-1">
+              <h1 className="text-2xl sm:text-3xl font-sans font-bold text-stone-950 mt-1">
                 Voucher Open Trip Habema
               </h1>
             </div>
@@ -872,7 +860,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="px-2 py-0.5 bg-white border border-stone-300 text-[11px] font-bold tracking-wider text-stone-950">
+                      <span className="px-2 py-0.5 bg-white border border-stone-300 text-[11px] font-sans font-bold tracking-wider text-stone-950">
                         {voucher.code}
                       </span>
                       {voucher.validUntil && (
@@ -881,7 +869,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                         </span>
                       )}
                     </div>
-                    <h2 className="text-sm font-bold text-stone-950 leading-snug">
+                    <h2 className="text-sm font-sans font-bold text-stone-950 leading-snug">
                       {voucher.title}
                     </h2>
                     <p className="text-xs text-stone-600 mt-1">
@@ -890,13 +878,13 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                   </div>
 
                   <div className="pt-3 border-t border-stone-200 flex items-center justify-between gap-3">
-                    <span className="text-sm font-bold text-[#183028] tabular-nums">
+                    <span className="text-sm font-sans font-bold text-[#183028] tabular-nums">
                       -{formatRupiah(voucher.discountAmount)}
                     </span>
                     <button
                       type="button"
                       onClick={() => handleClaimVoucher(voucher.code)}
-                      className={`px-3.5 py-2 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                      className={`px-3.5 py-2 text-xs font-sans font-bold uppercase tracking-wider transition-colors cursor-pointer ${
                         isClaimed
                           ? "bg-[#183028] text-[#F4F1EA]"
                           : "bg-white border border-stone-900 text-stone-950 hover:bg-stone-950 hover:text-white"
@@ -920,10 +908,10 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
             <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-[#183028] block">
+              <span className="text-xs font-sans font-bold uppercase tracking-widest text-[#183028] block">
                 Manifest Keberangkatan
               </span>
-              <h1 className="text-2xl sm:text-3xl font-bold text-stone-950 mt-1">
+              <h1 className="text-2xl sm:text-3xl font-sans font-bold text-stone-950 mt-1">
                 Jadwal Open Trip Terbuka
               </h1>
             </div>
@@ -992,13 +980,13 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
           {/* Dispatch Schedule Ledger (Tanpa Thumbnail Gambar) */}
           {isLoadingTrips ? (
             <div className="bg-white border border-stone-900/20 p-10 text-center">
-              <p className="text-sm font-bold text-stone-900">
+              <p className="text-sm font-sans font-bold text-stone-900">
                 Memuat jadwal keberangkatan…
               </p>
             </div>
           ) : filteredTrips.length === 0 ? (
             <div className="bg-white border border-stone-900/20 p-10 text-center">
-              <p className="text-sm font-bold text-stone-900">
+              <p className="text-sm font-sans font-bold text-stone-900">
                 {trips.length === 0
                   ? tripsError ??
                     "Belum ada jadwal open trip yang tersedia saat ini."
@@ -1013,7 +1001,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                     setSelectedDifficulty("Semua");
                     setOnlyAvailable(false);
                   }}
-                  className="mt-3 px-4 py-2 bg-stone-950 text-white text-xs font-bold uppercase tracking-wider cursor-pointer"
+                  className="mt-3 px-4 py-2 bg-stone-950 text-white text-xs font-sans font-bold uppercase tracking-wider cursor-pointer"
                 >
                   Reset Filter
                 </button>
@@ -1044,7 +1032,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                     {/* Kolom Tanggal */}
                     <div className="lg:col-span-2 p-4 sm:p-5 border-b lg:border-b-0 lg:border-r border-stone-200 flex lg:flex-col justify-between lg:justify-center items-baseline lg:items-start bg-[#F4F1EA]/30">
                       <div>
-                        <span className="text-2xl sm:text-3xl font-bold text-stone-950 tabular-nums leading-none">
+                        <span className="text-2xl sm:text-3xl font-sans font-bold text-stone-950 tabular-nums leading-none">
                           {day}
                         </span>
                         <span className="text-xs font-semibold text-stone-600 ml-2 lg:ml-0 lg:mt-1 block">
@@ -1059,16 +1047,16 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                     {/* Kolom Rute & Spesifikasi */}
                     <div className="lg:col-span-5 p-4 sm:p-5 border-b lg:border-b-0 lg:border-r border-stone-200 flex flex-col justify-center">
                       <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                        <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[#183028]/10 text-[#183028]">
+                        {/* <span className="px-2 py-0.5 text-[10px] font-sans font-bold uppercase tracking-wider bg-[#183028]/10 text-[#183028]">
                           {getDifficultyLabel(trip.difficulty_level)}
-                        </span>
+                        </span> */}
                         <span className="text-xs text-stone-500 flex items-center gap-1">
                           <MapPin className="w-3 h-3 shrink-0" />
                           <span>{trip.destination_region}</span>
                         </span>
                       </div>
 
-                      <h2 className="text-base sm:text-lg font-bold text-stone-950 leading-snug">
+                      <h2 className="text-base sm:text-lg font-sans font-bold text-stone-950 leading-snug">
                         {trip.title}
                       </h2>
 
@@ -1087,7 +1075,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                       <div className="flex items-center justify-between text-xs mb-1.5">
                         <span className="text-stone-500">Kuota</span>
                         <span
-                          className={`font-bold tabular-nums ${
+                          className={`font-sans font-bold tabular-nums ${
                             isFull ? "text-stone-500" : "text-[#183028]"
                           }`}
                         >
@@ -1110,12 +1098,12 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                     {/* Kolom Biaya & Aksi */}
                     <div className="lg:col-span-3 p-4 sm:p-5 flex items-center justify-between lg:justify-end gap-4">
                       <div className="lg:text-right">
-                        {trip.discount_price && (
+                        {/* {trip.discount_price && (
                           <span className="text-[11px] text-stone-400 line-through tabular-nums block">
-                            {formatRupiah(trip.base_price)}
+                            // {formatRupiah(trip.base_price)}
                           </span>
-                        )}
-                        <span className="text-base sm:text-lg font-bold text-stone-950 tabular-nums">
+                        )} */}
+                        <span className="text-base sm:text-lg font-sans font-bold text-stone-950 tabular-nums">
                           {formatRupiah(trip.final_price)}
                         </span>
                         <span className="text-[11px] text-stone-500 block">
@@ -1123,17 +1111,16 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                         </span>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => openTripModal(trip)}
-                        className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors shrink-0 cursor-pointer ${
+                      <Link
+                        href={`/opentrip/${trip.slug}`}
+                        className={`inline-flex items-center justify-center px-4 py-2.5 text-xs font-sans font-bold uppercase tracking-wider transition-colors shrink-0 ${
                           isFull
                             ? "border border-stone-300 text-stone-600 hover:bg-stone-100"
                             : "bg-[#C85A17] hover:bg-[#b14d10] text-white"
                         }`}
                       >
                         {isFull ? "Detail" : "Daftar"}
-                      </button>
+                      </Link>
                     </div>
                   </article>
                 );
@@ -1152,10 +1139,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
       >
         {/* Title & Subtitle di Atas Carousel (Tanpa Tombol Prev/Next) */}
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-10 sm:mb-12">
-          <span className="text-xs font-bold uppercase tracking-widest text-[#183028] block mb-2">
-            Dokumentasi Lapangan
-          </span>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-stone-950 tracking-tight leading-[1.12]">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-sans font-sans font-bold text-stone-950 tracking-tight leading-[1.12]">
             Arsip Perjalanan &amp; Kloter Habema
           </h1>
           <p className="text-xs sm:text-sm text-stone-600 mt-3 max-w-2xl mx-auto leading-relaxed">
@@ -1261,21 +1245,11 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header Rata Tengah sesuai Referensi */}
           <div className="text-center max-w-3xl mx-auto mb-14 sm:mb-20">
-            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#183028] mb-3">
-              <Compass className="w-3.5 h-3.5 text-[#C85A17]" />
-              <span>Cara Kerja &amp; Alur</span>
-            </div>
 
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-stone-950 tracking-tight leading-[1.15]">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-sans font-bold text-stone-950 tracking-tight leading-[1.15]">
               Persiapan ekspedisi terencana untuk{" "}
-              <span className="relative inline-block text-[#183028] italic">
+              <span className="relative inline-block">
                 perjalanan
-                <span
-                  aria-hidden="true"
-                  className="absolute -top-2 -right-3 text-xs not-italic text-[#C85A17] font-bold"
-                >
-                  ✦
-                </span>
               </span>{" "}
               aman.
             </h1>
@@ -1299,7 +1273,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
               </div>
 
               <div className="pt-1">
-                <h3 className="text-base sm:text-lg font-bold text-stone-950">
+                <h3 className="text-base sm:text-lg font-sans font-bold text-stone-950">
                   Pilih jadwal &amp; gear
                 </h3>
                 <p className="text-xs sm:text-sm text-stone-600 mt-2.5 leading-relaxed">
@@ -1309,7 +1283,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                 </p>
                 <a
                   href="#jadwal-trip"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#183028] hover:text-[#C85A17] mt-4 transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs font-sans font-bold text-[#183028] hover:text-[#C85A17] mt-4 transition-colors"
                 >
                   <span>Lihat jadwal terbuka</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -1327,7 +1301,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
               </div>
 
               <div className="pt-1">
-                <h3 className="text-base sm:text-lg font-bold text-stone-950">
+                <h3 className="text-base sm:text-lg font-sans font-bold text-stone-950">
                   Konfirmasi &amp; surat sehat
                 </h3>
                 <p className="text-xs sm:text-sm text-stone-600 mt-2.5 leading-relaxed">
@@ -1337,7 +1311,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                 </p>
                 <a
                   href="#dokumentasi-trip"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#183028] hover:text-[#C85A17] mt-4 transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs font-sans font-bold text-[#183028] hover:text-[#C85A17] mt-4 transition-colors"
                 >
                   <span>Lihat dokumentasi kloter</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -1355,7 +1329,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
               </div>
 
               <div className="pt-1">
-                <h3 className="text-base sm:text-lg font-bold text-stone-950">
+                <h3 className="text-base sm:text-lg font-sans font-bold text-stone-950">
                   Kumpul pool &amp; berangkat
                 </h3>
                 <p className="text-xs sm:text-sm text-stone-600 mt-2.5 leading-relaxed">
@@ -1367,7 +1341,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                   href="https://wa.me/6281200000000?text=Halo%20Habema,%20saya%20ingin%20tanya%20titik%20kumpul%20Open%20Trip"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#183028] hover:text-[#C85A17] mt-4 transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs font-sans font-bold text-[#183028] hover:text-[#C85A17] mt-4 transition-colors"
                 >
                   <span>Hubungi admin basecamp</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -1387,10 +1361,10 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-10 sm:mb-12">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-start">
             <div className="lg:col-span-6">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#183028] block mb-2">
+              <span className="text-xs font-sans font-bold uppercase tracking-widest text-[#183028] block mb-2">
                 Catatan Lapangan
               </span>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-stone-950 tracking-tight leading-[1.12]">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-sans font-bold text-stone-950 tracking-tight leading-[1.12]">
                 Apa Kata Peserta Kloter Habema.
               </h1>
             </div>
@@ -1438,10 +1412,10 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
             <div className="lg:col-span-4">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#183028] block">
+              <span className="text-xs font-sans font-bold uppercase tracking-widest text-[#183028] block">
                 Informasi Teknis
               </span>
-              <h1 className="text-2xl sm:text-3xl font-bold text-stone-950 mt-1">
+              <h1 className="text-2xl sm:text-3xl font-sans font-bold text-stone-950 mt-1">
                 Pertanyaan Umum &amp; Kebijakan Trip
               </h1>
               <p className="text-xs sm:text-sm text-stone-600 mt-3 leading-relaxed">
@@ -1467,7 +1441,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                       onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
                       className="w-full px-5 sm:px-6 py-4 sm:py-5 text-left flex items-center justify-between gap-4 hover:bg-[#F4F1EA]/50 transition-colors cursor-pointer"
                     >
-                      <span className="text-sm sm:text-base font-bold text-stone-950">
+                      <span className="text-sm sm:text-base font-sans font-bold text-stone-950">
                         {faqItem.question}
                       </span>
                       <span className="shrink-0 w-7 h-7 border border-stone-300 flex items-center justify-center text-stone-900">
@@ -1498,10 +1472,10 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
       <section className="border-t bg-white text-black">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-16 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
           <div className="max-w-2xl">
-            <span className="text-xs font-bold uppercase tracking-widest text-[#C85A17]  block">
+            <span className="text-xs font-sans font-bold uppercase tracking-widest text-[#C85A17]  block">
               Private &amp; Corporate Trip
             </span>
-            <h1 className="text-2xl sm:text-3xl font-bold text-black mt-2">
+            <h1 className="text-2xl sm:text-3xl font-sans font-bold text-black mt-2">
               Atur Jadwal Keberangkatan Khusus Rombongan Anda.
             </h1>
             <p className="text-xs sm:text-sm text-stone-600 mt-3 leading-relaxed">
@@ -1516,7 +1490,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
               href="https://wa.me/6281200000000?text=Halo%20Habema,%20saya%20ingin%20konsultasi%20Private%20Trip"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#C85A17] hover:bg-[#b14d10] text-white text-xs font-bold uppercase tracking-wider transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#C85A17] hover:bg-[#b14d10] text-white text-xs font-sans font-bold uppercase tracking-wider transition-colors"
             >
               Konsultasi Jadwal Private
               <ArrowUpRight className="w-4 h-4" />
@@ -1540,11 +1514,11 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
             {/* Header Modal */}
             <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-[#F4F1EA] border-b border-stone-300 flex items-center justify-between gap-4 sticky top-0 z-10">
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-widest text-[#183028] block">
+                <span className="text-[11px] font-sans font-bold uppercase tracking-widest text-[#183028] block">
                   {activeTrip.destination_region} • {activeTrip.duration_days}H{" "}
                   {activeTrip.duration_nights}M
                 </span>
-                <h2 className="text-lg sm:text-xl font-bold text-stone-950">
+                <h2 className="text-lg sm:text-xl font-sans font-bold text-stone-950">
                   {activeTrip.title}
                 </h2>
               </div>
@@ -1621,7 +1595,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                       key={tab.id}
                       type="button"
                       onClick={() => setActiveTab(tab.id)}
-                      className={`px-3.5 sm:px-4 py-2.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap border-b-2 -mb-px transition-colors cursor-pointer ${
+                      className={`px-3.5 sm:px-4 py-2.5 text-xs font-sans font-bold uppercase tracking-wider whitespace-nowrap border-b-2 -mb-px transition-colors cursor-pointer ${
                         activeTab === tab.id
                           ? "border-[#183028] text-stone-950"
                           : "border-transparent text-stone-500 hover:text-stone-900"
@@ -1640,7 +1614,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                         key={item.day}
                         className="border border-stone-200 p-4 bg-[#F4F1EA]/35"
                       >
-                        <div className="text-xs font-bold uppercase tracking-wider text-[#183028] mb-1">
+                        <div className="text-xs font-sans font-bold uppercase tracking-wider text-[#183028] mb-1">
                           Hari {item.day} — {item.title}
                         </div>
                         <ul className="space-y-1.5 text-xs sm:text-sm text-stone-700 mt-2">
@@ -1658,7 +1632,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                 {activeTab === "fasilitas" && (
                   <div className="space-y-5 text-xs sm:text-sm">
                     <div>
-                      <h4 className="font-bold text-stone-950 uppercase text-xs tracking-wider mb-2">
+                      <h4 className="font-sans font-bold text-stone-950 uppercase text-xs tracking-wider mb-2">
                         Sudah Termasuk (Include)
                       </h4>
                       <ul className="space-y-1.5 text-stone-700">
@@ -1672,13 +1646,13 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                     </div>
 
                     <div>
-                      <h4 className="font-bold text-stone-950 uppercase text-xs tracking-wider mb-2">
+                      <h4 className="font-sans font-bold text-stone-950 uppercase text-xs tracking-wider mb-2">
                         Belum Termasuk (Exclude)
                       </h4>
                       <ul className="space-y-1.5 text-stone-600">
                         {activeTrip.exclusions.map((exc, idx) => (
                           <li key={idx} className="flex items-start gap-2">
-                            <span className="text-stone-400 font-bold">—</span>
+                            <span className="text-stone-400 font-sans font-bold">—</span>
                             <span>{exc}</span>
                           </li>
                         ))}
@@ -1686,7 +1660,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                     </div>
 
                     <div>
-                      <h4 className="font-bold text-stone-950 uppercase text-xs tracking-wider mb-2">
+                      <h4 className="font-sans font-bold text-stone-950 uppercase text-xs tracking-wider mb-2">
                         Perlengkapan Pribadi Wajib
                       </h4>
                       <ul className="space-y-1 text-stone-700 list-disc pl-5">
@@ -1701,19 +1675,19 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                 {activeTab === "ketentuan" && (
                   <div className="space-y-4 text-xs sm:text-sm text-stone-700">
                     <div className="p-3.5 bg-[#F4F1EA]/60 border border-stone-200">
-                      <span className="font-bold text-stone-950 block mb-1">
+                      <span className="font-sans font-bold text-stone-950 block mb-1">
                         Kesiapan Fisik
                       </span>
                       <p>{activeTrip.fitness_required}</p>
                     </div>
                     <div>
-                      <span className="font-bold text-stone-950 block mb-1">
+                      <span className="font-sans font-bold text-stone-950 block mb-1">
                         Kebijakan Pembatalan
                       </span>
                       <p>{activeTrip.cancellation_policy}</p>
                     </div>
                     <div>
-                      <span className="font-bold text-stone-950 block mb-1">
+                      <span className="font-sans font-bold text-stone-950 block mb-1">
                         Kebijakan Pengembalian Dana
                       </span>
                       <p>{activeTrip.refund_policy}</p>
@@ -1731,26 +1705,26 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
               {/* Kolom Kanan: Form Pemesanan & Add-on Sewa Gear */}
               <div className="lg:col-span-5 p-4 sm:p-6 bg-[#F4F1EA]/40 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-4">
+                  <h3 className="text-xs font-sans font-bold uppercase tracking-widest text-stone-500 mb-4">
                     Ringkasan Pemesanan
                   </h3>
 
                   <div className="space-y-2 text-xs border-b border-stone-300 pb-4 mb-4">
                     <div className="flex justify-between">
                       <span className="text-stone-600">Keberangkatan</span>
-                      <span className="font-bold text-stone-950 tabular-nums">
+                      <span className="font-sans font-bold text-stone-950 tabular-nums">
                         {activeTrip.departure_date}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-stone-600">Jam Kumpul</span>
-                      <span className="font-bold text-stone-950 tabular-nums">
+                      <span className="font-sans font-bold text-stone-950 tabular-nums">
                         {activeTrip.departure_time}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-stone-600">Paket Dasar</span>
-                      <span className="font-bold text-stone-950 tabular-nums">
+                      <span className="font-sans font-bold text-stone-950 tabular-nums">
                         {formatRupiah(activeTrip.final_price)} / org
                       </span>
                     </div>
@@ -1758,7 +1732,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
 
                   {/* Jumlah Peserta */}
                   <div className="mb-5">
-                    <label className="block text-xs font-bold text-stone-900 mb-2">
+                    <label className="block text-xs font-sans font-bold text-stone-900 mb-2">
                       Jumlah Peserta
                     </label>
                     <div className="inline-flex items-center border border-stone-300 bg-white">
@@ -1772,7 +1746,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
-                      <span className="px-5 text-sm font-bold tabular-nums">
+                      <span className="px-5 text-sm font-sans font-bold tabular-nums">
                         {participantCount}
                       </span>
                       <button
@@ -1800,7 +1774,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                   {/* Add-on Sewa Alat Habema */}
                   <div className="mb-6">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-stone-900">
+                      <span className="text-xs font-sans font-bold text-stone-900">
                         Tambahan Sewa Gear Habema
                       </span>
                       <span className="text-[11px] text-[#183028] font-semibold">
@@ -1827,7 +1801,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                                 className="mt-0.5 accent-[#183028]"
                               />
                               <div>
-                                <span className="font-bold text-stone-900 block">
+                                <span className="font-sans font-bold text-stone-900 block">
                                   {gear.name}
                                 </span>
                                 <span className="text-[11px] text-stone-500">
@@ -1835,7 +1809,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                                 </span>
                               </div>
                             </div>
-                            <span className="font-bold text-stone-900 tabular-nums shrink-0">
+                            <span className="font-sans font-bold text-stone-900 tabular-nums shrink-0">
                               +{formatRupiah(gear.pricePerTrip)}
                             </span>
                           </label>
@@ -1847,7 +1821,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                   {/* Pilihan Voucher Diklaim */}
                   {claimedVoucherCodes.length > 0 && (
                     <div className="mb-6">
-                      <label className="block text-xs font-bold text-stone-900 mb-2">
+                      <label className="block text-xs font-sans font-bold text-stone-900 mb-2">
                         Voucher Diskon Diklaim
                       </label>
                       <select
@@ -1890,7 +1864,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                     <span className="text-xs font-semibold text-stone-600">
                       Total Estimasi ({participantCount} Peserta)
                     </span>
-                    <span className="text-xl font-bold text-stone-950 tabular-nums">
+                    <span className="text-xl font-sans font-bold text-stone-950 tabular-nums">
                       {formatRupiah(calculatedTotal)}
                     </span>
                   </div>
@@ -1907,7 +1881,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                     <button
                       type="button"
                       disabled
-                      className="w-full py-3.5 bg-stone-300 text-stone-600 text-xs font-bold uppercase tracking-wider cursor-not-allowed"
+                      className="w-full py-3.5 bg-stone-300 text-stone-600 text-xs font-sans font-bold uppercase tracking-wider cursor-not-allowed"
                     >
                       Kuota Keberangkatan Penuh
                     </button>
@@ -1915,7 +1889,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                     <button
                       type="button"
                       onClick={() => setBookingSubmitted(true)}
-                      className="w-full py-3.5 bg-[#C85A17] hover:bg-[#b14d10] text-white text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                      className="w-full py-3.5 bg-[#C85A17] hover:bg-[#b14d10] text-white text-xs font-sans font-bold uppercase tracking-wider transition-colors cursor-pointer"
                     >
                       Lanjutkan Pemesanan Slot
                     </button>
@@ -2002,7 +1976,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                           filteredGallery.length
                     )
                   }
-                  className="inline-flex items-center gap-1 px-3 py-1.5 border border-stone-300 hover:bg-stone-100 text-xs font-bold uppercase tracking-wider text-stone-900 cursor-pointer"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 border border-stone-300 hover:bg-stone-100 text-xs font-sans font-bold uppercase tracking-wider text-stone-900 cursor-pointer"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                   Prev
@@ -2019,7 +1993,7 @@ export default function OpenTripPage({ trips: initialTrips = [] }: OpenTripPageP
                       prev === null ? 0 : (prev + 1) % filteredGallery.length
                     )
                   }
-                  className="inline-flex items-center gap-1 px-3 py-1.5 border border-stone-300 hover:bg-stone-100 text-xs font-bold uppercase tracking-wider text-stone-900 cursor-pointer"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 border border-stone-300 hover:bg-stone-100 text-xs font-sans font-bold uppercase tracking-wider text-stone-900 cursor-pointer"
                 >
                   Next
                   <ChevronRight className="w-3.5 h-3.5" />

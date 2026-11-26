@@ -63,8 +63,8 @@ export interface BookingItem {
 export type BookingStatus = 
   | 'pending'
   | 'confirmed'
-  | 'ready-for-pickup'
-  | 'rented-out'
+  | 'picked_up'
+  | 'active'
   | 'returned'
   | 'completed'
   | 'cancelled'

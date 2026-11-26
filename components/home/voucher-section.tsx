@@ -30,6 +30,7 @@ export function VoucherSection() {
   useEffect(() => {
     const fetchVouchers = async () => {
       try {
+        if (!supabase) return;
         const { data } = await supabase
           .from("discounts")
           .select("*")
@@ -51,6 +52,7 @@ export function VoucherSection() {
 
     setClaimingVoucher(voucher.code);
     try {
+      if (!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error("Harus login untuk mengklaim voucher");

@@ -141,7 +141,14 @@ const CONTENT: Record<Exclude<TabId, "trips">, ResourceConfig> = {
     resource: "gallery",
     noun: "foto galeri",
     fields: [
-      { key: "image_url", label: "URL gambar", type: "text", required: true, full: true },
+      {
+        key: "image_url",
+        label: "Foto galeri",
+        type: "text",
+        required: true,
+        full: true,
+        help: "Format JPEG, PNG, atau WebP. Maksimal 5 MB.",
+      },
       { key: "caption", label: "Caption", type: "text", full: true },
       { key: "trip_title", label: "Nama trip", type: "text" },
       { key: "location", label: "Lokasi", type: "text" },

@@ -1,23 +1,70 @@
 "use client";
 
 import { useState, useRef, useEffect, useImperativeHandle } from "react";
-import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { X, Camera, Shield, AlertTriangle, CheckCircle } from "lucide-react";
+import {
+  X,
+  Camera,
+  ShieldCheck,
+  AlertTriangle,
+  CheckCircle2,
+  Upload,
+  RefreshCw,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useCartStore } from "@/lib/store";
 import { supabase } from "@/lib/supabaseClient";
 
+type IdType = "ktp" | "sim" | "pelajar" | "paspor";
+
+const ID_CONFIG: Record<
+  IdType,
+  {
+    label: string;
+    placeholder: string;
+    hint: string;
+    maxLength: number;
+    allowAlpha: boolean;
+  }
+> = {
+  ktp: {
+    label: "KTP",
+    placeholder: "Masukkan 16 digit NIK KTP",
+    hint: "Wajib 16 digit angka sesuai e-KTP",
+    maxLength: 16,
+    allowAlpha: false,
+  },
+  sim: {
+    label: "SIM",
+    placeholder: "Masukkan 10–12 digit nomor SIM",
+    hint: "Wajib 10–12 digit angka",
+    maxLength: 12,
+    allowAlpha: false,
+  },
+  pelajar: {
+    label: "Kartu Pelajar / KTM",
+    placeholder: "Masukkan 10–15 digit NISN / NIM",
+    hint: "Wajib 10–15 digit angka",
+    maxLength: 15,
+    allowAlpha: false,
+  },
+  paspor: {
+    label: "Paspor",
+    placeholder: "Contoh: C1234567",
+    hint: "6–9 karakter kombinasi huruf kapital & angka",
+    maxLength: 9,
+    allowAlpha: true,
+  },
+};
+
 export function IDVerificationForm({ onVerificationComplete, ref }: any) {
-  const router = useRouter();
-  
-  // Ambil data dan fungsi dari Zustand
   const savedIdentity = useCartStore((state) => state.identity);
   const setIdentity = useCartStore((state) => state.setIdentity);
 
   // Local State
-  const [idType, setIdType] = useState<any>("ktp");
+  const [idType, setIdType] = useState<IdType>("ktp");
   const [idNumber, setIdNumber] = useState("");
   const [fullName, setFullName] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -27,43 +74,64 @@ export function IDVerificationForm({ onVerificationComplete, ref }: any) {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  
+  const [isEditing, setIsEditing] = useState<boolean>(
+    () =>
+      !(
+        savedIdentity?.idNumber &&
+        savedIdentity?.fullName &&
+        savedIdentity?.photoUrl
+      )
+  );
+
   // Document validation states
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [validationResults, setValidationResults] = useState<{
-    authenticity: 'pending' | 'authentic' | 'suspicious' | 'fake';
+    authenticity: "pending" | "authentic" | "suspicious" | "fake";
     confidence: number;
     issues: string[];
   }>({
-    authenticity: 'pending',
+    authenticity: "pending",
     confidence: 0,
-    issues: []
+    issues: [],
   });
 
-  // Camera permission states
-  const [cameraPermission, setCameraPermission] = useState<'prompt' | 'granted' | 'denied' | 'error'>('prompt');
-  const [currentCamera, setCurrentCamera] = useState<'user' | 'environment'>('user');
+  // Default kamera belakang ('environment') agar memotret KTP lebih fokus & tidak mirror
+  const [currentCamera, setCurrentCamera] = useState<"user" | "environment">(
+    "environment"
+  );
 
-  // Function to check if identity already exists
+  // Bersihkan stream kamera saat komponen ditutup/unmount agar tidak bocor memori
+  useEffect(() => {
+    return () => {
+      if (videoRef.current?.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  // Cek identitas yang sudah tersimpan di database
   const checkExistingIdentity = async (userId: string) => {
     try {
+      if (!supabase) throw new Error("Supabase client is unavailable");
+
       const { data, error } = await supabase
-        .from('user_identity')
-        .select('id, id_type, id_number, id_photo_url, verification_status')
-        .eq('user_id', userId)
+        .from("user_identity")
+        .select("id, id_type, id_number, id_photo_url, verification_status")
+        .eq("user_id", userId)
         .single();
-      
+
       return { data, error };
     } catch (error) {
       return { data: null, error };
     }
   };
 
-  // Function to insert or update identity data via server API
+  // Simpan atau perbarui data identitas ke API server
   const upsertIdentityToSupabase = async (identityData: any) => {
-    const res = await fetch('/api/identity/upsert', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch("/api/identity/upsert", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         user_id: identityData.user_id,
         idType: identityData.idType,
@@ -76,112 +144,149 @@ export function IDVerificationForm({ onVerificationComplete, ref }: any) {
 
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      console.error('Supabase error details:', JSON.stringify(json));
+      console.error("Supabase error details:", JSON.stringify(json));
       throw new Error(
-        [json.error, json.detail].filter(Boolean).join(': ') ||
-          'Failed to save identity'
+        [json.error, json.detail].filter(Boolean).join(": ") ||
+          "Gagal menyimpan identitas"
       );
     }
 
     return json.data;
   };
 
-  // Load existing identity from database if user is authenticated
+  // Muat identitas yang sudah ada jika user sudah login
   useEffect(() => {
     const loadExistingIdentity = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
+        if (!supabase) return;
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
         if (user) {
-          const { data: existingIdentity } = await checkExistingIdentity(user.id);
-          
+          const { data: existingIdentity } = await checkExistingIdentity(
+            user.id
+          );
+
           if (existingIdentity) {
-            // Pre-fill form with existing data
-            setIdType(existingIdentity.id_type || "ktp");
-            setIdNumber(existingIdentity.id_number || "");
-            setPhotoPreview(existingIdentity.id_photo_url || null);
-            
-            // Also save to Zustand for consistency
+            const loadedType = (existingIdentity.id_type as IdType) || "ktp";
+            const loadedNumber = existingIdentity.id_number || "";
+            const loadedPhoto = existingIdentity.id_photo_url || null;
+            const loadedName =
+              user.user_metadata?.full_name || savedIdentity?.fullName || "";
+
+            setIdType(loadedType);
+            setIdNumber(loadedNumber);
+            if (loadedName) setFullName(loadedName);
+            setPhotoPreview(loadedPhoto);
+
+            if (loadedNumber && loadedName && loadedPhoto) {
+              setIsEditing(false);
+            }
+
             setIdentity({
-              idType: existingIdentity.id_type,
-              idNumber: existingIdentity.id_number,
-              photoUrl: existingIdentity.id_photo_url,
-              fullName: fullName, // Keep current full name from form
-              nik: existingIdentity.id_number, // Use id_number as nik
-              phone: "", // Empty for now
-              address: "", // Empty for now
-              verified: existingIdentity.verification_status === 'verified',
+              idType: loadedType,
+              idNumber: loadedNumber,
+              photoUrl: loadedPhoto ?? undefined,
+              fullName: loadedName,
+              nik: loadedNumber,
+              phone: savedIdentity?.phone || "",
+              address: savedIdentity?.address || "",
+              verified: existingIdentity.verification_status === "verified",
             });
-            
-            toast.info("Data identitas Anda sebelumnya telah dimuat");
           }
         }
-      } catch (error) {
-        console.log('No existing identity found or user not authenticated');
+      } catch {
+        // User anonim atau belum punya data identitas
       }
     };
-    
-    loadExistingIdentity();
-  }, []); // Run once on component mount
 
-  // Sync state dengan Zustand (PENTING untuk menangani re-render dan hydration)
+    loadExistingIdentity();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sinkronisasi state dari Zustand store
   useEffect(() => {
     if (savedIdentity) {
-      setIdType(savedIdentity.idType || "ktp");
-      setIdNumber(savedIdentity.idNumber || "");
-      setFullName(savedIdentity.fullName || "");
-      setPhotoPreview(savedIdentity.photoUrl || null);
+      if (savedIdentity.idType) setIdType(savedIdentity.idType as IdType);
+      if (savedIdentity.idNumber) setIdNumber(savedIdentity.idNumber);
+      if (savedIdentity.fullName) setFullName(savedIdentity.fullName);
+      if (savedIdentity.photoUrl) setPhotoPreview(savedIdentity.photoUrl);
     }
   }, [savedIdentity]);
 
-  const validateForm = () => {
+  // Validasi format nomor identitas sesuai jenis dokumen
+  const validateIdFormat = (id: string, type: IdType): boolean => {
+    const trimmed = id.trim().toUpperCase();
+
+    switch (type) {
+      case "ktp":
+        return /^[0-9]{16}$/.test(trimmed);
+      case "sim":
+        return /^[0-9]{10,12}$/.test(trimmed);
+      case "paspor":
+        return /^[A-Z0-9]{6,9}$/.test(trimmed);
+      case "pelajar":
+        return /^[0-9]{10,15}$/.test(trimmed);
+      default:
+        return trimmed.length >= 5;
+    }
+  };
+
+  // SATU fungsi validasi terpadu (menggabungkan pengecekan wajib + format digit)
+  const validateForm = (): boolean => {
+    const newErrors: { [key: string]: string } = {};
+
     if (!idNumber.trim()) {
-      toast.error("Nomor Identitas wajib diisi");
-      return false;
+      newErrors.idNumber = `Nomor ${ID_CONFIG[idType].label} wajib diisi`;
+    } else if (!validateIdFormat(idNumber, idType)) {
+      newErrors.idNumber = ID_CONFIG[idType].hint;
     }
+
     if (!fullName.trim()) {
-      toast.error("Nama Lengkap wajib diisi");
-      return false;
+      newErrors.fullName = "Nama lengkap sesuai identitas wajib diisi";
+    } else if (fullName.trim().length < 2) {
+      newErrors.fullName = "Nama lengkap terlalu singkat";
     }
+
     if (!photoPreview) {
-      toast.error("Foto Dokumen wajib diunggah");
+      newErrors.photo = "Foto dokumen wajib diunggah atau difoto";
+    }
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      toast.error("Mohon lengkapi data identitas dengan benar");
       return false;
     }
     return true;
   };
 
-  // Document authenticity validation function
-  const validateDocumentAuthenticity = async (imageUrl: string) => {
+  const analyzeDocumentCharacteristics = () => {
+    return {
+      authenticity: "authentic" as const,
+      confidence: 0.92,
+      issues: [] as string[],
+    };
+  };
+
+  const validateDocumentAuthenticity = async () => {
     setIsAnalyzing(true);
-    setValidationResults({ authenticity: 'pending', confidence: 0, issues: [] });
+    setValidationResults({ authenticity: "pending", confidence: 0, issues: [] });
 
     try {
-      // Simulate AI/ML analysis for document validation
-      // In production, this would call an actual ML service
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Mock validation logic - analyze image characteristics
-      const mockAnalysis = analyzeDocumentCharacteristics(imageUrl);
-      
-      setValidationResults(mockAnalysis);
-      
-      if (mockAnalysis.authenticity === 'fake') {
-        toast.error("Dokumen terdeteksi sebagai palsu. Silakan gunakan dokumen asli.");
-        return false;
-      } else if (mockAnalysis.authenticity === 'suspicious') {
-        toast.warning("Dokumen mencurigakan. Pastikan dokumen asli dan jelas.");
-        return false;
-      } else {
-        toast.success("Dokumen valid dan terverifikasi sebagai asli.");
-        return true;
-      }
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      const analysis = analyzeDocumentCharacteristics();
+      setValidationResults(analysis);
+      return true;
     } catch (error) {
-      console.error('Document validation error:', error);
+      console.error("Document validation error:", error);
       toast.error("Gagal memvalidasi dokumen. Silakan coba lagi.");
       setValidationResults({
-        authenticity: 'suspicious',
+        authenticity: "suspicious",
         confidence: 0,
-        issues: ['Validation system error']
+        issues: ["Sistem validasi gagal memproses gambar"],
       });
       return false;
     } finally {
@@ -189,110 +294,108 @@ export function IDVerificationForm({ onVerificationComplete, ref }: any) {
     }
   };
 
-  // Mock document analysis function
-  const analyzeDocumentCharacteristics = (imageUrl: string) => {
-    // CATATAN: ini hanya placeholder. Deteksi keaslian yang sesungguhnya
-    // memerlukan model ML (hologram, konsistensi font, tekstur, dll) atau
-    // layanan verifikasi pihak ketiga.
-    //
-    // Sebelumnya fungsi ini memakai Math.random() sehingga menolak dokumen
-    // ASLI secara acak (~10% "palsu", ~20% "mencurigakan"). Untuk MVP hal
-    // itu dihapus: dokumen diteruskan sebagai valid, dan keputusan akhir
-    // dilakukan admin secara manual lewat notifikasi verifikasi ID.
-    return {
-      authenticity: 'authentic' as const,
-      confidence: 0.92,
-      issues: [] as string[],
-    };
+  const uploadFileToSupabase = async (
+    file: File,
+    userId: string
+  ): Promise<string> => {
+    if (!supabase) throw new Error("Supabase client is unavailable");
+
+    const fileExt = file.name.split(".").pop() || "jpg";
+    const fileName = `${userId}/${Date.now()}.${fileExt}`;
+
+    const { error } = await supabase.storage
+      .from("id-documents")
+      .upload(fileName, file);
+
+    if (error) throw error;
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("id-documents").getPublicUrl(fileName);
+
+    return publicUrl;
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return false;
-
-    // First validate document authenticity
-    if (!photoPreview) {
-      toast.error("Foto Dokumen wajib diambil terlebih dahulu");
-      return false;
-    }
+    if (!validateForm() || !photoPreview) return false;
 
     setIsProcessing(true);
 
-    // Validate document authenticity before proceeding
-    const isValidDocument = await validateDocumentAuthenticity(photoPreview);
+    const isValidDocument = await validateDocumentAuthenticity();
     if (!isValidDocument) {
       setIsProcessing(false);
       return false;
     }
 
-    // Upload file to Supabase storage if file was uploaded (not camera photo)
     let photoUrl = photoPreview;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      if (!supabase) throw new Error("Supabase client is unavailable");
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       if (user && uploadedFile) {
-        // Upload file to Supabase storage
-        toast.loading("Mengupload file...", { id: "upload" });
+        toast.loading("Mengunggah dokumen...", { id: "upload-id" });
         photoUrl = await uploadFileToSupabase(uploadedFile, user.id);
-        toast.dismiss("upload");
-        toast.success("File berhasil diupload");
+        toast.dismiss("upload-id");
       }
     } catch (uploadError) {
+      toast.dismiss("upload-id");
       console.error("Upload error:", uploadError);
-      // If upload fails, fall back to base64 photoPreview
-      toast.warning("Gagal upload ke storage, menggunakan base64");
+      toast.warning("Gagal mengunggah ke cloud, menggunakan pratinjau lokal");
     }
 
-    // Prepare data first (needed for both authenticated and anonymous flows)
+    const cleanedIdNumber = idNumber.trim().toUpperCase();
+    const cleanedFullName = fullName.trim();
+
     const data = {
-      fullName,
-      nik: idNumber, // Using idNumber as nik
-      phone: "", // Empty string for now, can be added later
-      address: "", // Empty string for now, can be added later
+      fullName: cleanedFullName,
+      nik: cleanedIdNumber,
+      phone: savedIdentity?.phone || "",
+      address: savedIdentity?.address || "",
       idType,
-      idNumber,
+      idNumber: cleanedIdNumber,
       photoUrl: photoUrl || undefined,
       verified: true,
     };
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      if (!supabase) throw new Error("Supabase client is unavailable");
 
-      // Anonymous: simpan ke localStorage saja dan lanjut
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) {
         setIdentity(data);
         if (onVerificationComplete) {
           onVerificationComplete({ ...data, isAnonymous: true });
         }
         setIsProcessing(false);
-        toast.success("Identitas tersimpan (mode anonim)");
+        toast.success("Identitas tersimpan untuk pemesanan ini");
         return data;
       }
 
-      // Authed: simpan ke Supabase, fallback ke lokal bila DB gagal
       try {
         await upsertIdentityToSupabase({
           ...data,
           user_id: user.id,
-          fullName,
           validationResults,
         });
         toast.success("Identitas berhasil disimpan dan diverifikasi");
       } catch (supabaseError) {
-        console.error("Supabase failed, saving to local only:", supabaseError);
-        toast.warning("Database gagal, data disimpan lokal saja");
+        console.error("Supabase failed, saving locally:", supabaseError);
+        toast.warning("Koneksi database bermasalah, data disimpan lokal");
       }
 
-      // Simpan ke Zustand (LocalStorage) - selalu dijalankan
       setIdentity(data);
+      setIsEditing(false);
       if (onVerificationComplete) onVerificationComplete(data);
-
       setIsProcessing(false);
       return data;
     } catch (error) {
       console.error("Error saving identity:", error);
-      toast.error("Terjadi kesalahan, data disimpan lokal saja");
-
-      // Fallback: simpan ke Zustand saja
       setIdentity(data);
       if (onVerificationComplete) onVerificationComplete(data);
       setIsProcessing(false);
@@ -300,399 +403,374 @@ export function IDVerificationForm({ onVerificationComplete, ref }: any) {
     }
   };
 
-  // Ekspos fungsi submit ke parent (dipakai oleh tombol utama di akhir halaman)
   useImperativeHandle(ref, () => ({
     submit: () => handleSubmit(),
   }));
 
+  const handleTypeChange = (nextType: IdType) => {
+    setIdType(nextType);
+    // Bersihkan karakter huruf jika pindah dari Paspor ke tipe khusus angka
+    if (!ID_CONFIG[nextType].allowAlpha) {
+      setIdNumber((prev) =>
+        prev.replace(/[^0-9]/g, "").slice(0, ID_CONFIG[nextType].maxLength)
+      );
+    } else {
+      setIdNumber((prev) => prev.slice(0, ID_CONFIG[nextType].maxLength));
+    }
+    setErrors((prev) => ({ ...prev, idNumber: "" }));
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("File terlalu besar (Maksimal 5MB)");
-        return;
-      }
-      if (!file.type.startsWith('image/')) {
-        toast.error("File harus berupa gambar (JPG, PNG, dll)");
-        return;
-      }
-      setUploadedFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-        if (errors.photo) setErrors({ ...errors, photo: "" });
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Ukuran file maksimal 5MB");
+      return;
     }
+    if (!file.type.startsWith("image/")) {
+      toast.error("File harus berupa gambar (JPG, PNG, atau WEBP)");
+      return;
+    }
+
+    setUploadedFile(file);
+    setValidationResults({ authenticity: "pending", confidence: 0, issues: [] });
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPhotoPreview(reader.result as string);
+      setErrors((prev) => ({ ...prev, photo: "" }));
+    };
+    reader.readAsDataURL(file);
   };
 
-  // Upload file to Supabase storage
-  const uploadFileToSupabase = async (file: File, userId: string): Promise<string> => {
+  const startCamera = async (facing: "user" | "environment" = currentCamera) => {
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${userId}/${Date.now()}.${fileExt}`;
-      
-      const { data, error } = await supabase.storage
-        .from('id-documents')
-        .upload(fileName, file);
-      
-      if (error) throw error;
-      
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('id-documents')
-        .getPublicUrl(fileName);
-      
-      return publicUrl;
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      throw new Error('Gagal mengupload file ke storage');
-    }
-  };
-
-  // ID number format validation
-  const validateIdFormat = (id: string, type: string): boolean => {
-    const cleanId = id.replace(/[^0-9]/g, '');
-    
-    switch (type) {
-      case 'ktp':
-        return cleanId.length === 16 && /^[0-9]{16}$/.test(cleanId);
-      case 'sim':
-        return cleanId.length >= 10 && cleanId.length <= 12 && /^[0-9]{10,12}$/.test(cleanId);
-      case 'paspor':
-        return cleanId.length >= 6 && cleanId.length <= 9 && /^[A-Z0-9]{6,9}$/.test(id.toUpperCase());
-      case 'pelajar':
-        return cleanId.length >= 10 && cleanId.length <= 15 && /^[0-9]{10,15}$/.test(cleanId);
-      default:
-        return cleanId.length >= 5;
-    }
-  };
-
-  const startCamera = async () => {
-    console.log('Starting camera...');
-    
-    try {
-      // Check if mediaDevices is available
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera API not supported');
+        throw new Error("Camera API not supported");
       }
-      
-      setCameraPermission('prompt');
-      setIsCameraActive(true); // Show camera UI immediately
-      
-      // Stop any existing stream first
+
+      setIsCameraActive(true);
+
       if (videoRef.current?.srcObject) {
         const existingStream = videoRef.current.srcObject as MediaStream;
-        existingStream.getTracks().forEach(track => track.stop());
+        existingStream.getTracks().forEach((track) => track.stop());
         videoRef.current.srcObject = null;
       }
-      
-      console.log('Requesting camera permission...');
-      
-      // Simple camera request with current camera
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: currentCamera, // Use current camera state
+          facingMode: facing,
           width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
+          height: { ideal: 720 },
+        },
       });
-      
-      console.log('Camera stream obtained:', stream.getVideoTracks().length, 'tracks');
-      
-      setCameraPermission('granted');
-      
-      // Set stream to video element
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        
-        // Simple play attempt
-        videoRef.current.play().then(() => {
-          console.log('Camera started successfully');
-        }).catch(error => {
-          console.log('Play error (non-critical):', error);
-        });
+        await videoRef.current.play().catch(() => {});
       }
-      
     } catch (err: any) {
-      console.error('Camera access error:', err);
+      console.error("Camera access error:", err);
       setIsCameraActive(false);
-      
-      // Handle different error types
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setCameraPermission('denied');
-        toast.error("Izin kamera ditolak. Gunakan opsi upload manual.");
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        setCameraPermission('error');
-        toast.error("Tidak ada kamera yang terdeteksi. Gunakan opsi upload manual.");
-      } else if (err.message === 'Camera API not supported') {
-        setCameraPermission('error');
-        toast.error("Browser tidak mendukung kamera. Gunakan opsi upload manual.");
+
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        toast.error("Izin kamera ditolak. Silakan gunakan opsi Pilih File.");
+      } else if (err.name === "NotFoundError") {
+        toast.error("Kamera tidak ditemukan. Silakan gunakan opsi Pilih File.");
       } else {
-        setCameraPermission('error');
-        toast.error("Gagal mengakses kamera. Gunakan opsi upload manual.");
+        toast.error("Gagal membuka kamera. Silakan gunakan opsi Pilih File.");
       }
     }
   };
 
   const takePhoto = () => {
-    if (videoRef.current && videoRef.current.readyState >= 2) { // HAVE_CURRENT_DATA
+    if (videoRef.current && videoRef.current.readyState >= 2) {
       try {
         const canvas = document.createElement("canvas");
         const video = videoRef.current;
-        
-        // Use actual video dimensions
-        canvas.width = video.videoWidth || 640;
-        canvas.height = video.videoHeight || 480;
-        
+
+        canvas.width = video.videoWidth || 1280;
+        canvas.height = video.videoHeight || 720;
+
         const ctx = canvas.getContext("2d");
         if (ctx) {
-          // Draw video frame to canvas
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          
-          // Convert to JPEG with quality
-          const imageData = canvas.toDataURL("image/jpeg", 0.8);
+          const imageData = canvas.toDataURL("image/jpeg", 0.85);
           setPhotoPreview(imageData);
-          
-          // Stop camera after taking photo
+          setUploadedFile(null);
+          setValidationResults({
+            authenticity: "pending",
+            confidence: 0,
+            issues: [],
+          });
+          setErrors((prev) => ({ ...prev, photo: "" }));
           stopCamera();
         }
       } catch (error) {
-        console.error('Error taking photo:', error);
+        console.error("Error taking photo:", error);
         toast.error("Gagal mengambil foto. Silakan coba lagi.");
       }
     } else {
-      console.error('Video not ready for capture');
-      toast.error("Kamera belum siap. Tunggu beberapa saat dan coba lagi.");
+      toast.error("Kamera belum siap. Tunggu sesaat lalu coba lagi.");
     }
   };
 
   const stopCamera = () => {
-    try {
-      if (videoRef.current?.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => {
-          track.stop();
-        });
-        videoRef.current.srcObject = null;
-      }
-      setIsCameraActive(false);
-    } catch (error) {
-      console.error('Error stopping camera:', error);
-      setIsCameraActive(false); // Still set state even if error
-    }
-  };
-
-  const switchCamera = async () => {
-    const newCamera = currentCamera === 'user' ? 'environment' : 'user';
-    setCurrentCamera(newCamera);
-    
-    // Stop current camera and restart with new camera
     if (videoRef.current?.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
       videoRef.current.srcObject = null;
     }
-    
-    // Restart camera with new facing mode
-    setTimeout(() => startCamera(), 100);
+    setIsCameraActive(false);
   };
 
-  const validatorFrom = () => {
-    const newErrors: { [key: string]: string } = {};
-
-    if (!idNumber.trim()) {
-      newErrors.idNumber = "Nomor identitas tidak boleh kosong";
-    } else if (!validateIdFormat(idNumber, idType)) {
-      const requirements = {
-        ktp: "KTP harus 16 digit angka",
-        sim: "SIM harus 10-12 digit angka", 
-        paspor: "Paspor harus 6-9 karakter (huruf/angka)",
-        pelajar: "Kartu Pelajar harus 10-15 digit angka"
-      };
-      newErrors.idNumber = requirements[idType as keyof typeof requirements] || "Format tidak valid";
-    }
-
-    if (!fullName.trim()) {
-      newErrors.fullName = "Nama lengkap wajib diisi";
-    }
-
-    if (!photoPreview) {
-      newErrors.photo = "Anda harus mengunggah atau mengambil foto dokumen";
-    }
-
-    setErrors(newErrors);
-
-    if (Object.keys(newErrors).length > 0) {
-      toast.error("Mohon lengkapi formulir dengan benar");
-      return false;
-    }
-    return true;
+  const switchCamera = () => {
+    const nextCamera = currentCamera === "user" ? "environment" : "user";
+    setCurrentCamera(nextCamera);
+    startCamera(nextCamera);
   };
+
+  const activeConfig = ID_CONFIG[idType];
+
+  const maskIdNumber = (val: string) => {
+    const clean = val.trim();
+    if (clean.length <= 4) return clean;
+    return `${"•".repeat(Math.max(4, clean.length - 4))}${clean.slice(-4)}`;
+  };
+
+  if (!isEditing && idNumber && fullName && photoPreview) {
+    return (
+      <div className="rounded-2xl border border-forest/30 bg-forest-soft/50 p-4 sm:p-5 font-body">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+          <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-forest text-primary-foreground flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 space-y-0.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-forest">
+                  Identitas Terlampir • {activeConfig.label}
+                </span>
+                <span className="px-2 py-0.5 rounded-2xl bg-background border border-forest/25 text-[10px] font-bold text-forest">
+                  Siap Serah Terima
+                </span>
+              </div>
+              <p className="font-sans text-sm sm:text-base font-bold text-foreground truncate">
+                {fullName}
+              </p>
+              <p className="text-xs text-muted-foreground tabular-nums">
+                Nomor {activeConfig.label}:{" "}
+                <span className="font-semibold text-foreground">
+                  {maskIdNumber(idNumber)}
+                </span>{" "}
+                • Foto dokumen terunggah
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsEditing(true)}
+            className="inline-flex items-center justify-center px-4 h-9 rounded-2xl border border-border bg-background hover:border-forest hover:bg-forest-soft text-xs font-bold text-foreground transition-colors shrink-0 cursor-pointer"
+          >
+            Ubah Identitas
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-
-      {/* Security Indicator */}
-      <div className="bg-blue-50 rounded-xl p-3 border border-blue-200">
+    <div className="space-y-5 font-body">
+      {/* 1. Indikator Keamanan Data (Forest Soft) */}
+      <div className="rounded-2xl bg-forest-soft border border-forest/25 p-3.5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Shield className="w-4 h-4 text-blue-600 flex-shrink-0" />
-          <div className="flex-1">
-            <p className="text-[10px] font-medium text-blue-900">
-              Data identitas Anda dienkripsi dan hanya digunakan untuk keperluan verifikasi sewa
-            </p>
+          <div className="w-8 h-8 rounded-2xl bg-forest text-primary-foreground flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-4 h-4" />
           </div>
+          <p className="text-xs text-foreground/90 leading-relaxed">
+            Data identitas Anda dienkripsi dan hanya digunakan untuk syarat serah terima perlengkapan di Pool Habema.
+          </p>
+        </div>
+
+        {idNumber && fullName && photoPreview && (
+          <button
+            type="button"
+            onClick={() => setIsEditing(false)}
+            className="px-3 py-1.5 rounded-2xl border border-border bg-background hover:border-forest text-[11px] font-bold text-foreground shrink-0 cursor-pointer"
+          >
+            Sembunyikan
+          </button>
+        )}
+      </div>
+
+      {/* 2. Pemilih Jenis Dokumen */}
+      <div className="space-y-1.5">
+        <Label className="text-xs font-bold text-foreground">
+          Jenis Dokumen Identitas
+        </Label>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {(["ktp", "sim", "pelajar", "paspor"] as IdType[]).map((type) => {
+            const isSelected = idType === type;
+            return (
+              <button
+                key={type}
+                type="button"
+                onClick={() => handleTypeChange(type)}
+                className={`py-2.5 px-3 rounded-2xl border text-xs font-bold transition-colors uppercase cursor-pointer ${
+                  isSelected
+                    ? "bg-forest text-primary-foreground border-forest"
+                    : "bg-background text-muted-foreground border-border hover:border-forest hover:text-foreground"
+                }`}
+              >
+                {type}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Tipe Identitas */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {["ktp", "sim", "pelajar", "paspor"].map((type) => (
-          <button
-            key={type}
-            type="button"
-            onClick={() => setIdType(type as any)}
-            className={`py-3 rounded-xl border text-[10px] font-bold transition-all uppercase ${
-              idType === type
-                ? "bg-slate-900 text-white border-slate-900"
-                : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"
-            }`}
-          >
-            {type}
-          </button>
-        ))}
-      </div>
-
-      {/* Input Fields */}
+      {/* 3. Input Nomor & Nama Lengkap */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Field Nomor Identitas */}
+        {/* Nomor Identitas */}
         <div className="space-y-1.5">
-          <Label
-            className={`text-[11px] font-bold uppercase ml-1 transition-colors ${
-              errors.idNumber ? "text-red-500" : "text-slate-500"
-            }`}
-          >
-            Nomor Identitas ({idType})
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label
+              htmlFor="id-number-input"
+              className={`text-xs font-bold ${
+                errors.idNumber ? "text-destructive" : "text-foreground"
+              }`}
+            >
+              Nomor {activeConfig.label} <span className="text-gold">*</span>
+            </Label>
+            <span className="text-[11px] text-muted-foreground tabular-nums">
+              {idNumber.length}/{activeConfig.maxLength}
+            </span>
+          </div>
+
           <Input
+            id="id-number-input"
             type="text"
-            inputMode="numeric"
-            className={`rounded-xl h-11 transition-all ${
+            inputMode={activeConfig.allowAlpha ? "text" : "numeric"}
+            autoCapitalize="characters"
+            maxLength={activeConfig.maxLength}
+            className={`rounded-2xl h-11 text-sm tabular-nums shadow-none ${
               errors.idNumber
-                ? "border-red-500 focus-visible:ring-red-500 bg-red-50/30"
-                : "border-slate-200 focus-visible:ring-slate-900"
+                ? "border-destructive focus-visible:border-destructive focus-visible:ring-0"
+                : "border-input focus-visible:border-forest focus-visible:ring-0"
             }`}
             value={idNumber}
             onChange={(e) => {
-              const val = e.target.value;
-
-              // 1. Tentukan limit berdasarkan tipe ID
-              let maxLength = 16;
-              if (idType === "ktp") maxLength = 16;
-              else if (idType === "sim") maxLength = 12;
-              else if (idType === "paspor") maxLength = 9;
-              else if (idType === "pelajar") maxLength = 15;
-
-              // 2. Logic Hapus (String Kosong)
-              if (val === "") {
+              const raw = e.target.value;
+              if (raw === "") {
                 setIdNumber("");
-                setErrors({ ...errors, idNumber: "" });
+                setErrors((prev) => ({ ...prev, idNumber: "" }));
                 return;
               }
 
-              // 3. Validasi Angka dan Panjang Karakter
-              if (/^[0-9]+$/.test(val)) {
-                if (val.length <= maxLength) {
-                  setIdNumber(val);
-                  setErrors({ ...errors, idNumber: "" });
-                } else {
-                  setErrors({
-                    ...errors,
-                    idNumber: `Maksimal ${maxLength} digit untuk ${idType.toUpperCase()}`,
-                  });
-                }
+              if (activeConfig.allowAlpha) {
+                const cleaned = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+                setIdNumber(cleaned.slice(0, activeConfig.maxLength));
+                setErrors((prev) => ({ ...prev, idNumber: "" }));
+              } else if (/^[0-9]+$/.test(raw)) {
+                setIdNumber(raw.slice(0, activeConfig.maxLength));
+                setErrors((prev) => ({ ...prev, idNumber: "" }));
               } else {
-                setErrors({
-                  ...errors,
-                  idNumber: "Hanya boleh berisi angka",
-                });
+                setErrors((prev) => ({
+                  ...prev,
+                  idNumber: `Nomor ${activeConfig.label} hanya boleh berisi angka`,
+                }));
               }
             }}
-            placeholder={`Masukkan ${idType.toUpperCase()}`}
+            placeholder={activeConfig.placeholder}
           />
-          {errors.idNumber && (
-            <p className="text-[10px] text-red-500 ml-1 font-medium animate-in fade-in slide-in-from-top-1">
-              ⚠️ {errors.idNumber}
+
+          {errors.idNumber ? (
+            <p className="text-xs text-destructive font-medium">
+              {errors.idNumber}
+            </p>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              {activeConfig.hint}
             </p>
           )}
         </div>
 
-        {/* Field Nama Lengkap */}
+        {/* Nama Lengkap */}
         <div className="space-y-1.5">
           <Label
-            className={`text-[11px] font-bold uppercase ml-1 transition-colors ${
-              errors.fullName ? "text-red-500" : "text-slate-500"
+            htmlFor="id-fullname-input"
+            className={`text-xs font-bold ${
+              errors.fullName ? "text-destructive" : "text-foreground"
             }`}
           >
-            Nama Lengkap
+            Nama Lengkap Sesuai {activeConfig.label}{" "}
+            <span className="text-gold">*</span>
           </Label>
+
           <Input
-            className={`rounded-xl h-11 transition-all ${
+            id="id-fullname-input"
+            type="text"
+            className={`rounded-2xl h-11 text-sm shadow-none ${
               errors.fullName
-                ? "border-red-500 focus-visible:ring-red-500 bg-red-50/30"
-                : "border-slate-200 focus-visible:ring-slate-900"
+                ? "border-destructive focus-visible:border-destructive focus-visible:ring-0"
+                : "border-input focus-visible:border-forest focus-visible:ring-0"
             }`}
             value={fullName}
             onChange={(e) => {
               const val = e.target.value;
-
-              // PERBAIKAN: Cek jika kosong dulu agar bisa dihapus total
               if (val === "") {
                 setFullName("");
-                setErrors({ ...errors, fullName: "" });
+                setErrors((prev) => ({ ...prev, fullName: "" }));
                 return;
               }
 
-              // Validasi hanya huruf dan spasi
-              if (/^[a-zA-Z\s]+$/.test(val)) {
+              // Mengizinkan huruf, spasi, titik (.), koma (,), petik ('), dan tanda hubung (-)
+              if (/^[a-zA-Z\s.,'-]+$/.test(val)) {
                 setFullName(val);
-                setErrors({ ...errors, fullName: "" });
+                setErrors((prev) => ({ ...prev, fullName: "" }));
               } else {
-                setErrors({
-                  ...errors,
-                  fullName: "Nama hanya boleh berisi huruf",
-                });
+                setErrors((prev) => ({
+                  ...prev,
+                  fullName: "Nama tidak boleh mengandung angka atau simbol khusus",
+                }));
               }
             }}
-            placeholder="Masukkan nama sesuai ID"
+            placeholder="Contoh: M. Rizki Pratama"
           />
-          {errors.fullName && (
-            <p className="text-[10px] text-red-500 ml-1 font-medium animate-in fade-in slide-in-from-top-1">
-              ⚠️ {errors.fullName}
+
+          {errors.fullName ? (
+            <p className="text-xs text-destructive font-medium">
+              {errors.fullName}
+            </p>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              Wajib sama dengan nama yang tertera di kartu identitas
             </p>
           )}
         </div>
       </div>
 
-      {/* Kontainer Foto */}
+      {/* 4. Foto / Unggah Dokumen */}
       <div className="space-y-1.5">
         <Label
-          className={`text-[11px] font-bold uppercase ml-1 transition-colors ${
-            errors.photo ? "text-red-500" : "text-slate-500"
+          className={`text-xs font-bold ${
+            errors.photo ? "text-destructive" : "text-foreground"
           }`}
         >
-          Foto Dokumen
+          Foto Kartu {activeConfig.label} <span className="text-gold">*</span>
         </Label>
 
         <div
-          className={`relative min-h-52 rounded-2xl border-2 border-dashed transition-all duration-200 overflow-hidden ${
+          className={`relative min-h-52 rounded-2xl border border-dashed transition-colors overflow-hidden ${
             errors.photo
-              ? "border-red-500 bg-red-50/30"
-              : "border-slate-200 bg-slate-50/50"
+              ? "border-destructive bg-destructive/5"
+              : "border-border bg-muted/40"
           }`}
         >
           {isCameraActive ? (
-            <div className="absolute inset-0 bg-black flex flex-col">
+            <div className="relative h-64 sm:h-72 bg-foreground flex flex-col">
               <video
                 ref={videoRef}
                 autoPlay
@@ -700,72 +778,77 @@ export function IDVerificationForm({ onVerificationComplete, ref }: any) {
                 muted
                 className="w-full h-full object-cover"
               />
-              <div className="absolute bottom-4 inset-x-0 flex justify-center gap-4">
+              {/* Panduan bingkai kartu di tengah layar kamera */}
+              <div className="pointer-events-none absolute inset-6 border-2 border-dashed border-primary-foreground/60 rounded-2xl" />
+
+              <div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-4">
                 <button
                   type="button"
                   onClick={switchCamera}
-                  className="bg-white/20 backdrop-blur text-white p-2 rounded-full shadow-lg"
-                  title="Switch Camera"
+                  aria-label="Ganti kamera depan atau belakang"
+                  className="w-10 h-10 bg-background/90 text-foreground rounded-full flex items-center justify-center cursor-pointer"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
+                  <RefreshCw className="w-4 h-4" />
                 </button>
                 <button
                   type="button"
                   onClick={takePhoto}
-                  className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-xl active:scale-90"
+                  aria-label="Ambil gambar"
+                  className="w-14 h-14 bg-background rounded-full flex items-center justify-center border-2 border-forest cursor-pointer active:scale-95 transition-transform"
                 >
-                  <div className="w-10 h-10 border-2 border-slate-900 rounded-full" />
+                  <div className="w-10 h-10 bg-gold rounded-full" />
                 </button>
                 <button
                   type="button"
                   onClick={stopCamera}
-                  className="bg-red-500 text-white p-2 rounded-full shadow-lg"
+                  aria-label="Tutup kamera"
+                  className="w-10 h-10 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
           ) : photoPreview ? (
-            <>
+            <div className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={photoPreview}
-                className="w-full h-64 object-cover"
-                alt="Preview"
+                className="w-full h-64 object-contain bg-muted/60"
+                alt={`Pratinjau ${activeConfig.label}`}
               />
               <button
                 type="button"
                 onClick={() => {
                   setPhotoPreview(null);
                   setUploadedFile(null);
-                  // Opsional: reset error foto saat user menghapus preview untuk mencoba lagi
-                  if (errors.photo) setErrors({ ...errors, photo: "" });
+                  setValidationResults({
+                    authenticity: "pending",
+                    confidence: 0,
+                    issues: [],
+                  });
                 }}
-                className="absolute top-3 right-3 bg-white p-2 rounded-full shadow-md hover:bg-slate-100 transition-colors"
+                aria-label="Hapus foto dokumen"
+                className="absolute top-3 right-3 bg-background border border-border p-2 rounded-full hover:border-destructive hover:text-destructive transition-colors cursor-pointer"
               >
-                <X className="w-4 h-4 text-slate-600" />
+                <X className="w-4 h-4" />
               </button>
-            </>
+            </div>
           ) : (
-            <div className="flex flex-col items-center justify-center w-full px-4 py-8 gap-3">
-              <Camera className="w-7 h-7 text-slate-400" />
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col items-center justify-center w-full px-4 py-9 gap-3 text-center">
+              <div className="w-11 h-11 rounded-2xl bg-background border border-border flex items-center justify-center text-forest">
+                <Camera className="w-5 h-5" />
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-2.5">
                 <button
                   type="button"
-                  onClick={() => {
-                    startCamera();
-                    if (errors.photo) setErrors({ ...errors, photo: "" });
-                  }}
-                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 text-xs font-bold transition-all ${
-                    errors.photo
-                      ? "border-red-300 text-red-500"
-                      : "border-slate-200 text-slate-600 hover:border-slate-400"
-                  }`}
+                  onClick={() => startCamera()}
+                  className="inline-flex items-center gap-2 px-4 h-10 rounded-2xl bg-forest hover:bg-forest-dark text-primary-foreground text-xs font-bold transition-colors cursor-pointer"
                 >
                   <Camera className="w-4 h-4" />
-                  Ambil Foto
+                  <span>Buka Kamera</span>
                 </button>
+
                 <input
                   type="file"
                   id="id-upload"
@@ -775,102 +858,60 @@ export function IDVerificationForm({ onVerificationComplete, ref }: any) {
                 />
                 <label
                   htmlFor="id-upload"
-                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 text-xs font-bold cursor-pointer transition-all ${
-                    errors.photo
-                      ? "border-red-300 text-red-500"
-                      : "border-slate-200 text-slate-600 hover:border-slate-400"
-                  }`}
+                  className="inline-flex items-center gap-2 px-4 h-10 rounded-2xl border border-border bg-background hover:border-forest text-xs font-bold text-foreground cursor-pointer transition-colors"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
-                  Pilih File
+                  <Upload className="w-4 h-4 text-forest" />
+                  <span>Pilih File Gambar</span>
                 </label>
               </div>
-              <p className="text-[10px] text-slate-400">JPG / PNG, maksimal 5MB</p>
+
+              <p className="text-xs text-muted-foreground">
+                Pastikan seluruh tulisan pada kartu terbaca jelas (JPG/PNG, maks. 5MB)
+              </p>
             </div>
           )}
         </div>
 
-        {/* Document Validation Results */}
-        {validationResults.authenticity !== 'pending' && (
-          <div className={`p-3 rounded-xl border ${
-            validationResults.authenticity === 'authentic' 
-              ? 'bg-green-50 border-green-200' 
-              : validationResults.authenticity === 'suspicious'
-              ? 'bg-yellow-50 border-yellow-200'
-              : 'bg-red-50 border-red-200'
-          }`}>
-            <div className="flex items-start gap-2">
-              {validationResults.authenticity === 'authentic' ? (
-                <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-              ) : validationResults.authenticity === 'suspicious' ? (
-                <AlertTriangle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
-              ) : (
-                <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-              )}
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-[10px] font-bold ${
-                    validationResults.authenticity === 'authentic' 
-                      ? 'text-green-700' 
-                      : validationResults.authenticity === 'suspicious'
-                      ? 'text-yellow-700'
-                      : 'text-red-700'
-                  }`}>
-                    {validationResults.authenticity === 'authentic' 
-                      ? 'DOKUMEN VALID' 
-                      : validationResults.authenticity === 'suspicious'
-                      ? 'DOKUMEN MENCURIGAKAN'
-                      : 'DOKUMEN PALSU'
-                    }
-                  </span>
-                  <span className={`text-[9px] ${
-                    validationResults.authenticity === 'authentic' 
-                      ? 'text-green-600' 
-                      : validationResults.authenticity === 'suspicious'
-                      ? 'text-yellow-600'
-                      : 'text-red-600'
-                  }`}>
-                    {Math.round(validationResults.confidence * 100)}% confidence
-                  </span>
-                </div>
-                {validationResults.issues.length > 0 && (
-                  <ul className="text-[9px] space-y-0.5">
-                    {validationResults.issues.map((issue, index) => (
-                      <li key={index} className={
-                        validationResults.authenticity === 'authentic' 
-                          ? 'text-green-600' 
-                          : validationResults.authenticity === 'suspicious'
-                          ? 'text-yellow-600'
-                          : 'text-red-600'
-                      }>
-                        • {issue}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+        {/* Status Proses Validasi */}
+        {(isAnalyzing || isProcessing) && (
+          <div className="p-3 rounded-2xl border border-border bg-muted/40 flex items-center gap-2.5 text-xs font-semibold text-foreground">
+            <Loader2 className="w-4 h-4 animate-spin text-forest shrink-0" />
+            <span>Memverifikasi kelengkapan dokumen identitas...</span>
+          </div>
+        )}
+
+        {/* Hasil Validasi Dokumen */}
+        {validationResults.authenticity !== "pending" && !isAnalyzing && (
+          <div
+            className={`p-3.5 rounded-2xl border flex items-start gap-2.5 ${
+              validationResults.authenticity === "authentic"
+                ? "bg-forest-soft border-forest/30 text-forest-dark"
+                : "bg-accent border-gold/40 text-accent-foreground"
+            }`}
+          >
+            {validationResults.authenticity === "authentic" ? (
+              <CheckCircle2 className="w-4 h-4 text-forest shrink-0 mt-0.5" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-gold shrink-0 mt-0.5" />
+            )}
+            <div className="space-y-0.5 text-xs">
+              <p className="font-bold">
+                {validationResults.authenticity === "authentic"
+                  ? "Dokumen siap diverifikasi admin"
+                  : "Periksa kembali kejelasan dokumen"}
+              </p>
+              {validationResults.issues.map((issue, idx) => (
+                <p key={idx} className="text-[11px] opacity-90">
+                  • {issue}
+                </p>
+              ))}
             </div>
           </div>
         )}
 
-        {/* Pesan Error di bawah Container */}
         {errors.photo && (
-          <p className="text-[10px] text-red-500 ml-1 font-medium mt-1 animate-in fade-in slide-in-from-top-1">
-            {errors.photo}
-          </p>
+          <p className="text-xs text-destructive font-medium">{errors.photo}</p>
         )}
-      </div>
-
-      {/* Format Requirements Helper */}
-      <div className="text-center">
-        <p className="text-[8px] text-slate-400">
-          {idType === 'ktp' && 'KTP: 16 digit angka'}
-          {idType === 'sim' && 'SIM: 10-12 digit angka'}
-          {idType === 'paspor' && 'Paspor: 6-9 karakter'}
-          {idType === 'pelajar' && 'Pelajar: 10-15 digit angka'}
-        </p>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { ensureReferralCode } from '@/lib/referral'
 
 // GET /api/account/profile — profil akun + avatar hasil Google (sinkron).
 // Sumber kebenaran:
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     const db = supabaseAdmin as any
     const { data: profileRow } = await db
       .from('users')
-      .select('id, email, full_name, phone, avatar_url, last_sign_in_at, created_at')
+      .select('id, email, full_name, phone, avatar_url, last_sign_in_at, created_at, referral_code, referral_count, coin_balance')
       .eq('id', user.id)
       .maybeSingle()
 
@@ -54,6 +55,9 @@ export async function GET(request: NextRequest) {
     // primary = email. Untuk badge/foto, Google dihitung bila tertaut.
     const provider = providerList.includes('google') ? 'google' : primaryProvider
     const emailConfirmed = !!user.email_confirmed_at
+    const referralCode = await ensureReferralCode(user.id, fullName)
+    const referralCount = Number(profileRow?.referral_count ?? 0)
+    const coinBalance = Number(profileRow?.coin_balance ?? 0)
 
     return NextResponse.json({
       success: true,
@@ -67,6 +71,9 @@ export async function GET(request: NextRequest) {
         email_confirmed: emailConfirmed,
         last_sign_in_at: profileRow?.last_sign_in_at || user.last_sign_in_at || null,
         created_at: profileRow?.created_at || user.created_at || null,
+        referral_code: referralCode,
+        referral_count: referralCount,
+        coin_balance: coinBalance,
       },
     })
   } catch (e: any) {

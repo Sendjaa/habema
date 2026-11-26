@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { verifyOTP } from '@/lib/otp';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { issueAdminDeviceTrust } from '@/lib/admin-trust';
+import { applyReferralReward, ensureReferralCode } from '@/lib/referral';
 import {
   GENERIC_LOGIN_ERROR,
   isValidEmail,
@@ -106,6 +107,10 @@ export async function POST(req: Request) {
       await supabaseAdmin.auth.admin.updateUserById(sessionData.user.id, {
         email_confirm: true,
       });
+
+      const meta = (sessionData.user.user_metadata || {}) as any;
+      await ensureReferralCode(sessionData.user.id, meta.full_name);
+      await applyReferralReward(sessionData.user.id);
     }
 
     // OTP login berhasil → catat perangkat ini supaya beberapa hari ke depan
