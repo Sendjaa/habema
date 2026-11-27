@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
       contact_person_email,
       contact_person_phone,
       meeting_point_id,
+      rental_addon_ids,
     } = body
 
     // Validation
@@ -131,8 +132,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Meeting point price adjustment
+    let meetingPointAdjustment = 0
+    if (meeting_point_id) {
+      const { data: mp } = await (supabase as any)
+        .from('ot_meeting_points')
+        .select('price_adjustment')
+        .eq('id', meeting_point_id)
+        .single()
+      meetingPointAdjustment = Number(mp?.price_adjustment ?? 0)
+    }
+
+    // Rental add-ons total
+    let rentalAddonsPayload: any[] = []
+    let addonsTotal = 0
+    if (Array.isArray(rental_addon_ids) && rental_addon_ids.length > 0) {
+      const { data: addons } = await (supabase as any)
+        .from('ot_rental_addons')
+        .select('id, equipment_id, quantity, price_per_unit, is_active')
+        .in('id', rental_addon_ids)
+      rentalAddonsPayload = (addons || [])
+        .filter((a: any) => a.is_active)
+        .map((a: any) => ({
+          addon_id: a.id,
+          equipment_id: a.equipment_id,
+          quantity: a.quantity,
+          price: a.price_per_unit,
+        }))
+      addonsTotal = rentalAddonsPayload.reduce((sum: number, a: any) => sum + a.price * a.quantity, 0)
+    }
+
     // Calculate pricing
-    const subtotal_price = trip.final_price * total_participants
+    const basePrice = trip.final_price + meetingPointAdjustment
+    const subtotal_price = basePrice * total_participants + addonsTotal
     const tax_amount = 0 // Can be calculated based on tax rules
     const discount_amount = 0
     const total_price = subtotal_price + tax_amount - discount_amount
@@ -164,6 +196,7 @@ export async function POST(request: NextRequest) {
       contact_person_email: contact_person_email || null,
       contact_person_phone: contact_person_phone || null,
       meeting_point_id: meeting_point_id || null,
+      rental_addons: rentalAddonsPayload,
       expires_at: expiresAt,
     }
 

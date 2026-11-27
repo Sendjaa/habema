@@ -51,6 +51,21 @@ type OpenTripDetail = {
   duration: string;
   departureDate: string;
   meetingPoint: string;
+  meetingPoints?: Array<{
+    id: string;
+    name: string;
+    address: string;
+    price_adjustment: number;
+    lat?: number | null;
+    lng?: number | null;
+  }>;
+  rentalAddons?: Array<{
+    id: string;
+    name: string;
+    price_per_unit: number;
+    quantity: number;
+    branch_id?: string | null;
+  }>;
   gallery: DetailGalleryItem[];
   summary: string;
   highlights: string[];
@@ -297,6 +312,9 @@ function mapTripRow(row: any): OpenTripDetail {
       ? row.short_description
       : String(row.description ?? "");
 
+  const meetingPoints = row.meeting_points || [];
+  const rentalAddons = row.rental_addons || [];
+
   return {
     id: String(row.id ?? row.slug ?? ""),
     code: buildCode(row),
@@ -309,13 +327,10 @@ function mapTripRow(row: any): OpenTripDetail {
       .filter(Boolean)
       .join(", "),
     elevation: buildElevation(row),
-    duration: `${Number(row.duration_days ?? 1)} Hari ${Number(
-      row.duration_nights ?? 0
-    )} Malam`,
     departureDate: formatDate(row.departure_date),
-    meetingPoint: String(
-      row.pickup_location ?? "Pool Habema Buah Batu, Bandung"
-    ),
+    meetingPoint: meetingPoints[0]?.name ?? String(row.pickup_location ?? "Pool Habema Buah Batu, Bandung"),
+    meetingPoints,
+    rentalAddons,
     gallery: buildGallery(row),
     summary,
     highlights: parseArray(row.highlights),
@@ -366,6 +381,19 @@ export default function OpenTripDetailPage() {
     code: string | null;
   } | null>(null);
   const [paidStatus, setPaidStatus] = useState<"dp" | "lunas" | null>(null);
+  const [selectedMeetingPointId, setSelectedMeetingPointId] = useState<string | null>(null);
+  const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
+  const [participantDetails, setParticipantDetails] = useState<Array<{
+    name: string;
+    phone: string;
+    nik: string;
+    emergencyContactName: string;
+    emergencyContactPhone: string;
+    medicalNotes: string;
+  }>>([{ name: "", phone: "", nik: "", emergencyContactName: "", emergencyContactPhone: "", medicalNotes: "" }]);
+  const [termsAgreed, setTermsAgreed] = useState(false);
+  const [slotLockExpiresAt, setSlotLockExpiresAt] = useState<Date | null>(null);
+  const [lockTimer, setLockTimer] = useState<number | null>(null);
 
   useEffect(() => {
     if (!slug) {
@@ -552,10 +580,23 @@ export default function OpenTripDetailPage() {
   const handleBookingSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!trip) return;
+    if (!termsAgreed) {
+      setSubmitError("Anda harus menyetujui Syarat & Ketentuan sebelum melanjutkan.");
+      return;
+    }
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
+      // Build participant details array
+      const participantDetailsArray = participantDetails.map(p => ({
+        name: p.name,
+        email: "",
+        phone: p.phone,
+        id_type: "ktp",
+        id_number: p.nik,
+      }));
+
       // 1. Buat booking
       const bookingRes = await fetch("/api/ot-bookings", {
         method: "POST",
@@ -567,17 +608,11 @@ export default function OpenTripDetailPage() {
           child_count: 0,
           infant_count: 0,
           special_requests: notesInput || null,
-          participant_details: [
-            {
-              name: fullName,
-              email: "",
-              phone: whatsapp,
-              id_type: "ktp",
-              id_number: "",
-            },
-          ],
+          participant_details: participantDetailsArray,
           contact_person_name: fullName,
           contact_person_phone: whatsapp,
+          meeting_point_id: selectedMeetingPointId || null,
+          rental_addon_ids: selectedAddonIds,
         }),
       });
 
@@ -590,6 +625,9 @@ export default function OpenTripDetailPage() {
 
       const bookingId = bookingJson.data?.id as string;
       const bookingCode = (bookingJson.data?.booking_code as string) ?? "";
+
+      // Set slot lock expiry (30 minutes from now)
+      setSlotLockExpiresAt(new Date(Date.now() + 30 * 60 * 1000));
 
       // 2. Proses pembayaran DP / Lunas
       const payRes = await fetch("/api/ot-payments", {
@@ -1415,10 +1453,153 @@ export default function OpenTripDetailPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs  font-bold font-sanstracking-wider text-foreground mb-1.5">
-                    Catatan Medis / Kebutuhan Sewa Alat
-                  </label>
+<div>
+                    <label className="block text-xs  font-bold font-sanstracking-wider text-foreground mb-1.5">
+                      Titik Kumpul
+                    </label>
+                    <select
+                      value={selectedMeetingPointId ?? ""}
+                      onChange={(e) => setSelectedMeetingPointId(e.target.value || null)}
+                      className="w-full h-10 px-3 border border-input bg-background text-sm text-foreground focus:outline-none focus:border-forest"
+                    >
+                      <option value="">Pilih titik kumpul</option>
+                      {trip.meetingPoints?.map((mp) => (
+                        <option key={mp.id} value={mp.id}>
+                          {mp.name}
+                          {mp.price_adjustment > 0 ? ` (+${formatRupiah(mp.price_adjustment)})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedMeetingPointId && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {trip.meetingPoints?.find((mp) => mp.id === selectedMeetingPointId)?.address}
+                      </p>
+                    )}
+                  </div>
+
+                  {participants > 1 && (
+                    <div className="space-y-4">
+                      <label className="block text-xs font-bold font-sanstracking-wider text-foreground mb-1.5">
+                        Data Peserta (Nama, NIK, Kontak)
+                      </label>
+                      {participantDetails.map((p, idx) => (
+                        <div key={idx} className="p-3 border border-border space-y-2">
+                          <p className="text-xs font-semibold text-muted-foreground">Peserta #{idx + 1}</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              placeholder="Nama Lengkap *"
+                              value={p.name}
+                              onChange={(e) => {
+                                const next = [...participantDetails];
+                                next[idx] = { ...next[idx], name: e.target.value };
+                                setParticipantDetails(next);
+                              }}
+                              className="w-full h-9 px-2 border border-input bg-background text-sm text-foreground focus:outline-none focus:border-forest"
+                            />
+                            <input
+                              type="text"
+                              placeholder="NIK (16 digit)"
+                              value={p.nik}
+                              onChange={(e) => {
+                                const next = [...participantDetails];
+                                next[idx] = { ...next[idx], nik: e.target.value };
+                                setParticipantDetails(next);
+                              }}
+                              className="w-full h-9 px-2 border border-input bg-background text-sm text-foreground focus:outline-none focus:border-forest"
+                            />
+                            <input
+                              type="tel"
+                              placeholder="Nomor WhatsApp *"
+                              value={p.phone}
+                              onChange={(e) => {
+                                const next = [...participantDetails];
+                                next[idx] = { ...next[idx], phone: e.target.value };
+                                setParticipantDetails(next);
+                              }}
+                              className="w-full h-9 px-2 border border-input bg-background text-sm text-foreground focus:outline-none focus:border-forest"
+                            />
+                            <input
+                              type="text"
+                              placeholder="Kontak Darurat (Nama & No. HP)"
+                              value={p.emergencyContactName}
+                              onChange={(e) => {
+                                const next = [...participantDetails];
+                                next[idx] = { ...next[idx], emergencyContactName: e.target.value };
+                                setParticipantDetails(next);
+                              }}
+                              className="w-full h-9 px-2 border border-input bg-background text-sm text-foreground focus:outline-none focus:border-forest"
+                            />
+                            <input
+                              type="tel"
+                              placeholder="No. HP Darurat"
+                              value={p.emergencyContactPhone}
+                              onChange={(e) => {
+                                const next = [...participantDetails];
+                                next[idx] = { ...next[idx], emergencyContactPhone: e.target.value };
+                                setParticipantDetails(next);
+                              }}
+                              className="w-full h-9 px-2 border border-input bg-background text-sm text-foreground focus:outline-none focus:border-forest"
+                            />
+                            <input
+                              type="text"
+                              placeholder="Catatan medis / alergi (opsional)"
+                              value={p.medicalNotes}
+                              onChange={(e) => {
+                                const next = [...participantDetails];
+                                next[idx] = { ...next[idx], medicalNotes: e.target.value };
+                                setParticipantDetails(next);
+                              }}
+                              className="w-full h-9 px-2 border border-input bg-background text-sm text-foreground focus:outline-none focus:border-forest"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                      {participants > participantDetails.length && (
+                        <button
+                          type="button"
+                          onClick={() => setParticipantDetails([...participantDetails, { name: "", phone: "", nik: "", emergencyContactName: "", emergencyContactPhone: "", medicalNotes: "" }])}
+                          className="text-xs text-forest hover:text-forest-tint font-medium"
+                        >
+                          + Tambah Peserta
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {trip.rentalAddons && trip.rentalAddons.length > 0 && (
+                    <div>
+                      <label className="block text-xs font-bold font-sanstracking-wider text-foreground mb-1.5">
+                        Add-on Rental (Opsional)
+                      </label>
+                      <div className="space-y-2">
+                        {trip.rentalAddons.map((addon) => (
+                          <label key={addon.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedAddonIds.includes(addon.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedAddonIds([...selectedAddonIds, addon.id]);
+                                } else {
+                                  setSelectedAddonIds(selectedAddonIds.filter((id) => id !== addon.id));
+                                }
+                              }}
+                              className="h-4 w-4"
+                            />
+                            <span>
+                              {addon.name} ({addon.quantity}x @ {formatRupiah(addon.price_per_unit)})
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs  font-bold font-sanstracking-wider text-foreground mb-1.5">
+                      Catatan Medis / Kebutuhan Sewa Alat
+                    </label>
                   <textarea
                     rows={2}
                     value={notesInput}
@@ -1443,6 +1624,20 @@ export default function OpenTripDetailPage() {
                     {submitError}
                   </div>
                 )}
+
+                <label className="flex items-start gap-2 text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={termsAgreed}
+                    onChange={(e) => setTermsAgreed(e.target.checked)}
+                    className="h-4 w-4 mt-0.5"
+                  />
+                  <span className="text-muted-foreground">
+                    Saya menyetujui <strong>Syarat & Ketentuan</strong> termasuk kebijakan
+                    refund/reschedule dan <strong>waiver aktivitas outdoor</strong> (risiko
+                    aktivitas ditanggung peserta sesuai ketentuan).
+                  </span>
+                </label>
 
                 <div className="flex gap-2.5 pt-1">
                   <button
