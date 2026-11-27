@@ -57,6 +57,7 @@ where is_vendor = true and role = 'customer';
 alter table public.users enable row level security;
 
 -- Policy: admin (super_admin / branch_admin) bisa lihat semua users
+drop policy if exists "Admins can view all users" on public.users;
 create policy "Admins can view all users"
   on public.users for select
   using (
@@ -67,6 +68,7 @@ create policy "Admins can view all users"
   );
 
 -- Policy: user bisa lihat data sendiri
+drop policy if exists "Users can view own profile" on public.users;
 create policy "Users can view own profile"
   on public.users for select
   using (auth.uid() = id);

@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
 
     if (uploadError) {
       throw new Error(
-        uploadError.message.includes('bucket')
+        uploadError.message.toLowerCase().includes('bucket')
           ? `Bucket Storage "${BUCKET}" belum ada. Jalankan supabase/migrations/20261122000000_add_opentrip_gallery_storage.sql.`
           : `Gagal menyimpan gambar: ${uploadError.message}`,
       )
