@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
+  ArrowLeftCircle,
   Calendar,
   DollarSign,
   User,
@@ -135,8 +136,11 @@ export default function BookingDetailsPage() {
     }
   };
 
-  const updatePayment = async (action: "approve" | "reject") => {
+  const updatePayment = async (action: "approve" | "reject" | "refund") => {
     if (action === "reject" && !confirm("Tolak bukti pembayaran ini? Booking akan dibatalkan dan stok dikembalikan.")) {
+      return;
+    }
+    if (action === "refund" && !confirm("Proses pengembalian dana (refund) untuk booking ini? Pembayaran akan ditandai 'Dikembalikan' dan stok dikembalikan.")) {
       return;
     }
     try {
@@ -144,7 +148,9 @@ export default function BookingDetailsPage() {
       const payload =
         action === "approve"
           ? { status: "confirmed", payment_status: "paid" }
-          : { status: "cancelled", payment_status: "failed" };
+          : action === "refund"
+            ? { status: "refunded", payment_status: "refunded" }
+            : { status: "cancelled", payment_status: "failed" };
       const res = await fetch(`/api/admin/bookings/${bookingId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -165,7 +171,9 @@ export default function BookingDetailsPage() {
       toast.success(
         action === "approve"
           ? "Pembayaran disetujui, booking dikonfirmasi"
-          : "Pembayaran ditolak, booking dibatalkan",
+          : action === "refund"
+            ? "Refund berhasil diproses, dana dikembalikan ke pelanggan"
+            : "Pembayaran ditolak, booking dibatalkan",
       );
     } catch (error) {
       console.error("Error updating payment:", error);
@@ -411,17 +419,27 @@ export default function BookingDetailsPage() {
                         <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
                         Setujui Pembayaran
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 rounded-lg border-red-200 text-red-600 hover:bg-red-50 text-xs"
-                        disabled={updatingPayment}
-                        onClick={() => updatePayment("reject")}
-                      >
-                        <XCircle className="w-3.5 h-3.5 mr-1.5" />
-                        Tolak
-                      </Button>
-                    </div>
+<Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 rounded-lg border-emerald-600 hover:bg-emerald-600 text-white text-xs"
+                          disabled={updatingPayment}
+                          onClick={() => updatePayment("refund")}
+                        >
+                          <ArrowLeftCircle className="w-3.5 h-3.5 mr-1.5" />
+                          Kembalikan Dana
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 rounded-lg border-red-200 text-red-600 hover:bg-red-50 text-xs"
+                          disabled={updatingPayment}
+                          onClick={() => updatePayment("reject")}
+                        >
+                          <XCircle className="w-3.5 h-3.5 mr-1.5" />
+                          Tolak
+                        </Button>
+                      </div>
                   )}
                 </div>
               </Card>

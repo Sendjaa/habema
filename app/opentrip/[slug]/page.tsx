@@ -598,6 +598,9 @@ export default function OpenTripDetailPage() {
         body: JSON.stringify({
           bookingId,
           method: paymentScheme === "dp" ? "dp" : "lunas",
+          fullName,
+          whatsapp,
+          emergencyContact,
         }),
       });
 

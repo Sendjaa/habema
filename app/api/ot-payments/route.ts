@@ -13,6 +13,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const bookingId = String(body?.bookingId ?? '').trim()
     const method = String(body?.method ?? 'dp').toString().toLowerCase()
+    const fullName = String(body?.fullName ?? '').trim()
+    const whatsapp = String(body?.whatsapp ?? '').trim()
+    const emergencyContact = String(body?.emergencyContact ?? '').trim()
+
     if (!['dp', 'lunas'].includes(method)) return NextResponse.json({ error: 'Invalid method' }, { status: 400 })
     if (!bookingId) return NextResponse.json({ error: 'bookingId wajib dikirim' }, { status: 400 })
 
@@ -31,9 +35,7 @@ export async function POST(request: NextRequest) {
     const isFull = method === 'lunas'
     const amount = isFull ? fullPrice : Math.round(fullPrice * 0.5)
 
-    // ot_payments constraints:
-    // payment_method IN ('qris'|...), status IN ('pending','processing','completed','failed','refunded','cancelled','expired')
-    const { error: payError } = await (supabase as any)
+    const { error: payError, data: paymentData } = await (supabase as any)
       .from('ot_payments')
       .insert({
         user_id: user.id,
@@ -44,9 +46,17 @@ export async function POST(request: NextRequest) {
         net_amount: isFull ? fullPrice : Math.round(fullPrice * 0.5),
         transaction_id: `OT-${isFull ? 'LUNAS' : 'DP'}-${booking.booking_code?.slice(0, 8)}`,
       })
+      .select()
+
     if (payError) {
-      console.error('[ot-payments] insert error:', payError.message)
-      return NextResponse.json({ error: 'Gagal menyimpan data pembayaran' }, { status: 500 })
+      console.error('[ot-payments] insert error:', payError.message, payError.details, payError.hint)
+      const errorMsg =
+        payError.message?.includes('constraint') || payError.message?.includes('check')
+          ? 'Gagal menyimpan data pembayaran: data tidak valid (mis. amount harus > 0)'
+          : payError.message?.includes('RLS') || payError.message?.includes('permission') || payError.message?.includes('policy')
+            ? 'Gagal menyimpan data pembayaran: akses database ditolak'
+            : 'Gagal menyimpan data pembayaran'
+      return NextResponse.json({ error: errorMsg }, { status: 500 })
     }
 
     const { error: updateError } = await (supabase as any)
@@ -69,6 +79,7 @@ export async function POST(request: NextRequest) {
         method,
         amount,
         status: isFull ? 'paid' : 'partial',
+        payment: paymentData,
       },
     })
   } catch (error: any) {
