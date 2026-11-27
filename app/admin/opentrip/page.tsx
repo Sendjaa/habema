@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -19,10 +19,10 @@ import {
   Plus,
   Tag,
   Trash2,
-  Upload,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ImageUploadField } from "@/components/admin/gallery-image-upload";
 
 /**
  * Kelola seluruh konten Open Trip.
@@ -73,7 +73,7 @@ const CONTENT: Record<Exclude<TabId, "trips">, ResourceConfig> = {
       { key: "name", label: "Nama kategori", type: "text", required: true },
       { key: "slug", label: "Slug", type: "text", help: "Kosongkan untuk dibuat otomatis dari nama." },
       { key: "description", label: "Deskripsi", type: "textarea", full: true },
-      { key: "icon", label: "Ikon (emoji)", type: "text", placeholder: "🎒" },
+      { key: "icon", label: "Ikon (emoji)", type: "text", placeholder: "ðŸŽ’" },
       { key: "color", label: "Warna", type: "text", placeholder: "#10b981" },
       { key: "sort_order", label: "Urutan", type: "number", defaultValue: 0 },
       { key: "is_active", label: "Aktif tampil di halaman", type: "checkbox", defaultValue: true },
@@ -192,173 +192,6 @@ function rowToForm(row: Record<string, any>, fields: ContentField[]): Record<str
     else form[field.key] = value ?? "";
   }
   return form;
-}
-
-async function uploadGalleryImage(file: File): Promise<string> {
-  const fd = new FormData();
-  fd.append("file", file);
-  const res = await fetch("/api/admin/opentrip-content/upload", {
-    method: "POST",
-    body: fd,
-  });
-  const raw = await res.text();
-  let json: any = null;
-  try {
-    json = raw ? JSON.parse(raw) : null;
-  } catch {
-    json = null;
-  }
-  if (!res.ok) {
-    throw new Error(
-      json?.error ||
-        (res.status === 404
-          ? "Endpoint upload tidak ditemukan. Muat ulang halaman admin lalu coba lagi."
-          : raw.slice(0, 200) || `HTTP ${res.status}`),
-    );
-  }
-  if (!json?.data?.url) throw new Error("Server tidak mengembalikan URL gambar.");
-  return String(json.data.url);
-}
-
-function ImageUploadField({
-  values,
-  onChange,
-  label,
-  hint,
-  multiple = false,
-}: {
-  values: string[];
-  onChange: (urls: string[]) => void;
-  label: string;
-  hint?: string;
-  multiple?: boolean;
-}) {
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState({ done: 0, total: 0 });
-  const [uploadError, setUploadError] = useState<string | null>(null);
-
-  const handleFiles = async (fileList: FileList | null) => {
-    const files = Array.from(fileList ?? []);
-    if (files.length === 0) return;
-    const selected = multiple ? files : files.slice(0, 1);
-
-    for (const file of selected) {
-      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-        setUploadError("Pilih file JPEG, PNG, atau WebP.");
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        setUploadError("Ukuran gambar maksimal 5 MB.");
-        return;
-      }
-    }
-
-    setUploading(true);
-    setUploadError(null);
-    setProgress({ done: 0, total: selected.length });
-
-    const uploaded: string[] = [];
-    try {
-      for (const file of selected) {
-        uploaded.push(await uploadGalleryImage(file));
-        setProgress({ done: uploaded.length, total: selected.length });
-      }
-      onChange(multiple ? [...values, ...uploaded] : uploaded);
-      toast.success(
-        selected.length > 1
-          ? `${selected.length} gambar berhasil diunggah`
-          : "Gambar berhasil diunggah",
-      );
-    } catch (error: any) {
-      if (uploaded.length > 0) onChange(multiple ? [...values, ...uploaded] : uploaded);
-      const message = error?.message || "Gagal mengunggah gambar";
-      setUploadError(
-        uploaded.length > 0
-          ? `${uploaded.length}/${selected.length} gambar terunggah. ${message}`
-          : message,
-      );
-      toast.error(message);
-    } finally {
-      setUploading(false);
-      setProgress({ done: 0, total: 0 });
-    }
-  };
-
-  return (
-    <div className="space-y-2">
-      <Label className="block text-sm">{label}</Label>
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          ref={inputRef as any}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          multiple={multiple}
-          className="hidden"
-          onChange={(e) => {
-            void handleFiles(e.target.files);
-            e.target.value = "";
-          }}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          className="gap-2"
-          disabled={uploading}
-          onClick={() => inputRef.current?.click()}
-        >
-          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          {uploading
-            ? progress.total > 1
-              ? `Mengunggah ${Math.min(progress.done + 1, progress.total)}/${progress.total}…`
-              : "Mengunggah…"
-            : multiple && values.length > 0
-              ? "Tambah gambar"
-              : values.length > 0
-                ? "Ganti gambar"
-                : "Unggah gambar"}
-        </Button>
-        {multiple && values.length > 0 && (
-          <span className="text-xs text-muted-foreground">{values.length} gambar dipilih</span>
-        )}
-      </div>
-      {uploadError && <p className="text-xs text-destructive">{uploadError}</p>}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-      {values.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {values.map((url) => (
-            <div key={url} className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={url}
-                alt={label}
-                width={320}
-                height={180}
-                className="w-full h-28 object-cover rounded-md border border-stone-200 bg-stone-100"
-              />
-              <Button
-                type="button"
-                variant="destructive"
-                size="icon"
-                className="absolute top-1 right-1 h-6 w-6"
-                title="Hapus gambar"
-                disabled={uploading}
-                onClick={() => onChange(values.filter((item) => item !== url))}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          {multiple
-            ? "Belum ada gambar. Bisa pilih beberapa file sekaligus."
-            : "Belum ada gambar. Unggah gambar baru."}
-        </p>
-      )}
-    </div>
-  );
 }
 
 function ContentTab({ config }: { config: ResourceConfig }) {
@@ -491,7 +324,7 @@ function ContentTab({ config }: { config: ResourceConfig }) {
       <Card className="overflow-hidden">
         {loading ? (
           <div className="p-8 flex items-center justify-center text-muted-foreground gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" /> Memuat…
+            <Loader2 className="h-4 w-4 animate-spin" /> Memuatâ€¦
           </div>
         ) : rows.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
@@ -522,7 +355,7 @@ function ContentTab({ config }: { config: ResourceConfig }) {
                         ) : column.key === "discount_amount" || column.key === "price_per_trip" ? (
                           rupiah(row[column.key])
                         ) : (
-                          <span className="line-clamp-2">{String(row[column.key] ?? "—")}</span>
+                          <span className="line-clamp-2">{String(row[column.key] ?? "â€”")}</span>
                         )}
                       </td>
                     ))}
@@ -638,7 +471,7 @@ function toLines(value: unknown): string[] {
 
 const TRIP_STATUS = ["draft", "published", "full", "completed", "archived"];
 const DIFFICULTY = [
-  { value: "", label: "—" },
+  { value: "", label: "â€”" },
   { value: "easy", label: "Mudah" },
   { value: "moderate", label: "Menengah" },
   { value: "challenging", label: "Menantang" },
@@ -651,6 +484,11 @@ function TripsTab({ categories }: { categories: Record<string, any>[] }) {
   const [form, setForm] = useState<TripRow | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [inclusionsRows, setInclusionsRows] = useState<string[]>([""]);
+  const [exclusionsRows, setExclusionsRows] = useState<string[]>([""]);
+  const [perlengkapanRows, setPerlengkapanRows] = useState<string[]>([""]);
+  const [addonsRows, setAddonsRows] = useState<string[]>([""]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -711,6 +549,11 @@ function TripsTab({ categories }: { categories: Record<string, any>[] }) {
   const openCreate = () => {
     setEditingId(null);
     setForm(blankForm());
+    setGalleryImages([]);
+    setInclusionsRows([""]);
+    setExclusionsRows([""]);
+    setPerlengkapanRows([""]);
+    setAddonsRows([""]);
   };
 
   const openEdit = (row: TripRow) => {
@@ -736,11 +579,7 @@ function TripsTab({ categories }: { categories: Record<string, any>[] }) {
       difficulty_level: row.difficulty_level ?? "",
       fitness_required: row.fitness_required ?? "",
       featured_image: row.featured_image ?? "",
-      gallery_images: toLines(row.gallery_images).join("\n"),
       highlights: toLines(row.highlights).join("\n"),
-      inclusions: toLines(row.inclusions).join("\n"),
-      exclusions: toLines(row.exclusions).join("\n"),
-      what_to_bring: toLines(row.what_to_bring).join("\n"),
       important_notes: toLines(row.important_notes).join("\n"),
       cancellation_policy: row.cancellation_policy ?? "",
       refund_policy: row.refund_policy ?? "",
@@ -750,6 +589,11 @@ function TripsTab({ categories }: { categories: Record<string, any>[] }) {
       featured: Boolean(row.featured),
       priority: row.priority ?? 0,
     });
+    setGalleryImages(Array.isArray(row.gallery_images) ? row.gallery_images.filter((x: any) => typeof x === "string") : []);
+    setInclusionsRows(Array.isArray(row.inclusions) ? row.inclusions.filter((x: any) => typeof x === "string") : [""]);
+    setExclusionsRows(Array.isArray(row.exclusions) ? row.exclusions.filter((x: any) => typeof x === "string") : [""]);
+    setPerlengkapanRows(Array.isArray(row.what_to_bring) ? row.what_to_bring.filter((x: any) => typeof x === "string") : [""]);
+    setAddonsRows(Array.isArray(row.addons) ? row.addons.filter((x: any) => typeof x === "string") : [""]);
   };
 
   const submit = async () => {
@@ -784,11 +628,12 @@ function TripsTab({ categories }: { categories: Record<string, any>[] }) {
       max_age: form.max_age === "" ? null : Number(form.max_age),
       difficulty_level: form.difficulty_level || null,
       category_id: form.category_id || null,
-      gallery_images: lines(form.gallery_images),
+      gallery_images: galleryImages,
       highlights: lines(form.highlights),
-      inclusions: lines(form.inclusions),
-      exclusions: lines(form.exclusions),
-      what_to_bring: lines(form.what_to_bring),
+      inclusions: inclusionsRows.map((r) => r.trim()).filter(Boolean),
+      exclusions: exclusionsRows.map((r) => r.trim()).filter(Boolean),
+      what_to_bring: perlengkapanRows.map((r) => r.trim()).filter(Boolean),
+      addons: addonsRows.map((r) => r.trim()).filter(Boolean),
       important_notes: lines(form.important_notes),
     };
 
@@ -863,6 +708,43 @@ function TripsTab({ categories }: { categories: Record<string, any>[] }) {
     </div>
   );
 
+  const listField = (
+    label: string,
+    rows: string[],
+    setRows: (v: string[]) => void,
+    placeholder?: string,
+  ) => (
+    <div className="sm:col-span-2">
+      <Label className="mb-1.5 block text-sm">{label}</Label>
+      <div className="space-y-2">
+        {rows.map((row, idx) => (
+          <div key={idx} className="flex gap-2">
+            <Input
+              value={row}
+              placeholder={placeholder}
+              onChange={(e) => {
+                const next = [...rows];
+                next[idx] = e.target.value;
+                setRows(next);
+              }}
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setRows(rows.filter((_, i) => i !== idx))}
+              title="Hapus item"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
+      <Button variant="outline" size="sm" className="mt-2 gap-2" onClick={() => setRows([...rows, ""])}>
+        <Plus className="h-4 w-4" /> Tambah item
+      </Button>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -876,7 +758,7 @@ function TripsTab({ categories }: { categories: Record<string, any>[] }) {
       <Card className="overflow-hidden">
         {loading ? (
           <div className="p-8 flex items-center justify-center text-muted-foreground gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" /> Memuat…
+            <Loader2 className="h-4 w-4 animate-spin" /> Memuatâ€¦
           </div>
         ) : rows.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
@@ -902,10 +784,10 @@ function TripsTab({ categories }: { categories: Record<string, any>[] }) {
                       <div className="font-medium">{row.title}</div>
                       <div className="text-xs text-muted-foreground">
                         {row.destination}
-                        {row.destination_region ? ` • ${row.destination_region}` : ""}
+                        {row.destination_region ? ` â€¢ ${row.destination_region}` : ""}
                       </div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">{row.departure_date ?? "—"}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{row.departure_date ?? "â€”"}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {row.current_participants ?? 0}/{row.max_participants ?? 0}
                     </td>
@@ -967,14 +849,7 @@ function TripsTab({ categories }: { categories: Record<string, any>[] }) {
                 </select>
               </div>
               <div className="sm:col-span-2">
-                <Label className="mb-1.5 block text-sm">Deskripsi singkat</Label>
-                <Input
-                  value={form.short_description ?? ""}
-                  onChange={(e) => setForm({ ...form, short_description: e.target.value })}
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <Label className="mb-1.5 block text-sm">Deskripsi lengkap *</Label>
+                <Label className="mb-1.5 block text-sm">Deskripsi *</Label>
                 <Textarea
                   rows={4}
                   value={form.description ?? ""}
@@ -1047,12 +922,19 @@ function TripsTab({ categories }: { categories: Record<string, any>[] }) {
                   onChange={(e) => setForm({ ...form, featured_image: e.target.value })}
                 />
               </div>
-              {linesField("gallery_images", "URL galeri trip")}
+              <ImageUploadField
+                values={galleryImages}
+                onChange={setGalleryImages}
+                multiple
+                label="Galeri trip"
+                hint="JPEG/PNG/WebP, maks 5 MB per file. Pilih beberapa file sekaligus."
+              />
 
               {linesField("highlights", "Highlight")}
-              {linesField("inclusions", "Termasuk")}
-              {linesField("exclusions", "Tidak termasuk")}
-              {linesField("what_to_bring", "Perlengkapan yang dibawa")}
+              {listField("Termasuk", inclusionsRows, setInclusionsRows)}
+              {listField("Tidak termasuk", exclusionsRows, setExclusionsRows)}
+              {listField("Perlengkapan yang dibawa", perlengkapanRows, setPerlengkapanRows)}
+              {listField("Add-on", addonsRows, setAddonsRows)}
               {linesField("important_notes", "Catatan penting")}
 
               <div className="sm:col-span-2">
