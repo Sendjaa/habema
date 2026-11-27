@@ -67,6 +67,12 @@ export interface OtTrip {
   published_at: string | null
   archived_at: string | null
   category?: OtTripCategory
+  // P1 additions
+  custom_wa_number?: string | null
+  meeting_points?: OtMeetingPoint[]
+  rental_addons?: OtRentalAddon[]
+  available_slots?: number
+  status_display?: 'Open' | 'Almost Full' | 'Guaranteed Departure' | 'Full'
   images?: OtTripImage[]
 }
 
@@ -164,6 +170,13 @@ export interface OtBooking {
   completed_at: string | null
   created_at: string
   updated_at: string
+  // P1 additions
+  expires_at?: string | null
+  refund_amount?: number
+  refund_reason?: string | null
+  refunded_at?: string | null
+  meeting_point_id?: string | null
+  rental_addons?: OtRentalAddonItem[]
   trip?: {
     id: string
     title: string
@@ -173,6 +186,7 @@ export interface OtBooking {
     departure_date: string
     return_date: string
     destination: string
+    custom_wa_number?: string | null
   }
   user?: {
     id: string
@@ -195,6 +209,59 @@ export interface OtParticipantDetail {
   date_of_birth?: string
   gender?: 'male' | 'female'
   special_needs?: string
+}
+
+// P1: Meeting Point Types
+export interface OtMeetingPoint {
+  id: string
+  trip_id: string
+  name: string
+  address: string
+  lat?: number | null
+  lng?: number | null
+  price_adjustment: number
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+// P1: Rental Add-on Types
+export interface OtRentalAddon {
+  id: string
+  trip_id: string
+  equipment_id: string
+  branch_id?: string | null
+  quantity: number
+  price_per_unit: number
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+  equipment?: {
+    id: string
+    name: string
+    image_url?: string | null
+  }
+}
+
+export interface OtRentalAddonItem {
+  addon_id: string
+  equipment_id: string
+  quantity: number
+  price: number
+  name?: string
+}
+
+// P1: Trip with meeting points and addons
+export interface OtTripWithP1Relations extends OtTrip {
+  category?: OtTripCategory
+  images?: OtTripImage[]
+  meeting_points?: OtMeetingPoint[]
+  rental_addons?: OtRentalAddon[]
+  available_slots: number
+  is_full: boolean
+  status_display: 'Open' | 'Almost Full' | 'Guaranteed Departure' | 'Full'
 }
 
 // Payment Types

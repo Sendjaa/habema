@@ -92,6 +92,35 @@ const RESOURCES: Record<string, ResourceConfig> = {
       sort_order: 'number',
     },
   },
+  meeting_points: {
+    table: 'ot_meeting_points',
+    order: 'sort_order',
+    required: ['trip_id', 'name', 'address'],
+    fields: {
+      trip_id: 'text',
+      name: 'text',
+      address: 'text',
+      lat: 'number',
+      lng: 'number',
+      price_adjustment: 'number',
+      is_active: 'bool',
+      sort_order: 'number',
+    },
+  },
+  rental_addons: {
+    table: 'ot_rental_addons',
+    order: 'sort_order',
+    required: ['trip_id', 'equipment_id'],
+    fields: {
+      trip_id: 'text',
+      equipment_id: 'text',
+      branch_id: 'text',
+      quantity: 'number',
+      price_per_unit: 'number',
+      is_active: 'bool',
+      sort_order: 'number',
+    },
+  },
 }
 
 function slugify(value: string): string {

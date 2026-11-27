@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
       contact_person_name,
       contact_person_email,
       contact_person_phone,
+      meeting_point_id,
     } = body
 
     // Validation
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
     // Get trip details
     const { data: trip, error: tripError } = await (supabase as any)
       .from('ot_trips')
-      .select('id, final_price, max_participants, current_participants, status, min_participants, title')
+      .select('id, final_price, max_participants, current_participants, status, min_participants, title, departure_date')
       .eq('id', trip_id)
       .single()
 
@@ -117,10 +118,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const availableSlots = trip.max_participants - (trip.current_participants || 0)
+    // Use DB function to count available slots (includes pending slot locks)
+    const { data: slotsData } = await (supabase as any)
+      .rpc('count_available_slots', { p_trip_id: trip.id })
+      .single()
+    const availableSlots = slotsData?.count_available_slots ?? 0
+
     if (total_participants > availableSlots) {
       return NextResponse.json(
-        { success: false, error: `Hanya tersisa ${availableSlots} slot` },
+        { success: false, error: `Hanya tersisa ${availableSlots} slot. Hubungi CS jika butuh bantuan.` },
         { status: 400 }
       )
     }
@@ -133,6 +139,9 @@ export async function POST(request: NextRequest) {
 
     // Generate booking code
     const booking_code = 'OT-' + new Date().toISOString().slice(2, 10).replace(/-/g, '') + '-' + Math.floor(Math.random() * 10000).toString().padStart(4, '0')
+
+    // Slot lock: expires in 30 minutes for pending payment
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString()
 
     const insertData = {
       user_id: user.id,
@@ -154,6 +163,8 @@ export async function POST(request: NextRequest) {
       contact_person_name: contact_person_name || null,
       contact_person_email: contact_person_email || null,
       contact_person_phone: contact_person_phone || null,
+      meeting_point_id: meeting_point_id || null,
+      expires_at: expiresAt,
     }
 
     const { data, error } = await (supabase as any)
@@ -165,7 +176,7 @@ export async function POST(request: NextRequest) {
     if (error) throw new Error(error.message)
 
     return NextResponse.json({ success: true, data }, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating booking:', error)
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Gagal membuat booking' },

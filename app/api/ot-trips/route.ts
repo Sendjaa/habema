@@ -101,14 +101,64 @@ export async function GET(request: NextRequest) {
 
     if (error) throw new Error(error.message)
 
+    // Fetch meeting points and rental addons for all trips
+    const { data: meetingPoints } = await (supabase as any)
+      .from('ot_meeting_points')
+      .select('*')
+      .eq('is_active', true)
+
+    const { data: rentalAddons } = await (supabase as any)
+      .from('ot_rental_addons')
+      .select('*')
+      .eq('is_active', true)
+
+    // Group by trip_id
+    const pointsByTrip = (meetingPoints || []).reduce((acc: any, p: any) => {
+      if (!acc[p.trip_id]) acc[p.trip_id] = []
+      acc[p.trip_id].push(p)
+      return acc
+    }, {})
+
+    const addonsByTrip = (rentalAddons || []).reduce((acc: any, a: any) => {
+      if (!acc[a.trip_id]) acc[a.trip_id] = []
+      acc[a.trip_id].push(a)
+      return acc
+    }, {})
+
+    // Calculate available slots using DB function
+    const availableSlotsMap: Record<string, number> = {}
+    for (const trip of (data || [])) {
+      const { data: slotsData } = await (supabase as any)
+        .rpc('count_available_slots', { p_trip_id: trip.id })
+        .single()
+      availableSlotsMap[trip.id] = slotsData?.count_available_slots ?? 0
+    }
+
     // Transform data to include computed fields
-    const tripsWithMeta = (data || []).map((trip: any) => ({
-      ...trip,
-      available_slots: trip.max_participants - trip.current_participants,
-      is_full: trip.current_participants >= trip.max_participants,
-      category: trip.category || null,
-      images: trip.images || [],
-    }))
+    const tripsWithMeta = (data || []).map((trip: any) => {
+      const availableSlots = availableSlotsMap[trip.id] ?? trip.max_participants - trip.current_participants
+      const bookedPct = trip.max_participants > 0 
+        ? (trip.current_participants / trip.max_participants) * 100 
+        : 0
+
+      // Dynamic status display (not persisted to DB)
+      let status_display: 'Open' | 'Almost Full' | 'Guaranteed Departure' | 'Full' = 'Open'
+      if (availableSlots <= 0) status_display = 'Full'
+      else if (availableSlots <= 3 || bookedPct >= 80) status_display = 'Almost Full'
+      else if (trip.current_participants >= trip.min_participants) status_display = 'Guaranteed Departure'
+
+      return {
+        ...trip,
+        available_slots: availableSlots,
+        is_full: availableSlots <= 0,
+        category: trip.category || null,
+        images: trip.images || [],
+        meeting_points: pointsByTrip[trip.id] || [],
+        rental_addons: addonsByTrip[trip.id] || [],
+        custom_wa_number: trip.custom_wa_number || null,
+        status_display,
+      }
+    })
 
     return NextResponse.json({
       data: tripsWithMeta,
